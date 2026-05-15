@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/AppShell";
 import { buildReceiptText } from "@/lib/receipt";
 import { isBluetoothSupported, printText } from "@/lib/printer";
 import {
-  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Smartphone, HandCoins, Printer,
+  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Smartphone, HandCoins, Printer, Package,
 } from "lucide-react";
 import { toast } from "sonner";
 
