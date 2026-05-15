@@ -17,6 +17,7 @@ export interface Product {
   trackStock: boolean;
   categoryId?: number;
   imageEmoji?: string;
+  image?: string; // dataURL (base64) — foto del producto
   active: boolean;
   createdAt: number;
 }
