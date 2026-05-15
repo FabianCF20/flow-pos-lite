@@ -10,16 +10,18 @@ const PRINTER_SERVICES = [
   "e7810a71-73ae-499d-8c15-faa9aef0c3f2",
 ];
 
+type BTDevice = any;
+type BTChar = any;
+
 export function isBluetoothSupported(): boolean {
   return typeof navigator !== "undefined" && "bluetooth" in navigator;
 }
 
-let cachedDevice: BluetoothDevice | null = null;
+let cachedDevice: BTDevice | null = null;
 
-export async function pickPrinter(): Promise<BluetoothDevice> {
+export async function pickPrinter(): Promise<BTDevice> {
   if (!isBluetoothSupported()) throw new Error("Bluetooth no soportado en este dispositivo/navegador");
-  // @ts-expect-error - navigator.bluetooth lacks types in TS dom lib
-  const device: BluetoothDevice = await navigator.bluetooth.requestDevice({
+  const device: BTDevice = await (navigator as any).bluetooth.requestDevice({
     acceptAllDevices: true,
     optionalServices: PRINTER_SERVICES,
   });
@@ -27,12 +29,12 @@ export async function pickPrinter(): Promise<BluetoothDevice> {
   return device;
 }
 
-async function getWritable(device: BluetoothDevice) {
-  const server = await device.gatt!.connect();
+async function getWritable(device: BTDevice): Promise<BTChar> {
+  const server = await device.gatt.connect();
   const services = await server.getPrimaryServices();
   for (const svc of services) {
     const chars = await svc.getCharacteristics();
-    const writable = chars.find((c) => c.properties.write || c.properties.writeWithoutResponse);
+    const writable = chars.find((c: BTChar) => c.properties.write || c.properties.writeWithoutResponse);
     if (writable) return writable;
   }
   throw new Error("No se encontró característica de escritura");
@@ -53,7 +55,7 @@ function escposEncode(text: string): Uint8Array {
   return new Uint8Array(bytes);
 }
 
-export async function printText(text: string, device?: BluetoothDevice) {
+export async function printText(text: string, device?: BTDevice) {
   const dev = device ?? cachedDevice ?? (await pickPrinter());
   const ch = await getWritable(dev);
   const data = escposEncode(text);
