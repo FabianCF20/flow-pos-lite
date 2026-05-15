@@ -14,6 +14,7 @@ import { Route as SalesRouteImport } from './routes/sales'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PosRouteImport } from './routes/pos'
+import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CashRouteImport } from './routes/cash'
@@ -44,6 +45,11 @@ const PosRoute = PosRouteImport.update({
   path: '/pos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoreRoute = MoreRouteImport.update({
+  id: '/more',
+  path: '/more',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -70,6 +76,7 @@ export interface FileRoutesByFullPath {
   '/cash': typeof CashRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/cash': typeof CashRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/cash': typeof CashRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
+  '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
   '/reports': typeof ReportsRoute
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/cash'
     | '/customers'
     | '/login'
+    | '/more'
     | '/pos'
     | '/products'
     | '/reports'
@@ -117,6 +127,7 @@ export interface FileRouteTypes {
     | '/cash'
     | '/customers'
     | '/login'
+    | '/more'
     | '/pos'
     | '/products'
     | '/reports'
@@ -128,6 +139,7 @@ export interface FileRouteTypes {
     | '/cash'
     | '/customers'
     | '/login'
+    | '/more'
     | '/pos'
     | '/products'
     | '/reports'
@@ -140,6 +152,7 @@ export interface RootRouteChildren {
   CashRoute: typeof CashRoute
   CustomersRoute: typeof CustomersRoute
   LoginRoute: typeof LoginRoute
+  MoreRoute: typeof MoreRoute
   PosRoute: typeof PosRoute
   ProductsRoute: typeof ProductsRoute
   ReportsRoute: typeof ReportsRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/more': {
+      id: '/more'
+      path: '/more'
+      fullPath: '/more'
+      preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -220,6 +240,7 @@ const rootRouteChildren: RootRouteChildren = {
   CashRoute: CashRoute,
   CustomersRoute: CustomersRoute,
   LoginRoute: LoginRoute,
+  MoreRoute: MoreRoute,
   PosRoute: PosRoute,
   ProductsRoute: ProductsRoute,
   ReportsRoute: ReportsRoute,
