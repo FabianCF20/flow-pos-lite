@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/AppShell";
 import { buildReceiptText } from "@/lib/receipt";
 import { isBluetoothSupported, printText } from "@/lib/printer";
 import {
-  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Smartphone, HandCoins, Printer,
+  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Smartphone, HandCoins, Printer, Package,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -160,8 +160,14 @@ function POSPage() {
                 className="text-left rounded-xl bg-card border border-border p-3 active:scale-[0.97] transition-transform disabled:opacity-50"
                 disabled={p.trackStock && p.stock <= 0}
               >
-                <div className="text-2xl">{p.imageEmoji ?? "📦"}</div>
-                <div className="mt-1.5 text-sm font-medium leading-tight line-clamp-2">{p.name}</div>
+                <div className="aspect-square w-full rounded-lg bg-muted overflow-hidden grid place-items-center mb-1.5">
+                  {p.image ? (
+                    <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                  ) : (
+                    <Package className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="text-sm font-medium leading-tight line-clamp-2">{p.name}</div>
                 <div className="mt-1 text-sm font-semibold text-primary">{formatMoney(p.price, settings)}</div>
                 {p.trackStock && (
                   <div className={`text-[10px] mt-0.5 ${p.stock <= 5 ? "text-warning" : "text-muted-foreground"}`}>

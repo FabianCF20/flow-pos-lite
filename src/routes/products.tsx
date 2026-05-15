@@ -1,15 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { db, getSettings, type Product } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
-import { Plus, Search, X, Trash2, Edit3 } from "lucide-react";
+import { Plus, Search, X, Trash2, Edit3, Camera, ImagePlus, Package } from "lucide-react";
 import { toast } from "sonner";
+import { fileToCompressedDataURL } from "@/lib/image";
 
 export const Route = createFileRoute("/products")({ component: ProductsPage });
-
-const EMOJIS = ["📦","☕","🥛","💧","🥤","🥟","🍪","🥪","🍔","🍕","🍜","🍱","🍞","🥖","🥗","🍎","🍌","🥩","🍗","🛒","👕","👖","👗","👟","💄","🧴","🧻","🧼","✂️","🔧"];
 
 function ProductsPage() {
   const products = useLiveQuery(() => db.products.toArray(), []);
@@ -51,7 +50,13 @@ function ProductsPage() {
         <div className="space-y-2">
           {filtered.map((p) => (
             <div key={p.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
-              <div className="h-12 w-12 rounded-lg bg-muted grid place-items-center text-2xl shrink-0">{p.imageEmoji ?? "📦"}</div>
+              <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0 grid place-items-center">
+                {p.image ? (
+                  <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                ) : (
+                  <Package className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{p.name}</div>
                 <div className="text-xs text-muted-foreground">
@@ -88,7 +93,10 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
   const [barcode, setBarcode] = useState(product?.barcode ?? "");
   const [sku, setSku] = useState(product?.sku ?? "");
   const [categoryId, setCategoryId] = useState<number | undefined>(product?.categoryId);
-  const [imageEmoji, setImageEmoji] = useState(product?.imageEmoji ?? "📦");
+  const [image, setImage] = useState<string | undefined>(product?.image);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const galleryRef = useRef<HTMLInputElement>(null);
+  const [busyImg, setBusyImg] = useState(false);
   const [active, setActive] = useState(product?.active ?? true);
 
   async function save() {
@@ -102,7 +110,7 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
       barcode: barcode || undefined,
       sku: sku || undefined,
       categoryId,
-      imageEmoji,
+      image,
       active,
       createdAt: product?.createdAt ?? Date.now(),
     };
@@ -130,10 +138,71 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
         <div className="p-4 space-y-3">
           <Field label="Nombre"><input value={name} onChange={(e) => setName(e.target.value)} className="ipt" autoFocus /></Field>
 
-          <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-            {EMOJIS.map((e) => (
-              <button key={e} onClick={() => setImageEmoji(e)} className={`h-11 w-11 shrink-0 grid place-items-center rounded-lg text-xl border ${imageEmoji === e ? "border-primary bg-primary/10" : "border-border bg-background"}`}>{e}</button>
-            ))}
+          <div>
+            <span className="text-xs text-muted-foreground">Foto del producto</span>
+            <div className="mt-1 flex items-center gap-3">
+              <div className="h-20 w-20 rounded-xl bg-background border border-border overflow-hidden grid place-items-center shrink-0">
+                {image ? (
+                  <img src={image} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  <Package className="h-7 w-7 text-muted-foreground" />
+                )}
+              </div>
+              <div className="flex-1 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => cameraRef.current?.click()}
+                  disabled={busyImg}
+                  className="h-11 rounded-lg bg-primary text-primary-foreground text-sm font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <Camera className="h-4 w-4" /> Cámara
+                </button>
+                <button
+                  type="button"
+                  onClick={() => galleryRef.current?.click()}
+                  disabled={busyImg}
+                  className="h-11 rounded-lg bg-muted text-foreground text-sm font-medium inline-flex items-center justify-center gap-1.5 disabled:opacity-50"
+                >
+                  <ImagePlus className="h-4 w-4" /> Galería
+                </button>
+                {image && (
+                  <button
+                    type="button"
+                    onClick={() => setImage(undefined)}
+                    className="col-span-2 h-9 rounded-lg border border-border text-xs text-muted-foreground inline-flex items-center justify-center gap-1.5"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Quitar foto
+                  </button>
+                )}
+              </div>
+            </div>
+            <input
+              ref={cameraRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0]; if (!f) return;
+                setBusyImg(true);
+                try { setImage(await fileToCompressedDataURL(f)); }
+                catch { toast.error("No se pudo procesar la imagen"); }
+                finally { setBusyImg(false); e.target.value = ""; }
+              }}
+            />
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={async (e) => {
+                const f = e.target.files?.[0]; if (!f) return;
+                setBusyImg(true);
+                try { setImage(await fileToCompressedDataURL(f)); }
+                catch { toast.error("No se pudo procesar la imagen"); }
+                finally { setBusyImg(false); e.target.value = ""; }
+              }}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
