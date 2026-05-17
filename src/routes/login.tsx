@@ -30,14 +30,11 @@ function LoginPage() {
   async function tryLogin(value: string) {
     if (busy) return;
     setBusy(true);
-    const u = await login(value);
+    const u = await login(value, selected?.id);
     setBusy(false);
-    if (u && (!selected || u.id === selected.id)) {
+    if (u) {
       toast.success(`Hola, ${u.name}`);
       navigate({ to: "/" });
-    } else if (u && selected && u.id !== selected.id) {
-      toast.error("PIN no corresponde a este usuario");
-      setPin("");
     } else {
       toast.error("PIN incorrecto");
       setPin("");
