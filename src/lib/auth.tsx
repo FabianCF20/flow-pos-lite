@@ -4,7 +4,7 @@ import { db, ensureSeed, type User } from "./db";
 interface AuthCtx {
   user: User | null;
   loading: boolean;
-  login: (pin: string) => Promise<User | null>;
+  login: (pin: string, userId?: number) => Promise<User | null>;
   logout: () => void;
 }
 
@@ -29,17 +29,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { mounted = false; };
   }, []);
 
-  async function login(pin: string) {
-    const u = await db.users.where("active").equals(1 as any).toArray()
-      .catch(async () => (await db.users.toArray()).filter((x) => x.active));
-    const found = (await db.users.toArray()).find((x) => x.active && x.pin === pin);
+  async function login(pin: string, userId?: number) {
+    const all = await db.users.toArray();
+    const found = all.find((x) => x.active && x.pin === pin && (userId == null || x.id === userId));
     if (found) {
       setUser(found);
       try { localStorage.setItem(STORAGE_KEY, String(found.id)); } catch {}
       return found;
     }
     return null;
-    void u;
   }
 
   function logout() {
