@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight } from "lucide-react";
+import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/more")({ component: MorePage });
@@ -29,7 +29,10 @@ function MorePage() {
             </Link>
           );
         })}
-        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="w-full mt-4 h-12 rounded-xl border border-border text-destructive font-medium inline-flex items-center justify-center gap-2">
+        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="w-full mt-4 h-12 rounded-xl border border-border font-medium inline-flex items-center justify-center gap-2">
+          <UserCog className="h-4 w-4" /> Cambiar de usuario
+        </button>
+        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="w-full h-12 rounded-xl border border-border text-destructive font-medium inline-flex items-center justify-center gap-2">
           <LogOut className="h-4 w-4" /> Cerrar sesión
         </button>
       </div>
