@@ -128,7 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Bottom nav (mobile) */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border safe-bottom">
-          <div className={`grid grid-cols-${primaryNav.length}`}>
+          <div className={primaryNav.length === 4 ? "grid grid-cols-4" : "grid grid-cols-5"}>
             {primaryNav.map((n) => {
               const Icon = n.icon;
               const active = location.pathname === n.to ||
