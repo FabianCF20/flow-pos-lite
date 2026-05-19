@@ -52,7 +52,7 @@ function ProductsPage() {
             <div key={p.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
               <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0 grid place-items-center">
                 {p.image ? (
-                  <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                  <img src={p.image} alt={p.name} loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 ) : (
                   <Package className="h-5 w-5 text-muted-foreground" />
                 )}

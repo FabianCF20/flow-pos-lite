@@ -2,8 +2,8 @@
 // Mantiene el almacenamiento local liviano (≤ ~80 KB por foto).
 export async function fileToCompressedDataURL(
   file: File,
-  maxSize = 512,
-  quality = 0.8,
+  maxSize = 384,
+  quality = 0.72,
 ): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {
     const r = new FileReader();
@@ -26,5 +26,10 @@ export async function fileToCompressedDataURL(
   const ctx = canvas.getContext("2d");
   if (!ctx) return dataUrl;
   ctx.drawImage(img, 0, 0, w, h);
+  // Prefiere WebP cuando esté soportado (≈30% menos peso, decodifica más rápido)
+  try {
+    const webp = canvas.toDataURL("image/webp", quality);
+    if (webp.startsWith("data:image/webp")) return webp;
+  } catch {}
   return canvas.toDataURL("image/jpeg", quality);
 }

@@ -9,7 +9,12 @@ export const Route = createFileRoute("/reports")({ component: ReportsPage });
 
 function ReportsPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
-  const sales = useLiveQuery(async () => (await db.sales.toArray()).filter(s => s.status === "completed"), []);
+  // Solo los últimos 30 días para mantener el cálculo ligero (usa índice createdAt)
+  const sales = useLiveQuery(async () => {
+    const since = Date.now() - 30 * 86400000;
+    const rows = await db.sales.where("createdAt").above(since).toArray();
+    return rows.filter((s) => s.status === "completed");
+  }, []);
 
   const { totalToday, total7, byDay, topProducts, byMethod } = useMemo(() => {
     const today = sales?.filter(s => s.createdAt >= startOfDay() && s.createdAt <= endOfDay()) ?? [];
