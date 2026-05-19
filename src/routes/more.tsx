@@ -9,12 +9,15 @@ export const Route = createFileRoute("/more")({ component: MorePage });
 function MorePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const items = [
+  const allItems = [
     { to: "/sales", icon: Receipt, label: "Ventas" },
     { to: "/customers", icon: Users, label: "Clientes" },
     { to: "/reports", icon: BarChart3, label: "Reportes" },
     { to: "/settings", icon: Settings, label: "Ajustes" },
   ] as const;
+  const items = user?.role === "cashier"
+    ? allItems.filter((i) => i.to === "/sales")
+    : allItems;
   return (
     <div>
       <PageHeader title="Más" subtitle={user?.name} />

@@ -6,7 +6,7 @@ import {
   Users, Settings, LogOut, MoreHorizontal,
 } from "lucide-react";
 
-const primaryNav = [
+const primaryNavAdmin = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
   { to: "/pos", label: "Vender", icon: ShoppingCart },
   { to: "/products", label: "Productos", icon: Package },
@@ -14,7 +14,14 @@ const primaryNav = [
   { to: "/more", label: "Más", icon: MoreHorizontal },
 ] as const;
 
-const fullNav = [
+const primaryNavCashier = [
+  { to: "/pos", label: "Vender", icon: ShoppingCart },
+  { to: "/cash", label: "Caja", icon: Wallet },
+  { to: "/sales", label: "Tickets", icon: BarChart3 },
+  { to: "/more", label: "Más", icon: MoreHorizontal },
+] as const;
+
+const fullNavAdmin = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
   { to: "/pos", label: "Vender", icon: ShoppingCart },
   { to: "/products", label: "Productos", icon: Package },
@@ -25,6 +32,20 @@ const fullNav = [
   { to: "/settings", label: "Ajustes", icon: Settings },
 ] as const;
 
+const fullNavCashier = [
+  { to: "/pos", label: "Vender", icon: ShoppingCart },
+  { to: "/cash", label: "Caja", icon: Wallet },
+  { to: "/sales", label: "Tickets", icon: BarChart3 },
+] as const;
+
+// Rutas permitidas para el rol cajero
+export const CASHIER_ALLOWED = ["/pos", "/cash", "/sales", "/more", "/login"];
+
+export function isRouteAllowed(role: string | undefined, pathname: string) {
+  if (role !== "cashier") return true;
+  return CASHIER_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading, logout } = useAuth();
   const navigate = useNavigate();
@@ -33,6 +54,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!loading && !user && location.pathname !== "/login") {
       navigate({ to: "/login" });
+    }
+  }, [loading, user, location.pathname, navigate]);
+
+  useEffect(() => {
+    if (!loading && user && user.role === "cashier" && !isRouteAllowed("cashier", location.pathname)) {
+      navigate({ to: "/pos", replace: true });
     }
   }, [loading, user, location.pathname, navigate]);
 
@@ -48,6 +75,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
+  const primaryNav = user.role === "cashier" ? primaryNavCashier : primaryNavAdmin;
+  const fullNav = user.role === "cashier" ? fullNavCashier : fullNavAdmin;
+
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       {/* Sidebar (md+) */}
@@ -59,7 +89,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="leading-tight">
               <div className="text-sm font-semibold">POS Offline</div>
-              <div className="text-xs text-muted-foreground">{user.name}</div>
+              <div className="text-xs text-muted-foreground">{user.name} · {user.role === "cashier" ? "Cajero" : "Admin"}</div>
             </div>
           </div>
         </div>
@@ -98,7 +128,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Bottom nav (mobile) */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border safe-bottom">
-          <div className="grid grid-cols-5">
+          <div className={primaryNav.length === 4 ? "grid grid-cols-4" : "grid grid-cols-5"}>
             {primaryNav.map((n) => {
               const Icon = n.icon;
               const active = location.pathname === n.to ||
