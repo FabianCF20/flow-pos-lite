@@ -162,7 +162,13 @@ function POSPage() {
               >
                 <div className="aspect-square w-full rounded-lg bg-muted overflow-hidden grid place-items-center mb-1.5">
                   {p.image ? (
-                    <img src={p.image} alt={p.name} className="h-full w-full object-cover" />
+                    <img
+                      src={p.image}
+                      alt={p.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="h-full w-full object-cover"
+                    />
                   ) : (
                     <Package className="h-6 w-6 text-muted-foreground" />
                   )}
