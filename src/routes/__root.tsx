@@ -7,6 +7,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
@@ -116,6 +117,16 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!("serviceWorker" in navigator)) return;
+    // Registro diferido para no competir con la primera pintura
+    const id = window.setTimeout(() => {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }, 1200);
+    return () => window.clearTimeout(id);
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
