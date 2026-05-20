@@ -1,10 +1,10 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useRef, useState } from "react";
 import { db, getSettings, type Product } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
-import { Plus, Search, X, Trash2, Edit3, Camera, ImagePlus, Package } from "lucide-react";
+import { Plus, Search, X, Trash2, Edit3, Camera, ImagePlus, Package, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { fileToCompressedDataURL } from "@/lib/image";
 
@@ -18,6 +18,17 @@ function ProductsPage() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
 
+  const noCategories = (categories?.length ?? 0) === 0;
+
+  function handleNew() {
+    if (noCategories) {
+      toast.error("Primero crea una categoría");
+      return;
+    }
+    setEditing(null);
+    setShowForm(true);
+  }
+
   const filtered = (products ?? []).filter((p) =>
     !search ? true :
     p.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -30,13 +41,27 @@ function ProductsPage() {
         title="Productos"
         subtitle={`${products?.length ?? 0} productos`}
         right={
-          <button onClick={() => { setEditing(null); setShowForm(true); }} className="h-10 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-1.5">
+          <button onClick={handleNew} className="h-10 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-medium inline-flex items-center gap-1.5 disabled:opacity-50" disabled={noCategories}>
             <Plus className="h-4 w-4" /> Nuevo
           </button>
         }
       />
 
       <div className="px-4 md:px-6 space-y-3">
+        {noCategories && (
+          <Link to="/categories" className="block rounded-xl border border-dashed border-border bg-card p-4 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 grid place-items-center">
+                <Tag className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">Crea tu primera categoría</div>
+                <div className="text-xs text-muted-foreground">Los productos deben pertenecer a una categoría.</div>
+              </div>
+            </div>
+          </Link>
+        )}
+
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
@@ -101,6 +126,7 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
 
   async function save() {
     if (!name.trim()) { toast.error("Nombre requerido"); return; }
+    if (!categoryId) { toast.error("Selecciona una categoría"); return; }
     const data: Product = {
       name: name.trim(),
       price: Number(price) || 0,
@@ -210,9 +236,9 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
             <Field label="Costo (opc.)"><input type="number" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} className="ipt text-right" /></Field>
           </div>
 
-          <Field label="Categoría">
+          <Field label="Categoría *">
             <select value={categoryId ?? ""} onChange={(e) => setCategoryId(e.target.value ? Number(e.target.value) : undefined)} className="ipt">
-              <option value="">— Sin categoría —</option>
+              <option value="">— Selecciona una categoría —</option>
               {categories.map((c: any) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
