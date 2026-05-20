@@ -17,6 +17,7 @@ import { Route as PosRouteImport } from './routes/pos'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CashRouteImport } from './routes/cash'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -60,6 +61,11 @@ const CustomersRoute = CustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CategoriesRoute = CategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CashRoute = CashRouteImport.update({
   id: '/cash',
   path: '/cash',
@@ -74,6 +80,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cash': typeof CashRoute
+  '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cash': typeof CashRoute
+  '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/cash': typeof CashRoute
+  '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/cash'
+    | '/categories'
     | '/customers'
     | '/login'
     | '/more'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/cash'
+    | '/categories'
     | '/customers'
     | '/login'
     | '/more'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/cash'
+    | '/categories'
     | '/customers'
     | '/login'
     | '/more'
@@ -150,6 +162,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CashRoute: typeof CashRoute
+  CategoriesRoute: typeof CategoriesRoute
   CustomersRoute: typeof CustomersRoute
   LoginRoute: typeof LoginRoute
   MoreRoute: typeof MoreRoute
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/categories': {
+      id: '/categories'
+      path: '/categories'
+      fullPath: '/categories'
+      preLoaderRoute: typeof CategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cash': {
       id: '/cash'
       path: '/cash'
@@ -238,6 +258,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CashRoute: CashRoute,
+  CategoriesRoute: CategoriesRoute,
   CustomersRoute: CustomersRoute,
   LoginRoute: LoginRoute,
   MoreRoute: MoreRoute,
