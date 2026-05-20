@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
-  Users, Settings, LogOut, MoreHorizontal,
+  Users, Settings, LogOut, MoreHorizontal, Tag,
 } from "lucide-react";
 
 const primaryNavAdmin = [
@@ -24,6 +24,7 @@ const primaryNavCashier = [
 const fullNavAdmin = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
   { to: "/pos", label: "Vender", icon: ShoppingCart },
+  { to: "/categories", label: "Categorías", icon: Tag },
   { to: "/products", label: "Productos", icon: Package },
   { to: "/cash", label: "Caja", icon: Wallet },
   { to: "/sales", label: "Ventas", icon: BarChart3 },

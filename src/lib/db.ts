@@ -158,20 +158,7 @@ export async function ensureSeed() {
   }
   const catCount = await db.categories.count();
   if (catCount === 0) {
-    const general = await db.categories.add({ name: "General", color: "#4f46e5" });
-    const bebidas = await db.categories.add({ name: "Bebidas", color: "#0ea5e9" });
-    const snacks = await db.categories.add({ name: "Snacks", color: "#f59e0b" });
-    const now = Date.now();
-    await db.products.bulkAdd([
-      { name: "Café Negro", price: 3000, stock: 100, trackStock: true, categoryId: bebidas, imageEmoji: "☕", active: true, createdAt: now },
-      { name: "Café con Leche", price: 4500, stock: 100, trackStock: true, categoryId: bebidas, imageEmoji: "🥛", active: true, createdAt: now },
-      { name: "Agua 500ml", price: 2500, stock: 50, trackStock: true, categoryId: bebidas, imageEmoji: "💧", active: true, createdAt: now },
-      { name: "Gaseosa", price: 4000, stock: 60, trackStock: true, categoryId: bebidas, imageEmoji: "🥤", active: true, createdAt: now },
-      { name: "Empanada", price: 3500, stock: 30, trackStock: true, categoryId: snacks, imageEmoji: "🥟", active: true, createdAt: now },
-      { name: "Galletas", price: 2000, stock: 40, trackStock: true, categoryId: snacks, imageEmoji: "🍪", active: true, createdAt: now },
-      { name: "Sandwich", price: 8000, stock: 15, trackStock: true, categoryId: snacks, imageEmoji: "🥪", active: true, createdAt: now },
-      { name: "Servicio General", price: 0, stock: 0, trackStock: false, categoryId: general, imageEmoji: "🛒", active: true, createdAt: now },
-    ]);
+    // El administrador debe crear las categorías iniciales.
   }
 }
 
