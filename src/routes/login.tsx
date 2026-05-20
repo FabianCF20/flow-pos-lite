@@ -22,10 +22,8 @@ function LoginPage() {
     if (user) navigate({ to: "/" });
   }, [user, navigate]);
 
-  // Auto-select when there is only one user
-  useEffect(() => {
-    if (users && users.length === 1 && !selected) setSelected(users[0]);
-  }, [users, selected]);
+  // Nota: ya no auto-seleccionamos. Siempre mostramos el selector de usuario
+  // para que el cajero/administrador elija con qué cuenta iniciar sesión.
 
   async function tryLogin(value: string) {
     if (busy) return;
@@ -52,8 +50,8 @@ function LoginPage() {
 
   const keys = ["1","2","3","4","5","6","7","8","9"];
 
-  // User picker screen (when multiple users and none selected yet)
-  if (users && users.length > 1 && !selected) {
+  // Pantalla de selección de usuario (siempre que haya usuarios y ninguno elegido)
+  if (users && users.length >= 1 && !selected) {
     return (
       <div className="min-h-screen px-5 py-8 bg-gradient-to-b from-background via-background to-[oklch(0.10_0.06_275)]">
         <div className="w-full max-w-sm mx-auto">
@@ -81,6 +79,9 @@ function LoginPage() {
               </button>
             ))}
           </div>
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            ¿Primera vez? PIN inicial del Administrador: <span className="font-mono text-foreground">1234</span>
+          </p>
         </div>
       </div>
     );
@@ -89,7 +90,7 @@ function LoginPage() {
   return (
     <div className="min-h-screen grid place-items-center px-5 py-8 bg-gradient-to-b from-background via-background to-[oklch(0.10_0.06_275)]">
       <div className="w-full max-w-sm">
-        {users && users.length > 1 && (
+        {users && users.length >= 1 && (
           <button
             onClick={() => { setSelected(null); setPin(""); }}
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
