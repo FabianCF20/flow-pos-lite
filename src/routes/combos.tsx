@@ -155,7 +155,7 @@ function ComboForm({
       name: n, price: Number(price) || 0, items, color, active,
       createdAt: combo?.createdAt ?? Date.now(),
     };
-    if (combo?.id) await db.combos.update(combo.id, data);
+    if (combo?.id) await db.combos.put({ ...data, id: combo.id });
     else await db.combos.add(data);
     toast.success("Guardado");
     onSaved();
