@@ -209,6 +209,30 @@ function POSPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+            {(combos ?? []).filter((c) => !catId).map((c) => (
+              <button
+                key={`combo-${c.id}`}
+                onClick={() => addCombo(c)}
+                className="text-left rounded-xl border p-3 active:scale-[0.97] transition-transform relative overflow-hidden"
+                style={{ background: (c.color ?? "#ec4899") + "15", borderColor: (c.color ?? "#ec4899") + "55" }}
+              >
+                <div className="absolute top-1.5 right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ background: c.color ?? "#ec4899" }}>
+                  COMBO
+                </div>
+                <div className="aspect-square w-full rounded-lg overflow-hidden grid place-items-center mb-1.5" style={{ background: (c.color ?? "#ec4899") + "25" }}>
+                  {c.image ? (
+                    <img src={c.image} alt={c.name} loading="lazy" className="h-full w-full object-cover" />
+                  ) : (
+                    <Sparkles className="h-6 w-6" style={{ color: c.color ?? "#ec4899" }} />
+                  )}
+                </div>
+                <div className="text-sm font-medium leading-tight line-clamp-2">{c.name}</div>
+                <div className="mt-1 text-sm font-semibold" style={{ color: c.color ?? "#ec4899" }}>
+                  {formatMoney(c.price, settings)}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">{c.items.length} productos</div>
+              </button>
+            ))}
             {filtered.map((p) => (
               <button
                 key={p.id}
