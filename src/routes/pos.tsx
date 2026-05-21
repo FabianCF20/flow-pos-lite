@@ -1,20 +1,25 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
-import { db, getSettings, type Product, type SaleItem, type PaymentMethod } from "@/lib/db";
+import { db, getSettings, type Product, type SaleItem, type PaymentMethod, type Combo } from "@/lib/db";
 import { useAuth } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 import { buildReceiptText } from "@/lib/receipt";
 import { isBluetoothSupported, printText } from "@/lib/printer";
 import {
-  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Smartphone, HandCoins, Printer, Package,
+  Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Smartphone, HandCoins, Printer, Package, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/pos")({ component: POSPage });
 
-type CartItem = SaleItem & { stock: number; trackStock: boolean };
+type CartItem = SaleItem & {
+  stock: number;
+  trackStock: boolean;
+  comboId?: number;
+  components?: { productId: number; qty: number }[];
+};
 
 function POSPage() {
   const { user } = useAuth();
@@ -22,6 +27,7 @@ function POSPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
   const products = useLiveQuery(async () => (await db.products.toArray()).filter((p) => p.active), []);
   const categories = useLiveQuery(() => db.categories.toArray(), []);
+  const combos = useLiveQuery(async () => (await db.combos.toArray()).filter((c) => c.active), []);
   const openSession = useLiveQuery(async () => (await db.cashSessions.toArray()).find((s) => !s.closedAt) ?? null, []);
 
   const [search, setSearch] = useState("");
@@ -44,7 +50,7 @@ function POSPage() {
   function addProduct(p: Product) {
     if (p.trackStock && p.stock <= 0) { toast.error("Sin stock"); return; }
     setCart((prev) => {
-      const i = prev.findIndex((x) => x.productId === p.id);
+      const i = prev.findIndex((x) => !x.comboId && x.productId === p.id);
       if (i >= 0) {
         const cur = prev[i];
         if (cur.trackStock && cur.qty + 1 > cur.stock) { toast.error("Stock insuficiente"); return prev; }
@@ -59,13 +65,54 @@ function POSPage() {
     });
   }
 
+  function addCombo(c: Combo) {
+    if (!products) return;
+    // verifica stock por componente
+    for (const it of c.items) {
+      const p = products.find((x) => x.id === it.productId);
+      if (!p) { toast.error(`Producto del combo no disponible`); return; }
+      if (p.trackStock && p.stock < it.qty) { toast.error(`Sin stock para ${p.name}`); return; }
+    }
+    setCart((prev) => {
+      const i = prev.findIndex((x) => x.comboId === c.id);
+      if (i >= 0) {
+        const cur = prev[i];
+        // verifica que haya stock para una unidad más del combo (acumulado)
+        const newQty = cur.qty + 1;
+        for (const comp of c.items) {
+          const p = products.find((x) => x.id === comp.productId);
+          if (p?.trackStock && p.stock < comp.qty * newQty) { toast.error(`Sin stock para ${p.name}`); return prev; }
+        }
+        const next = [...prev];
+        next[i] = { ...cur, qty: newQty, total: newQty * cur.unitPrice };
+        return next;
+      }
+      return [...prev, {
+        productId: 0,
+        comboId: c.id!,
+        components: c.items.map((x) => ({ productId: x.productId, qty: x.qty })),
+        name: `🎁 ${c.name}`,
+        qty: 1,
+        unitPrice: c.price,
+        total: c.price,
+        stock: 0,
+        trackStock: false,
+      }];
+    });
+  }
+
   function changeQty(idx: number, delta: number) {
     setCart((prev) => {
       const next = [...prev];
       const cur = next[idx];
       const nq = cur.qty + delta;
       if (nq <= 0) return next.filter((_, i) => i !== idx);
-      if (cur.trackStock && nq > cur.stock) { toast.error("Stock insuficiente"); return prev; }
+      if (cur.comboId && cur.components && products) {
+        for (const comp of cur.components) {
+          const p = products.find((x) => x.id === comp.productId);
+          if (p?.trackStock && p.stock < comp.qty * nq) { toast.error(`Sin stock para ${p.name}`); return prev; }
+        }
+      } else if (cur.trackStock && nq > cur.stock) { toast.error("Stock insuficiente"); return prev; }
       next[idx] = { ...cur, qty: nq, total: nq * cur.unitPrice };
       return next;
     });
@@ -82,12 +129,21 @@ function POSPage() {
     if (paid < total && method !== "credit") { toast.error("Monto pagado insuficiente"); return; }
 
     const number = (await db.sales.where("cashSessionId").equals(openSession.id!).count()) + 1;
-    const items: SaleItem[] = cart.map(({ productId, name, qty, unitPrice, total }) => ({ productId, name, qty, unitPrice, total }));
+    const items: SaleItem[] = cart.map(({ productId, name, qty, unitPrice, total, comboId, components }) => ({
+      productId, name, qty, unitPrice, total, comboId, components,
+    }));
 
     const saleId = await db.transaction("rw", db.sales, db.products, async () => {
       // decrement stock
       for (const it of cart) {
-        if (it.trackStock) {
+        if (it.comboId && it.components) {
+          for (const comp of it.components) {
+            const p = await db.products.get(comp.productId);
+            if (p && p.trackStock) {
+              await db.products.update(comp.productId, { stock: Math.max(0, p.stock - comp.qty * it.qty) });
+            }
+          }
+        } else if (it.trackStock) {
           const p = await db.products.get(it.productId);
           if (p) await db.products.update(it.productId, { stock: Math.max(0, p.stock - it.qty) });
         }
