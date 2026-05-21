@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package } from "lucide-react";
+import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Sparkles } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/more")({ component: MorePage });
@@ -13,6 +13,7 @@ function MorePage() {
     { to: "/sales", icon: Receipt, label: "Ventas" },
     { to: "/categories", icon: Tag, label: "Categorías" },
     { to: "/products", icon: Package, label: "Productos" },
+    { to: "/combos", icon: Sparkles, label: "Combos" },
     { to: "/customers", icon: Users, label: "Clientes" },
     { to: "/reports", icon: BarChart3, label: "Reportes" },
     { to: "/settings", icon: Settings, label: "Ajustes" },
