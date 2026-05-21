@@ -17,6 +17,7 @@ import { Route as PosRouteImport } from './routes/pos'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as CombosRouteImport } from './routes/combos'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CashRouteImport } from './routes/cash'
 import { Route as IndexRouteImport } from './routes/index'
@@ -61,6 +62,11 @@ const CustomersRoute = CustomersRouteImport.update({
   path: '/customers',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CombosRoute = CombosRouteImport.update({
+  id: '/combos',
+  path: '/combos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriesRoute = CategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
+  '/combos': typeof CombosRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
+  '/combos': typeof CombosRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
+  '/combos': typeof CombosRoute
   '/customers': typeof CustomersRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cash'
     | '/categories'
+    | '/combos'
     | '/customers'
     | '/login'
     | '/more'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cash'
     | '/categories'
+    | '/combos'
     | '/customers'
     | '/login'
     | '/more'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/cash'
     | '/categories'
+    | '/combos'
     | '/customers'
     | '/login'
     | '/more'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CashRoute: typeof CashRoute
   CategoriesRoute: typeof CategoriesRoute
+  CombosRoute: typeof CombosRoute
   CustomersRoute: typeof CustomersRoute
   LoginRoute: typeof LoginRoute
   MoreRoute: typeof MoreRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CustomersRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/combos': {
+      id: '/combos'
+      path: '/combos'
+      fullPath: '/combos'
+      preLoaderRoute: typeof CombosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/categories': {
       id: '/categories'
       path: '/categories'
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CashRoute: CashRoute,
   CategoriesRoute: CategoriesRoute,
+  CombosRoute: CombosRoute,
   CustomersRoute: CustomersRoute,
   LoginRoute: LoginRoute,
   MoreRoute: MoreRoute,
