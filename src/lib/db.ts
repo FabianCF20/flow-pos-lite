@@ -38,6 +38,8 @@ export interface SaleItem {
   qty: number;
   unitPrice: number;
   total: number;
+  comboId?: number;
+  components?: { productId: number; qty: number }[];
 }
 
 export type PaymentMethod = "cash" | "card" | "transfer" | "credit" | "other";
@@ -93,6 +95,22 @@ export interface User {
   createdAt: number;
 }
 
+export interface ComboItem {
+  productId: number;
+  qty: number;
+}
+
+export interface Combo {
+  id?: number;
+  name: string;
+  price: number;          // precio del combo (fijo)
+  items: ComboItem[];     // productos incluidos
+  image?: string;         // dataURL
+  color?: string;
+  active: boolean;
+  createdAt: number;
+}
+
 export interface AppSettings {
   id?: number;
   businessName: string;
@@ -116,6 +134,7 @@ class POSDB extends Dexie {
   cashMovements!: Table<CashMovement, number>;
   users!: Table<User, number>;
   settings!: Table<AppSettings, number>;
+  combos!: Table<Combo, number>;
 
   constructor() {
     super("pos_offline_db");
@@ -128,6 +147,9 @@ class POSDB extends Dexie {
       cashMovements: "++id, sessionId, type, createdAt",
       users: "++id, name, role, active",
       settings: "++id",
+    });
+    this.version(2).stores({
+      combos: "++id, name, active",
     });
   }
 }
