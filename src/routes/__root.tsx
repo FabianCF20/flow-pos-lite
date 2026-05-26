@@ -121,11 +121,19 @@ function RootComponent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (!("serviceWorker" in navigator)) return;
-    // Registro diferido para no competir con la primera pintura
-    const id = window.setTimeout(() => {
-      navigator.serviceWorker.register("/sw.js").catch(() => {});
-    }, 1200);
-    return () => window.clearTimeout(id);
+    // Registrar al cargar para que auditores PWA (Lighthouse/PWABuilder)
+    // detecten el service worker controlando la página.
+    const register = () => {
+      navigator.serviceWorker
+        .register("/sw.js", { scope: "/" })
+        .catch(() => {});
+    };
+    if (document.readyState === "complete") {
+      register();
+    } else {
+      window.addEventListener("load", register, { once: true });
+      return () => window.removeEventListener("load", register);
+    }
   }, []);
 
   return (
