@@ -6,8 +6,9 @@ import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/AppShell";
 import { exportBackup, importBackup, downloadBlob } from "@/lib/backup";
 import { isBluetoothSupported, pickPrinter, printText } from "@/lib/printer";
-import { Download, Upload, Printer, Plus, Trash2, LogOut } from "lucide-react";
+import { Download, Upload, Printer, Plus, Trash2, LogOut, FileCheck2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { testFactusAuth, isFactusConfigured } from "@/lib/factus";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -68,6 +69,111 @@ function SettingsPage() {
             <Printer className="h-4 w-4" /> Parear / Probar impresión
           </button>
           <p className="text-xs text-muted-foreground">Requiere Chrome para Android e impresora térmica ESC/POS Bluetooth.</p>
+        </Section>
+
+        <Section title="Facturación electrónica (Factus)">
+          <p className="text-xs text-muted-foreground">
+            Emite facturas electrónicas validadas por la DIAN a través de Factus.
+            Necesitas una suscripción activa en{" "}
+            <a href="https://factus.com.co" target="_blank" rel="noreferrer" className="text-primary underline inline-flex items-center gap-1">
+              factus.com.co <ExternalLink className="h-3 w-3" />
+            </a>
+            {" "}y las credenciales de API.
+          </p>
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!!s.factusEnabled}
+              onChange={(e) => setS({ ...s, factusEnabled: e.target.checked })}
+              className="h-4 w-4"
+            />
+            Activar facturación electrónica con Factus
+          </label>
+
+          {s.factusEnabled && (
+            <div className="space-y-2">
+              <label className="block">
+                <span className="text-xs text-muted-foreground">Entorno</span>
+                <select
+                  value={s.factusEnv ?? "sandbox"}
+                  onChange={(e) => setS({ ...s, factusEnv: e.target.value as any })}
+                  className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border text-sm"
+                >
+                  <option value="sandbox">Sandbox (pruebas)</option>
+                  <option value="production">Producción</option>
+                </select>
+              </label>
+              <Inp label="Email de Factus" value={s.factusEmail ?? ""} onChange={(v) => setS({ ...s, factusEmail: v })} />
+              <label className="block">
+                <span className="text-xs text-muted-foreground">Contraseña</span>
+                <input
+                  type="password"
+                  value={s.factusPassword ?? ""}
+                  onChange={(e) => setS({ ...s, factusPassword: e.target.value })}
+                  className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border text-sm"
+                />
+              </label>
+              <Inp label="Client ID" value={s.factusClientId ?? ""} onChange={(v) => setS({ ...s, factusClientId: v })} />
+              <Inp label="Client Secret" value={s.factusClientSecret ?? ""} onChange={(v) => setS({ ...s, factusClientSecret: v })} />
+              <label className="block">
+                <span className="text-xs text-muted-foreground">ID rango de numeración</span>
+                <input
+                  type="number"
+                  value={s.factusNumberingRange ?? ""}
+                  onChange={(e) => setS({ ...s, factusNumberingRange: Number(e.target.value) || undefined })}
+                  placeholder="Ej: 8"
+                  className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-muted-foreground">Tipo de documento por defecto del cliente</span>
+                <select
+                  value={s.factusDefaultDocType ?? "CC"}
+                  onChange={(e) => setS({ ...s, factusDefaultDocType: e.target.value })}
+                  className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border text-sm"
+                >
+                  <option value="CC">Cédula de ciudadanía</option>
+                  <option value="CE">Cédula de extranjería</option>
+                  <option value="NIT">NIT</option>
+                  <option value="TI">Tarjeta de identidad</option>
+                  <option value="PAS">Pasaporte</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="text-xs text-muted-foreground">ID municipio (DIAN)</span>
+                <input
+                  type="number"
+                  value={s.factusMunicipalityId ?? ""}
+                  onChange={(e) => setS({ ...s, factusMunicipalityId: Number(e.target.value) || undefined })}
+                  placeholder="Ej: 980 (Bogotá)"
+                  className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border text-sm"
+                />
+              </label>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={save}
+                  className="h-11 rounded-xl bg-primary text-primary-foreground font-medium"
+                >
+                  Guardar
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!isFactusConfigured(s)) { toast.error("Completa las credenciales"); return; }
+                    const r = await testFactusAuth(s);
+                    r.ok ? toast.success(r.message) : toast.error(r.message);
+                  }}
+                  className="h-11 rounded-xl bg-card border border-border font-medium inline-flex items-center justify-center gap-2"
+                >
+                  <FileCheck2 className="h-4 w-4" /> Probar conexión
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Consulta tu <b>rango de numeración</b>, <b>client_id</b>, <b>client_secret</b> y municipios en el panel de Factus.
+                Docs: <a href="https://developers.factus.com.co/" target="_blank" rel="noreferrer" className="text-primary underline">developers.factus.com.co</a>
+              </p>
+            </div>
+          )}
         </Section>
 
         <Section title="Usuarios">

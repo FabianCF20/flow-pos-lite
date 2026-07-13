@@ -7,8 +7,9 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 import { buildReceiptText } from "@/lib/receipt";
 import { isBluetoothSupported, pickPrinter, printText } from "@/lib/printer";
-import { X, Printer, Ban, Receipt } from "lucide-react";
+import { X, Printer, Ban, Receipt, FileCheck2, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { emitFactusInvoice, isFactusConfigured } from "@/lib/factus";
 
 export const Route = createFileRoute("/sales")({ component: SalesPage });
 
@@ -45,6 +46,8 @@ function SaleDetail({ sale, onClose }: { sale: Sale; onClose: () => void }) {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
   const { user } = useAuth();
   const [busy, setBusy] = useState(false);
+  const [invoicing, setInvoicing] = useState(false);
+  const factus = sale.factus;
 
   async function reprint() {
     if (!settings) return;
@@ -72,6 +75,25 @@ function SaleDetail({ sale, onClose }: { sale: Sale; onClose: () => void }) {
     });
     toast.success("Venta anulada");
     onClose();
+  }
+
+  async function emitInvoice() {
+    if (!settings || !isFactusConfigured(settings)) {
+      toast.error("Configura Factus en Ajustes");
+      return;
+    }
+    if (sale.status === "voided") { toast.error("Venta anulada"); return; }
+    if (factus?.status === "validated") { toast.error("Ya facturada"); return; }
+    setInvoicing(true);
+    try {
+      await emitFactusInvoice(sale);
+      toast.success("Factura electrónica emitida");
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Error al emitir factura");
+    } finally {
+      setInvoicing(false);
+    }
   }
 
   return (
@@ -109,6 +131,46 @@ function SaleDetail({ sale, onClose }: { sale: Sale; onClose: () => void }) {
               <Ban className="h-4 w-4" /> Anular
             </button>
           </div>
+
+          {settings?.factusEnabled && (
+            <div className="rounded-lg bg-background border border-border p-3 space-y-2">
+              <div className="text-sm font-semibold flex items-center gap-2">
+                <FileCheck2 className="h-4 w-4 text-primary" /> Factura electrónica (Factus)
+              </div>
+              {factus?.status === "validated" ? (
+                <div className="space-y-1 text-xs">
+                  {factus.number && <div><span className="text-muted-foreground">Nº: </span><span className="font-medium">{factus.number}</span></div>}
+                  {factus.cufe && <div className="truncate"><span className="text-muted-foreground">CUFE: </span><span className="font-mono">{factus.cufe}</span></div>}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {factus.pdfUrl && (
+                      <a href={factus.pdfUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 h-9 px-3 rounded-lg bg-card border border-border text-xs font-medium">
+                        <FileText className="h-3.5 w-3.5" /> PDF <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                    {factus.xmlUrl && (
+                      <a href={factus.xmlUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 h-9 px-3 rounded-lg bg-card border border-border text-xs font-medium">
+                        XML <ExternalLink className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {factus?.status === "error" && (
+                    <div className="text-xs text-destructive">{factus.errorMessage}</div>
+                  )}
+                  <button
+                    onClick={emitInvoice}
+                    disabled={invoicing || sale.status === "voided"}
+                    className="w-full h-11 rounded-xl bg-primary text-primary-foreground font-semibold inline-flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <FileCheck2 className="h-4 w-4" />
+                    {invoicing ? "Emitiendo..." : "Emitir factura electrónica"}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

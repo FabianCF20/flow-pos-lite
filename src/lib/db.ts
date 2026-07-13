@@ -42,6 +42,18 @@ export interface SaleItem {
 
 export type PaymentMethod = "cash" | "card" | "transfer" | "credit" | "other";
 
+export interface FactusInvoiceInfo {
+  number?: string;         // e.g. SETP990000001
+  cufe?: string;
+  qr?: string;             // QR string or URL
+  pdfUrl?: string;
+  xmlUrl?: string;
+  status?: string;         // validated, pending, error
+  errorMessage?: string;
+  raw?: any;
+  createdAt: number;
+}
+
 export interface Sale {
   id?: number;
   number: number;             // ticket number per shift
@@ -58,6 +70,7 @@ export interface Sale {
   status: "completed" | "voided";
   createdAt: number;
   notes?: string;
+  factus?: FactusInvoiceInfo;
 }
 
 export interface CashSession {
@@ -105,6 +118,16 @@ export interface AppSettings {
   taxIncluded: boolean;
   receiptFooter?: string;
   printerName?: string;   // last paired BT device
+  // Factus (facturación electrónica DIAN — Colombia)
+  factusEnabled?: boolean;
+  factusEnv?: "sandbox" | "production";
+  factusEmail?: string;
+  factusPassword?: string;
+  factusClientId?: string;
+  factusClientSecret?: string;
+  factusNumberingRange?: number;   // range id from Factus dashboard
+  factusDefaultDocType?: string;   // "CC" | "NIT" | "CE" | ...
+  factusMunicipalityId?: number;   // default municipality
 }
 
 class POSDB extends Dexie {
