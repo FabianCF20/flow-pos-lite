@@ -1,0 +1,170 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "pos-lite-mcp",
+      "version": "0.1.0",
+      "title": "POS Lite MCP"
+    },
+    "tools": [
+      {
+        "name": "format_cop",
+        "title": "Format Colombian pesos",
+        "description": "Format a numeric amount as Colombian pesos (COP) using es-CO locale, with configurable decimals.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "number",
+              "description": "Numeric amount to format."
+            },
+            "decimals": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4,
+              "default": 0,
+              "description": "Number of decimal places."
+            }
+          },
+          "required": [
+            "amount"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "calculate_iva",
+        "title": "Calculate IVA (Colombia)",
+        "description": "Break down an amount into base and IVA (VAT) given a tax rate percentage. Set taxIncluded=true when the input already includes IVA.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "amount": {
+              "type": "number",
+              "minimum": 0,
+              "description": "Amount in COP."
+            },
+            "rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 19,
+              "description": "IVA rate as a percentage, e.g. 19 for 19%."
+            },
+            "taxIncluded": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether the amount already includes IVA."
+            }
+          },
+          "required": [
+            "amount"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "validate_nit",
+        "title": "Validate Colombian NIT check digit",
+        "description": "Compute and verify the DIAN check digit for a Colombian NIT. Accepts the NIT with or without the check digit; returns the expected DV.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "nit": {
+              "type": "string",
+              "description": "NIT number, e.g. '900123456' or '900123456-7'."
+            }
+          },
+          "required": [
+            "nit"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "cart_total",
+        "title": "Compute cart total",
+        "description": "Compute subtotal, discount and total for a POS cart. Accepts a list of items with qty and unitPrice, an optional overall discount, and paid amount for change.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "qty": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "unitPrice": {
+                    "type": "number",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "qty",
+                  "unitPrice"
+                ],
+                "additionalProperties": false
+              },
+              "description": "Cart line items."
+            },
+            "discount": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "description": "Overall discount amount in COP."
+            },
+            "paid": {
+              "type": "number",
+              "minimum": 0,
+              "default": 0,
+              "description": "Amount paid by the customer in COP."
+            }
+          },
+          "required": [
+            "items"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
