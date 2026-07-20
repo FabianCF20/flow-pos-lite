@@ -7,6 +7,16 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { mcpPlugin } from "@lovable.dev/mcp-js/stacks/tanstack/vite";
 
+const cloudflareWorkersStub = () => ({
+  name: "cloudflare-workers-stub-for-static-hosts",
+  resolveId(id: string) {
+    if (id === "cloudflare:workers") return "\0cloudflare-workers-stub";
+  },
+  load(id: string) {
+    if (id === "\0cloudflare-workers-stub") return "export const env = {}; export default { env };";
+  },
+});
+
 // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
 // @cloudflare/vite-plugin builds from this — wrangler.jsonc main alone is insufficient.
 export default defineConfig({
@@ -14,6 +24,6 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
-    plugins: [mcpPlugin()],
+    plugins: [cloudflareWorkersStub(), mcpPlugin()],
   },
 });
