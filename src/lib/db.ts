@@ -130,6 +130,141 @@ export interface AppSettings {
   factusMunicipalityId?: number;   // default municipality
 }
 
+// ===================== ERP =====================
+
+export interface Supplier {
+  id?: number;
+  name: string;
+  nit?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  notes?: string;
+  createdAt: number;
+}
+
+export interface Warehouse {
+  id?: number;
+  name: string;
+  location?: string;
+  isDefault?: boolean;
+  createdAt: number;
+}
+
+export type StockMoveType = "in" | "out" | "adjust" | "transfer_in" | "transfer_out";
+export interface StockMove {
+  id?: number;
+  productId: number;
+  productName: string;
+  warehouseId: number;
+  type: StockMoveType;
+  qty: number;              // siempre positivo
+  unitCost?: number;
+  balanceAfter?: number;    // saldo del producto en la bodega
+  refType?: "sale" | "purchase" | "adjust" | "transfer" | "void";
+  refId?: number;
+  note?: string;
+  userId?: number;
+  createdAt: number;
+}
+
+export interface PurchaseItem {
+  productId: number;
+  name: string;
+  qty: number;
+  unitCost: number;
+  total: number;
+}
+
+export type PurchaseStatus = "draft" | "received" | "cancelled";
+export interface Purchase {
+  id?: number;
+  number: number;
+  supplierId: number;
+  supplierName: string;
+  warehouseId: number;
+  items: PurchaseItem[];
+  subtotal: number;
+  tax: number;
+  total: number;
+  paid: number;
+  status: PurchaseStatus;
+  dueDate?: number;
+  notes?: string;
+  createdAt: number;
+  receivedAt?: number;
+}
+
+export interface SupplierPayment {
+  id?: number;
+  purchaseId: number;
+  amount: number;
+  method: PaymentMethod;
+  note?: string;
+  userId?: number;
+  createdAt: number;
+}
+
+export type ReceivableStatus = "open" | "paid" | "cancelled";
+export interface Receivable {
+  id?: number;
+  saleId: number;
+  saleNumber: number;
+  customerId?: number;
+  customerName: string;
+  total: number;
+  paid: number;
+  status: ReceivableStatus;
+  dueDate: number;
+  createdAt: number;
+}
+
+export interface ArPayment {
+  id?: number;
+  receivableId: number;
+  amount: number;
+  method: PaymentMethod;
+  note?: string;
+  userId?: number;
+  createdAt: number;
+}
+
+export type AccountType = "activo" | "pasivo" | "patrimonio" | "ingreso" | "gasto" | "costo";
+export interface Account {
+  id?: number;
+  code: string;
+  name: string;
+  type: AccountType;
+}
+
+export interface JournalLine {
+  accountCode: string;
+  accountName: string;
+  debit: number;
+  credit: number;
+}
+
+export interface JournalEntry {
+  id?: number;
+  date: number;
+  description: string;
+  refType?: string;
+  refId?: number;
+  lines: JournalLine[];
+  userId?: number;
+}
+
+export interface Employee {
+  id?: number;
+  name: string;
+  doc?: string;
+  position?: string;
+  salary?: number;
+  phone?: string;
+  active: boolean;
+  createdAt: number;
+}
+
 class POSDB extends Dexie {
   categories!: Table<Category, number>;
   products!: Table<Product, number>;
@@ -139,6 +274,16 @@ class POSDB extends Dexie {
   cashMovements!: Table<CashMovement, number>;
   users!: Table<User, number>;
   settings!: Table<AppSettings, number>;
+  // ERP
+  suppliers!: Table<Supplier, number>;
+  warehouses!: Table<Warehouse, number>;
+  stockMoves!: Table<StockMove, number>;
+  purchases!: Table<Purchase, number>;
+  supplierPayments!: Table<SupplierPayment, number>;
+  receivables!: Table<Receivable, number>;
+  arPayments!: Table<ArPayment, number>;
+  accounts!: Table<Account, number>;
+  journalEntries!: Table<JournalEntry, number>;
 
   constructor() {
     super("pos_offline_db");
@@ -152,10 +297,35 @@ class POSDB extends Dexie {
       users: "++id, name, role, active",
       settings: "++id",
     });
+    this.version(2).stores({
+      suppliers: "++id, name, nit",
+      warehouses: "++id, name",
+      stockMoves: "++id, productId, warehouseId, type, refType, refId, createdAt",
+      purchases: "++id, number, supplierId, status, createdAt",
+      supplierPayments: "++id, purchaseId, createdAt",
+      receivables: "++id, saleId, customerId, status, dueDate, createdAt",
+      arPayments: "++id, receivableId, createdAt",
+      accounts: "++id, code, name, type",
+      journalEntries: "++id, date, refType, refId",
+    });
   }
 }
 
 export const db = new POSDB();
+
+export const DEFAULT_ACCOUNTS: Omit<Account, "id">[] = [
+  { code: "1105", name: "Caja", type: "activo" },
+  { code: "1110", name: "Bancos", type: "activo" },
+  { code: "1305", name: "Clientes (cartera)", type: "activo" },
+  { code: "1435", name: "Inventario de mercancías", type: "activo" },
+  { code: "2205", name: "Proveedores nacionales", type: "pasivo" },
+  { code: "2408", name: "IVA por pagar", type: "pasivo" },
+  { code: "3105", name: "Capital social", type: "patrimonio" },
+  { code: "4135", name: "Ingresos por ventas", type: "ingreso" },
+  { code: "6135", name: "Costo de ventas", type: "costo" },
+  { code: "5105", name: "Gastos de personal", type: "gasto" },
+  { code: "5195", name: "Gastos diversos", type: "gasto" },
+];
 
 export async function ensureSeed() {
   const usersCount = await db.users.count();
@@ -171,7 +341,7 @@ export async function ensureSeed() {
   const settingsCount = await db.settings.count();
   if (settingsCount === 0) {
     await db.settings.add({
-      businessName: "Mi Negocio",
+      businessName: "Mi Empresa",
       currency: "COP",
       decimals: 0,
       taxRate: 0,
@@ -179,15 +349,24 @@ export async function ensureSeed() {
       receiptFooter: "¡Gracias por su compra!",
     });
   }
-  const catCount = await db.categories.count();
-  if (catCount === 0) {
-    // El administrador debe crear las categorías iniciales.
+  if ((await db.accounts.count()) === 0) {
+    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS as Account[]);
+  }
+  if ((await db.warehouses.count()) === 0) {
+    await db.warehouses.add({ name: "Bodega principal", isDefault: true, createdAt: Date.now() });
   }
 }
 
 export async function getSettings(): Promise<AppSettings> {
   const s = await db.settings.toCollection().first();
   return s ?? {
-    businessName: "Mi Negocio", currency: "COP", decimals: 0, taxRate: 0, taxIncluded: true,
+    businessName: "Mi Empresa", currency: "COP", decimals: 0, taxRate: 0, taxIncluded: true,
   };
+}
+
+export async function getDefaultWarehouseId(): Promise<number> {
+  const all = await db.warehouses.toArray();
+  const def = all.find((w) => w.isDefault) ?? all[0];
+  if (def?.id) return def.id;
+  return db.warehouses.add({ name: "Bodega principal", isDefault: true, createdAt: Date.now() });
 }
