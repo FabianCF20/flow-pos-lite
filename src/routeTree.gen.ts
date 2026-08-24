@@ -13,11 +13,14 @@ import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ReceivablesRouteImport } from './routes/receivables'
+import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CashRouteImport } from './routes/cash'
@@ -47,6 +50,16 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ReceivablesRoute = ReceivablesRouteImport.update({
+  id: '/receivables',
+  path: '/receivables',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesRoute = PurchasesRouteImport.update({
+  id: '/purchases',
+  path: '/purchases',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
   path: '/products',
@@ -70,6 +83,11 @@ const McpRoute = McpRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustomersRoute = CustomersRouteImport.update({
@@ -121,11 +139,14 @@ export interface FileRoutesByFullPath {
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
+  '/purchases': typeof PurchasesRoute
+  '/receivables': typeof ReceivablesRoute
   '/reports': typeof ReportsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -140,11 +161,14 @@ export interface FileRoutesByTo {
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
+  '/purchases': typeof PurchasesRoute
+  '/receivables': typeof ReceivablesRoute
   '/reports': typeof ReportsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -160,11 +184,14 @@ export interface FileRoutesById {
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
+  '/purchases': typeof PurchasesRoute
+  '/receivables': typeof ReceivablesRoute
   '/reports': typeof ReportsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -181,11 +208,14 @@ export interface FileRouteTypes {
     | '/cash'
     | '/categories'
     | '/customers'
+    | '/inventory'
     | '/login'
     | '/mcp'
     | '/more'
     | '/pos'
     | '/products'
+    | '/purchases'
+    | '/receivables'
     | '/reports'
     | '/sales'
     | '/settings'
@@ -200,11 +230,14 @@ export interface FileRouteTypes {
     | '/cash'
     | '/categories'
     | '/customers'
+    | '/inventory'
     | '/login'
     | '/mcp'
     | '/more'
     | '/pos'
     | '/products'
+    | '/purchases'
+    | '/receivables'
     | '/reports'
     | '/sales'
     | '/settings'
@@ -219,11 +252,14 @@ export interface FileRouteTypes {
     | '/cash'
     | '/categories'
     | '/customers'
+    | '/inventory'
     | '/login'
     | '/mcp'
     | '/more'
     | '/pos'
     | '/products'
+    | '/purchases'
+    | '/receivables'
     | '/reports'
     | '/sales'
     | '/settings'
@@ -239,11 +275,14 @@ export interface RootRouteChildren {
   CashRoute: typeof CashRoute
   CategoriesRoute: typeof CategoriesRoute
   CustomersRoute: typeof CustomersRoute
+  InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   MoreRoute: typeof MoreRoute
   PosRoute: typeof PosRoute
   ProductsRoute: typeof ProductsRoute
+  PurchasesRoute: typeof PurchasesRoute
+  ReceivablesRoute: typeof ReceivablesRoute
   ReportsRoute: typeof ReportsRoute
   SalesRoute: typeof SalesRoute
   SettingsRoute: typeof SettingsRoute
@@ -284,6 +323,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/receivables': {
+      id: '/receivables'
+      path: '/receivables'
+      fullPath: '/receivables'
+      preLoaderRoute: typeof ReceivablesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases': {
+      id: '/purchases'
+      path: '/purchases'
+      fullPath: '/purchases'
+      preLoaderRoute: typeof PurchasesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products': {
       id: '/products'
       path: '/products'
@@ -317,6 +370,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/customers': {
@@ -383,11 +443,14 @@ const rootRouteChildren: RootRouteChildren = {
   CashRoute: CashRoute,
   CategoriesRoute: CategoriesRoute,
   CustomersRoute: CustomersRoute,
+  InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   MoreRoute: MoreRoute,
   PosRoute: PosRoute,
   ProductsRoute: ProductsRoute,
+  PurchasesRoute: PurchasesRoute,
+  ReceivablesRoute: ReceivablesRoute,
   ReportsRoute: ReportsRoute,
   SalesRoute: SalesRoute,
   SettingsRoute: SettingsRoute,
