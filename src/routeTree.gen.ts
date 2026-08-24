@@ -19,6 +19,7 @@ import { Route as PosRouteImport } from './routes/pos'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CashRouteImport } from './routes/cash'
@@ -78,6 +79,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CustomersRoute = CustomersRouteImport.update({
   id: '/customers',
   path: '/customers',
@@ -127,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
@@ -168,6 +176,7 @@ export interface FileRoutesById {
   '/cash': typeof CashRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
@@ -190,6 +199,7 @@ export interface FileRouteTypes {
     | '/cash'
     | '/categories'
     | '/customers'
+    | '/inventory'
     | '/login'
     | '/mcp'
     | '/more'
@@ -210,6 +220,7 @@ export interface FileRouteTypes {
     | '/cash'
     | '/categories'
     | '/customers'
+    | '/inventory'
     | '/login'
     | '/mcp'
     | '/more'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/cash'
     | '/categories'
     | '/customers'
+    | '/inventory'
     | '/login'
     | '/mcp'
     | '/more'
@@ -251,6 +263,7 @@ export interface RootRouteChildren {
   CashRoute: typeof CashRoute
   CategoriesRoute: typeof CategoriesRoute
   CustomersRoute: typeof CustomersRoute
+  InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
   McpRoute: typeof McpRoute
   MoreRoute: typeof MoreRoute
@@ -339,6 +352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/customers': {
       id: '/customers'
       path: '/customers'
@@ -403,6 +423,7 @@ const rootRouteChildren: RootRouteChildren = {
   CashRoute: CashRoute,
   CategoriesRoute: CategoriesRoute,
   CustomersRoute: CustomersRoute,
+  InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
   McpRoute: McpRoute,
   MoreRoute: MoreRoute,
