@@ -13,6 +13,7 @@ import { Route as SuppliersRouteImport } from './routes/suppliers'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as MoreRouteImport } from './routes/more'
@@ -45,6 +46,11 @@ const SalesRoute = SalesRouteImport.update({
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PurchasesRoute = PurchasesRouteImport.update({
+  id: '/purchases',
+  path: '/purchases',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -126,6 +132,7 @@ export interface FileRoutesByFullPath {
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
+  '/purchases': typeof PurchasesRoute
   '/reports': typeof ReportsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -145,6 +152,7 @@ export interface FileRoutesByTo {
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
+  '/purchases': typeof PurchasesRoute
   '/reports': typeof ReportsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -165,6 +173,7 @@ export interface FileRoutesById {
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/products': typeof ProductsRoute
+  '/purchases': typeof PurchasesRoute
   '/reports': typeof ReportsRoute
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
@@ -186,6 +195,7 @@ export interface FileRouteTypes {
     | '/more'
     | '/pos'
     | '/products'
+    | '/purchases'
     | '/reports'
     | '/sales'
     | '/settings'
@@ -205,6 +215,7 @@ export interface FileRouteTypes {
     | '/more'
     | '/pos'
     | '/products'
+    | '/purchases'
     | '/reports'
     | '/sales'
     | '/settings'
@@ -224,6 +235,7 @@ export interface FileRouteTypes {
     | '/more'
     | '/pos'
     | '/products'
+    | '/purchases'
     | '/reports'
     | '/sales'
     | '/settings'
@@ -244,6 +256,7 @@ export interface RootRouteChildren {
   MoreRoute: typeof MoreRoute
   PosRoute: typeof PosRoute
   ProductsRoute: typeof ProductsRoute
+  PurchasesRoute: typeof PurchasesRoute
   ReportsRoute: typeof ReportsRoute
   SalesRoute: typeof SalesRoute
   SettingsRoute: typeof SettingsRoute
@@ -282,6 +295,13 @@ declare module '@tanstack/react-router' {
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/purchases': {
+      id: '/purchases'
+      path: '/purchases'
+      fullPath: '/purchases'
+      preLoaderRoute: typeof PurchasesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -388,6 +408,7 @@ const rootRouteChildren: RootRouteChildren = {
   MoreRoute: MoreRoute,
   PosRoute: PosRoute,
   ProductsRoute: ProductsRoute,
+  PurchasesRoute: PurchasesRoute,
   ReportsRoute: ReportsRoute,
   SalesRoute: SalesRoute,
   SettingsRoute: SettingsRoute,
