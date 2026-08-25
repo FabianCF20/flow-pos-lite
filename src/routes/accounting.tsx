@@ -161,8 +161,8 @@ function ExpenseSheet({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
-  const [account, setAccount] = useState(ACC.misc);
-  const [pay, setPay] = useState(ACC.cash);
+  const [account, setAccount] = useState<string>(ACC.misc);
+  const [pay, setPay] = useState<string>(ACC.cash);
   const accounts = useLiveQuery(async () => (await db.accounts.toArray()).filter((a) => a.type === "gasto" || a.type === "costo"), []);
 
   return (
