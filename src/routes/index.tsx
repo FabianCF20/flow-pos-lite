@@ -3,9 +3,26 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { db, getSettings } from "@/lib/db";
 import { formatMoney, startOfDay, endOfDay } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
-import { ShoppingCart, Package, Wallet, TrendingUp, ReceiptText, AlertTriangle } from "lucide-react";
+import { trialBalance } from "@/lib/erp";
+import {
+  ShoppingCart, Package, Wallet, TrendingUp, ReceiptText, AlertTriangle,
+  HandCoins, ShoppingBag, Boxes, Landmark,
+} from "lucide-react";
 
-export const Route = createFileRoute("/")({ component: Dashboard });
+export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Panel del ERP — Ventas, inventario y contabilidad" },
+      { name: "description", content: "Panel central del ERP offline: ventas del día, cartera, cuentas por pagar, inventario y resultados contables." },
+      { property: "og:title", content: "Panel del ERP — Ventas, inventario y contabilidad" },
+      { property: "og:description", content: "Panel central del ERP offline: ventas del día, cartera, cuentas por pagar, inventario y resultados contables." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
+    ],
+  }),
+  component: Dashboard,
+});
+
 
 function Dashboard() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
