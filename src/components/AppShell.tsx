@@ -3,7 +3,8 @@ import { useEffect, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
-  Users, Settings, LogOut, MoreHorizontal, Tag,
+  Users, Settings, LogOut, MoreHorizontal, Tag, Truck, ShoppingBag,
+  Boxes, HandCoins, Landmark,
 } from "lucide-react";
 
 const primaryNavAdmin = [
@@ -24,11 +25,16 @@ const primaryNavCashier = [
 const fullNavAdmin = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
   { to: "/pos", label: "Vender", icon: ShoppingCart },
-  { to: "/categories", label: "Categorías", icon: Tag },
-  { to: "/products", label: "Productos", icon: Package },
-  { to: "/cash", label: "Caja", icon: Wallet },
   { to: "/sales", label: "Ventas", icon: BarChart3 },
+  { to: "/receivables", label: "Cartera", icon: HandCoins },
+  { to: "/purchases", label: "Compras", icon: ShoppingBag },
+  { to: "/suppliers", label: "Proveedores", icon: Truck },
+  { to: "/inventory", label: "Inventario", icon: Boxes },
+  { to: "/products", label: "Productos", icon: Package },
+  { to: "/categories", label: "Categorías", icon: Tag },
   { to: "/customers", label: "Clientes", icon: Users },
+  { to: "/accounting", label: "Contabilidad", icon: Landmark },
+  { to: "/cash", label: "Caja", icon: Wallet },
   { to: "/reports", label: "Reportes", icon: BarChart3 },
   { to: "/settings", label: "Ajustes", icon: Settings },
 ] as const;
@@ -86,10 +92,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="px-5 py-5 border-b border-border">
           <div className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-primary to-primary-glow grid place-items-center text-primary-foreground font-bold">
-              P
+              E
             </div>
             <div className="leading-tight">
-              <div className="text-sm font-semibold">POS Offline</div>
+              <div className="text-sm font-semibold">ERP Offline</div>
               <div className="text-xs text-muted-foreground">{user.name} · {user.role === "cashier" ? "Cajero" : "Admin"}</div>
             </div>
           </div>
