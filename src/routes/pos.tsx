@@ -11,6 +11,7 @@ import {
   Search, Plus, Minus, Trash2, X, CreditCard, Banknote, Smartphone, HandCoins, Printer, Package,
 } from "lucide-react";
 import { toast } from "sonner";
+import { postSale } from "@/lib/erp";
 
 export const Route = createFileRoute("/pos")({ component: POSPage });
 
@@ -75,7 +76,7 @@ function POSPage() {
     setCart((prev) => prev.filter((_, i) => i !== idx));
   }
 
-  async function completeSale(method: PaymentMethod, paid: number, discount: number) {
+  async function completeSale(method: PaymentMethod, paid: number, discount: number, customerId?: number) {
     if (!user) return;
     if (!openSession) { toast.error("Abre una caja primero"); return; }
     const total = Math.max(0, subtotal - discount);
@@ -96,6 +97,7 @@ function POSPage() {
         number,
         cashSessionId: openSession.id!,
         userId: user.id!,
+        ...(customerId ? { customerId } : {}),
         items,
         subtotal,
         discount,
@@ -108,9 +110,12 @@ function POSPage() {
       });
     });
 
+    const sale = await db.sales.get(saleId);
+    if (sale) {
+      try { await postSale(sale, user.id); } catch { /* contabilidad no crítica para la venta */ }
+    }
     toast.success(`Venta #${number} guardada`);
     setShowPay(false);
-    const sale = await db.sales.get(saleId);
     setCart([]);
     if (sale && settings) {
       // offer print
@@ -304,10 +309,12 @@ function PaySheet({
   subtotal, settings, onClose, onConfirm, cart, onChangeQty, onRemove,
 }: {
   subtotal: number; settings: any; onClose: () => void;
-  onConfirm: (m: PaymentMethod, paid: number, discount: number) => void;
+  onConfirm: (m: PaymentMethod, paid: number, discount: number, customerId?: number) => void;
   cart: CartItem[]; onChangeQty: (i: number, d: number) => void; onRemove: (i: number) => void;
 }) {
   const [method, setMethod] = useState<PaymentMethod>("cash");
+  const [customerId, setCustomerId] = useState<number | "">("");
+  const customers = useLiveQuery(async () => (await db.customers.toArray()).sort((a, b) => a.name.localeCompare(b.name)), []);
   const [discount, setDiscount] = useState(0);
   const [paidStr, setPaidStr] = useState("");
   const total = Math.max(0, subtotal - discount);
@@ -365,6 +372,21 @@ function PaySheet({
             </div>
           </div>
 
+          {/* Cliente (obligatorio en crédito) */}
+          {(method === "credit" || (customers?.length ?? 0) > 0) && (
+            <label className="block">
+              <span className="text-xs text-muted-foreground">Cliente {method === "credit" && "(requerido para cartera)"}</span>
+              <select
+                value={customerId}
+                onChange={(e) => setCustomerId(e.target.value ? Number(e.target.value) : "")}
+                className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm"
+              >
+                <option value="">Cliente ocasional</option>
+                {customers?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </label>
+          )}
+
           {/* Cash entry */}
           {method === "cash" && (
             <div>
@@ -405,7 +427,7 @@ function PaySheet({
           </div>
 
           <button
-            onClick={() => onConfirm(method, paid, discount)}
+            onClick={() => onConfirm(method, paid, discount, customerId ? Number(customerId) : undefined)}
             className="w-full h-14 rounded-xl bg-primary text-primary-foreground font-bold text-lg active:scale-[0.99]"
           >
             Confirmar venta
