@@ -10,6 +10,7 @@ import { isBluetoothSupported, pickPrinter, printText } from "@/lib/printer";
 import { X, Printer, Ban, Receipt, FileCheck2, FileText, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { emitFactusInvoice, isFactusConfigured } from "@/lib/factus";
+import { reverseSale } from "@/lib/erp";
 
 export const Route = createFileRoute("/sales")({ component: SalesPage });
 
@@ -73,6 +74,7 @@ function SaleDetail({ sale, onClose }: { sale: Sale; onClose: () => void }) {
       }
       await db.sales.update(sale.id!, { status: "voided" });
     });
+    try { await reverseSale(sale, user?.id); } catch { /* reversa contable */ }
     toast.success("Venta anulada");
     onClose();
   }
