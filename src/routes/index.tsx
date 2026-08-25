@@ -51,7 +51,7 @@ function Dashboard() {
   }, []);
   const ap = useLiveQuery(async () => {
     const all = await db.purchases.toArray();
-    const open = all.filter((p) => p.status !== "paid" && p.status !== "cancelled");
+    const open = all.filter((p) => p.status === "received" && p.paid < p.total);
     return { count: open.length, total: open.reduce((a, p) => a + (p.total - p.paid), 0) };
   }, []);
   const pnl = useLiveQuery(async () => {
