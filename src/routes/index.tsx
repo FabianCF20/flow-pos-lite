@@ -44,6 +44,23 @@ function Dashboard() {
     const all = await db.cashSessions.toArray();
     return all.find((s) => !s.closedAt) ?? null;
   }, []);
+  const ar = useLiveQuery(async () => {
+    const all = await db.receivables.toArray();
+    const open = all.filter((r) => r.status !== "paid");
+    return { count: open.length, total: open.reduce((a, r) => a + (r.total - r.paid), 0) };
+  }, []);
+  const ap = useLiveQuery(async () => {
+    const all = await db.purchases.toArray();
+    const open = all.filter((p) => p.status !== "paid" && p.status !== "cancelled");
+    return { count: open.length, total: open.reduce((a, p) => a + (p.total - p.paid), 0) };
+  }, []);
+  const pnl = useLiveQuery(async () => {
+    await db.journalEntries.count();
+    const bal = await trialBalance();
+    const income = bal.filter((b) => b.type === "ingreso").reduce((a, b) => a + b.balance, 0);
+    const cost = bal.filter((b) => b.type === "gasto" || b.type === "costo").reduce((a, b) => a + b.balance, 0);
+    return { income, cost, profit: income - cost };
+  }, []);
 
   return (
     <div>
@@ -67,11 +84,16 @@ function Dashboard() {
         </Link>
 
         <div className="grid grid-cols-2 gap-3 mt-3">
+          <StatCard icon={HandCoins} label={`Cartera (${ar?.count ?? 0})`} value={formatMoney(ar?.total ?? 0, settings)} accent={(ar?.total ?? 0) > 0 ? "text-warning" : undefined} to="/receivables" />
+          <StatCard icon={ShoppingBag} label={`Por pagar (${ap?.count ?? 0})`} value={formatMoney(ap?.total ?? 0, settings)} accent={(ap?.total ?? 0) > 0 ? "text-warning" : undefined} to="/purchases" />
+          <StatCard icon={Landmark} label="Utilidad acumulada" value={formatMoney(pnl?.profit ?? 0, settings)} accent={(pnl?.profit ?? 0) >= 0 ? "text-success" : "text-destructive"} to="/accounting" />
+          <StatCard icon={Boxes} label="Inventario" value="Ver" to="/inventory" />
           <StatCard icon={Wallet} label="Caja" value={openSession ? "Abierta" : "Cerrada"} accent={openSession ? "text-success" : "text-muted-foreground"} to="/cash" />
           <StatCard icon={Package} label="Productos" value={String(productCount ?? 0)} to="/products" />
           <StatCard icon={ReceiptText} label="Tickets hoy" value={String(today?.count ?? 0)} to="/sales" />
           <StatCard icon={TrendingUp} label="Reportes" value="Ver" to="/reports" />
         </div>
+
 
         {lowStock && lowStock.length > 0 && (
           <div className="mt-4 rounded-xl border border-warning/30 bg-warning/10 p-4">
