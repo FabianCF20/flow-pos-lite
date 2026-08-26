@@ -10,8 +10,11 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --font-display: "Sora", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
   --color-card: var(--card);
   --color-card-foreground: var(--card-foreground);
   --color-popover: var(--popover);
@@ -19,6 +22,8 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-glow: var(--primary-glow);
+  --color-gold: var(--gold);
+  --color-gold-foreground: var(--gold-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -47,55 +52,122 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --shadow-card: var(--shadow-card);
+  --shadow-elevated: var(--shadow-elevated);
 }
 
-/* Midnight Indigo — dark by default for POS readability */
-:root, .dark {
-  --radius: 0.75rem;
-  --background: oklch(0.13 0.04 275);
-  --foreground: oklch(0.98 0.01 270);
-  --card: oklch(0.18 0.05 275);
-  --card-foreground: oklch(0.98 0.01 270);
-  --popover: oklch(0.18 0.05 275);
-  --popover-foreground: oklch(0.98 0.01 270);
-  --primary: oklch(0.62 0.22 275);
-  --primary-foreground: oklch(0.99 0.01 270);
-  --primary-glow: oklch(0.72 0.20 280);
-  --secondary: oklch(0.24 0.06 275);
-  --secondary-foreground: oklch(0.98 0.01 270);
-  --muted: oklch(0.22 0.05 275);
-  --muted-foreground: oklch(0.70 0.04 270);
-  --accent: oklch(0.30 0.10 275);
-  --accent-foreground: oklch(0.99 0.01 270);
-  --destructive: oklch(0.62 0.24 25);
-  --destructive-foreground: oklch(0.99 0.01 270);
-  --success: oklch(0.68 0.18 155);
-  --success-foreground: oklch(0.10 0.02 270);
-  --warning: oklch(0.78 0.16 80);
-  --warning-foreground: oklch(0.15 0.04 80);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 10%);
-  --ring: oklch(0.62 0.22 275);
-  --chart-1: oklch(0.62 0.22 275);
-  --chart-2: oklch(0.72 0.20 200);
-  --chart-3: oklch(0.68 0.18 155);
-  --chart-4: oklch(0.78 0.16 80);
-  --chart-5: oklch(0.70 0.22 330);
-  --sidebar: oklch(0.10 0.04 275);
-  --sidebar-foreground: oklch(0.98 0.01 270);
-  --sidebar-primary: oklch(0.62 0.22 275);
-  --sidebar-primary-foreground: oklch(0.99 0.01 270);
-  --sidebar-accent: oklch(0.22 0.05 275);
-  --sidebar-accent-foreground: oklch(0.98 0.01 270);
+/* Emerald Prestige — claro por defecto (oficina/importadora) */
+:root {
+  --radius: 0.625rem;
+  --background: oklch(0.985 0.006 140);
+  --foreground: oklch(0.22 0.03 160);
+  --surface: oklch(0.965 0.012 150);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.22 0.03 160);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.22 0.03 160);
+  --primary: oklch(0.42 0.10 163);
+  --primary-foreground: oklch(0.99 0.01 150);
+  --primary-glow: oklch(0.55 0.12 165);
+  --gold: oklch(0.75 0.11 88);
+  --gold-foreground: oklch(0.24 0.04 90);
+  --secondary: oklch(0.94 0.015 150);
+  --secondary-foreground: oklch(0.28 0.04 160);
+  --muted: oklch(0.95 0.010 150);
+  --muted-foreground: oklch(0.50 0.02 160);
+  --accent: oklch(0.92 0.03 160);
+  --accent-foreground: oklch(0.28 0.05 163);
+  --destructive: oklch(0.55 0.20 25);
+  --destructive-foreground: oklch(0.99 0.01 20);
+  --success: oklch(0.55 0.14 158);
+  --success-foreground: oklch(0.99 0.01 150);
+  --warning: oklch(0.70 0.13 78);
+  --warning-foreground: oklch(0.22 0.04 80);
+  --border: oklch(0.88 0.012 155);
+  --input: oklch(0.90 0.012 155);
+  --ring: oklch(0.42 0.10 163);
+  --chart-1: oklch(0.42 0.10 163);
+  --chart-2: oklch(0.60 0.12 190);
+  --chart-3: oklch(0.75 0.11 88);
+  --chart-4: oklch(0.62 0.14 145);
+  --chart-5: oklch(0.55 0.14 30);
+  --sidebar: oklch(0.26 0.055 162);
+  --sidebar-foreground: oklch(0.95 0.015 150);
+  --sidebar-primary: oklch(0.62 0.13 165);
+  --sidebar-primary-foreground: oklch(0.14 0.03 160);
+  --sidebar-accent: oklch(0.33 0.06 162);
+  --sidebar-accent-foreground: oklch(0.97 0.01 150);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.75 0.11 88);
+  --shadow-card: 0 1px 2px oklch(0.22 0.03 160 / 6%), 0 1px 3px oklch(0.22 0.03 160 / 4%);
+  --shadow-elevated: 0 10px 30px -12px oklch(0.30 0.06 162 / 28%);
+}
+
+.dark {
+  --background: oklch(0.16 0.028 165);
+  --foreground: oklch(0.96 0.012 150);
+  --surface: oklch(0.19 0.032 165);
+  --card: oklch(0.21 0.035 165);
+  --card-foreground: oklch(0.96 0.012 150);
+  --popover: oklch(0.21 0.035 165);
+  --popover-foreground: oklch(0.96 0.012 150);
+  --primary: oklch(0.62 0.13 165);
+  --primary-foreground: oklch(0.13 0.03 165);
+  --primary-glow: oklch(0.72 0.13 168);
+  --gold: oklch(0.78 0.11 88);
+  --gold-foreground: oklch(0.18 0.03 90);
+  --secondary: oklch(0.26 0.04 165);
+  --secondary-foreground: oklch(0.96 0.012 150);
+  --muted: oklch(0.25 0.035 165);
+  --muted-foreground: oklch(0.72 0.025 155);
+  --accent: oklch(0.30 0.055 165);
+  --accent-foreground: oklch(0.97 0.012 150);
+  --destructive: oklch(0.62 0.21 25);
+  --destructive-foreground: oklch(0.99 0.01 20);
+  --success: oklch(0.70 0.16 158);
+  --success-foreground: oklch(0.14 0.03 158);
+  --warning: oklch(0.80 0.14 82);
+  --warning-foreground: oklch(0.18 0.04 82);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.62 0.13 165);
+  --chart-1: oklch(0.62 0.13 165);
+  --chart-2: oklch(0.72 0.12 195);
+  --chart-3: oklch(0.78 0.11 88);
+  --chart-4: oklch(0.70 0.15 145);
+  --chart-5: oklch(0.66 0.17 30);
+  --sidebar: oklch(0.13 0.028 165);
+  --sidebar-foreground: oklch(0.95 0.015 150);
+  --sidebar-primary: oklch(0.62 0.13 165);
+  --sidebar-primary-foreground: oklch(0.13 0.03 165);
+  --sidebar-accent: oklch(0.24 0.04 165);
+  --sidebar-accent-foreground: oklch(0.97 0.01 150);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.22 275);
+  --sidebar-ring: oklch(0.78 0.11 88);
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 40%);
+  --shadow-elevated: 0 12px 34px -14px oklch(0 0 0 / 60%);
 }
 
 @layer base {
   * { border-color: var(--color-border); }
   html, body { background-color: var(--color-background); color: var(--color-foreground); }
-  body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: none; }
+  body {
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+    font-feature-settings: "tnum" 0;
+  }
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.015em; }
+  /* Cifras alineadas para tablas contables */
+  .tabular { font-variant-numeric: tabular-nums; }
   /* Safe areas for installed PWA on Android */
   .safe-top { padding-top: env(safe-area-inset-top); }
   .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+}
+
+@utility card-surface {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
 }
