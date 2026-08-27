@@ -69,17 +69,43 @@ function SuppliersPage() {
 }
 
 function SupplierSheet({ initial, onClose }: { initial: Partial<Supplier>; onClose: () => void }) {
-  const [f, setF] = useState<Partial<Supplier>>(initial);
+  const [f, setF] = useState<Partial<Supplier>>({
+    docType: "NIT", supplierType: "nacional", country: "Colombia", currency: "COP", active: true, ...initial,
+  });
+  const set = (k: keyof Supplier) => (v: any) => setF((p) => ({ ...p, [k]: v }));
 
   async function save() {
-    if (!f.name?.trim()) { toast.error("El nombre es obligatorio"); return; }
-    const data = {
+    if (!f.name?.trim()) { toast.error("La razón social es obligatoria"); return; }
+    const t = (v?: string) => v?.trim() ?? "";
+    const data: Omit<Supplier, "id" | "createdAt"> = {
       name: f.name.trim(),
-      nit: f.nit?.trim() ?? "",
-      phone: f.phone?.trim() ?? "",
-      email: f.email?.trim() ?? "",
-      address: f.address?.trim() ?? "",
-      notes: f.notes?.trim() ?? "",
+      tradeName: t(f.tradeName),
+      docType: f.docType ?? "NIT",
+      nit: t(f.nit),
+      dv: t(f.dv),
+      taxRegime: f.taxRegime,
+      supplierType: f.supplierType ?? "nacional",
+      phone: t(f.phone),
+      phone2: t(f.phone2),
+      email: t(f.email),
+      contactName: t(f.contactName),
+      contactPhone: t(f.contactPhone),
+      contactEmail: t(f.contactEmail),
+      address: t(f.address),
+      city: t(f.city),
+      state: t(f.state),
+      country: t(f.country),
+      website: t(f.website),
+      currency: t(f.currency) || "COP",
+      incoterm: f.incoterm,
+      leadTimeDays: Number(f.leadTimeDays) || 0,
+      paymentTerms: Number(f.paymentTerms) || 0,
+      creditLimit: Number(f.creditLimit) || 0,
+      bankName: t(f.bankName),
+      bankAccount: t(f.bankAccount),
+      swift: t(f.swift),
+      notes: t(f.notes),
+      active: f.active ?? true,
     };
     if (f.id) await db.suppliers.update(f.id, data);
     else await db.suppliers.add({ ...data, createdAt: Date.now() });
@@ -89,14 +115,84 @@ function SupplierSheet({ initial, onClose }: { initial: Partial<Supplier>; onClo
 
   return (
     <Sheet title={f.id ? "Editar proveedor" : "Nuevo proveedor"} onClose={onClose}>
-      <Field label="Nombre / Razón social" value={f.name ?? ""} onChange={(v) => setF({ ...f, name: v })} />
-      <Field label="NIT" value={f.nit ?? ""} onChange={(v) => setF({ ...f, nit: v })} />
-      <Field label="Teléfono" value={f.phone ?? ""} onChange={(v) => setF({ ...f, phone: v })} />
-      <Field label="Email" value={f.email ?? ""} onChange={(v) => setF({ ...f, email: v })} />
-      <Field label="Dirección" value={f.address ?? ""} onChange={(v) => setF({ ...f, address: v })} />
-      <Field label="Notas" value={f.notes ?? ""} onChange={(v) => setF({ ...f, notes: v })} />
+      <Group title="Identificación" />
+      <Field label="Razón social" value={f.name ?? ""} onChange={set("name")} />
+      <Field label="Nombre comercial" value={f.tradeName ?? ""} onChange={set("tradeName")} />
+      <div className="grid grid-cols-3 gap-2">
+        <Select label="Tipo doc." value={f.docType ?? "NIT"} onChange={set("docType")} options={["NIT", "CC", "CE", "PP", "NITE"]} />
+        <Field label="Documento / NIT" value={f.nit ?? ""} onChange={set("nit")} />
+        <Field label="DV" value={f.dv ?? ""} onChange={set("dv")} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Select label="Tipo de proveedor" value={f.supplierType ?? "nacional"} onChange={set("supplierType")} options={["nacional", "importacion", "servicios"]} />
+        <Select label="Régimen tributario" value={f.taxRegime ?? ""} onChange={set("taxRegime")} options={["", "comun", "simplificado", "gran_contribuyente", "no_responsable_iva", "regimen_simple"]} />
+      </div>
+
+      <Group title="Contacto" />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Teléfono" value={f.phone ?? ""} onChange={set("phone")} />
+        <Field label="Teléfono alterno" value={f.phone2 ?? ""} onChange={set("phone2")} />
+      </div>
+      <Field label="Email" value={f.email ?? ""} onChange={set("email")} />
+      <Field label="Persona de contacto" value={f.contactName ?? ""} onChange={set("contactName")} />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Tel. contacto" value={f.contactPhone ?? ""} onChange={set("contactPhone")} />
+        <Field label="Email contacto" value={f.contactEmail ?? ""} onChange={set("contactEmail")} />
+      </div>
+      <Field label="Sitio web" value={f.website ?? ""} onChange={set("website")} />
+
+      <Group title="Ubicación" />
+      <Field label="Dirección" value={f.address ?? ""} onChange={set("address")} />
+      <div className="grid grid-cols-3 gap-2">
+        <Field label="Ciudad" value={f.city ?? ""} onChange={set("city")} />
+        <Field label="Departamento" value={f.state ?? ""} onChange={set("state")} />
+        <Field label="País" value={f.country ?? ""} onChange={set("country")} />
+      </div>
+
+      <Group title="Condiciones comerciales" />
+      <div className="grid grid-cols-3 gap-2">
+        <Field label="Moneda" value={f.currency ?? "COP"} onChange={set("currency")} />
+        <Select label="Incoterm" value={f.incoterm ?? ""} onChange={set("incoterm")} options={["", "EXW", "FCA", "FOB", "CFR", "CIF", "DAP", "DDP"]} />
+        <Field label="Lead time (días)" type="number" value={String(f.leadTimeDays ?? "")} onChange={set("leadTimeDays")} />
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Plazo de pago (días)" type="number" value={String(f.paymentTerms ?? "")} onChange={set("paymentTerms")} />
+        <Field label="Cupo de crédito" type="number" value={String(f.creditLimit ?? "")} onChange={set("creditLimit")} />
+      </div>
+
+      <Group title="Datos bancarios" />
+      <Field label="Banco" value={f.bankName ?? ""} onChange={set("bankName")} />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Cuenta" value={f.bankAccount ?? ""} onChange={set("bankAccount")} />
+        <Field label="SWIFT / IBAN" value={f.swift ?? ""} onChange={set("swift")} />
+      </div>
+
+      <Field label="Notas" value={f.notes ?? ""} onChange={set("notes")} />
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={f.active ?? true} onChange={(e) => set("active")(e.target.checked)} className="h-4 w-4" />
+        Proveedor activo
+      </label>
       <button onClick={save} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold">Guardar</button>
     </Sheet>
+  );
+}
+
+export function Group({ title }: { title: string }) {
+  return <div className="pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</div>;
+}
+
+export function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
+  return (
+    <label className="block">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full h-11 px-2 rounded-xl bg-background border border-border text-sm"
+      >
+        {options.map((o) => <option key={o} value={o}>{o === "" ? "—" : o}</option>)}
+      </select>
+    </label>
   );
 }
 
@@ -127,3 +223,4 @@ export function Field({ label, value, onChange, type = "text" }: { label: string
     </label>
   );
 }
+
