@@ -356,6 +356,11 @@ class POSDB extends Dexie {
       accounts: "++id, code, name, type",
       journalEntries: "++id, date, refType, refId",
     });
+    this.version(3).stores({
+      customers: "++id, name, doc, phone, city, active",
+      suppliers: "++id, name, nit, city, country, supplierType, active",
+    });
+
   }
 }
 
