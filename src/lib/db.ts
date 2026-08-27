@@ -22,15 +22,40 @@ export interface Product {
   createdAt: number;
 }
 
+export type DocType = "CC" | "NIT" | "CE" | "PP" | "TI" | "NITE" | "PEP";
+export type PersonType = "natural" | "juridica";
+export type TaxRegime = "simplificado" | "comun" | "gran_contribuyente" | "no_responsable_iva" | "regimen_simple";
+
 export interface Customer {
   id?: number;
-  name: string;
+  name: string;               // razón social / nombre completo
+  tradeName?: string;         // nombre comercial
+  docType?: DocType;
   doc?: string;
+  dv?: string;                // dígito de verificación (NIT)
+  personType?: PersonType;
+  taxRegime?: TaxRegime;
   phone?: string;
+  phone2?: string;
   email?: string;
+  contactName?: string;       // persona de contacto
+  contactPhone?: string;
+  address?: string;
+  city?: string;
+  state?: string;             // departamento
+  country?: string;
+  postalCode?: string;
+  website?: string;
+  priceList?: string;         // lista de precios / segmento
+  paymentTerms?: number;      // días de plazo
+  creditLimit?: number;
+  taxExempt?: boolean;        // exento de IVA
+  seller?: string;            // vendedor asignado
   notes?: string;
+  active?: boolean;
   createdAt: number;
 }
+
 
 export interface SaleItem {
   productId: number;
