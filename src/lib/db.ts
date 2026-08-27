@@ -22,15 +22,40 @@ export interface Product {
   createdAt: number;
 }
 
+export type DocType = "CC" | "NIT" | "CE" | "PP" | "TI" | "NITE" | "PEP";
+export type PersonType = "natural" | "juridica";
+export type TaxRegime = "simplificado" | "comun" | "gran_contribuyente" | "no_responsable_iva" | "regimen_simple";
+
 export interface Customer {
   id?: number;
-  name: string;
+  name: string;               // razón social / nombre completo
+  tradeName?: string;         // nombre comercial
+  docType?: DocType;
   doc?: string;
+  dv?: string;                // dígito de verificación (NIT)
+  personType?: PersonType;
+  taxRegime?: TaxRegime;
   phone?: string;
+  phone2?: string;
   email?: string;
+  contactName?: string;       // persona de contacto
+  contactPhone?: string;
+  address?: string;
+  city?: string;
+  state?: string;             // departamento
+  country?: string;
+  postalCode?: string;
+  website?: string;
+  priceList?: string;         // lista de precios / segmento
+  paymentTerms?: number;      // días de plazo
+  creditLimit?: number;
+  taxExempt?: boolean;        // exento de IVA
+  seller?: string;            // vendedor asignado
   notes?: string;
+  active?: boolean;
   createdAt: number;
 }
+
 
 export interface SaleItem {
   productId: number;
@@ -134,14 +159,37 @@ export interface AppSettings {
 
 export interface Supplier {
   id?: number;
-  name: string;
+  name: string;               // razón social
+  tradeName?: string;
+  docType?: DocType;
   nit?: string;
+  dv?: string;
+  taxRegime?: TaxRegime;
+  supplierType?: "nacional" | "importacion" | "servicios";
   phone?: string;
+  phone2?: string;
   email?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  country?: string;           // país de origen (importaciones)
+  website?: string;
+  currency?: string;          // USD, EUR, COP...
+  incoterm?: "EXW" | "FOB" | "CIF" | "CFR" | "DAP" | "DDP" | "FCA";
+  leadTimeDays?: number;      // tiempo de entrega
+  paymentTerms?: number;      // días de plazo
+  creditLimit?: number;
+  bankName?: string;
+  bankAccount?: string;
+  swift?: string;             // SWIFT / IBAN proveedores del exterior
   notes?: string;
+  active?: boolean;
   createdAt: number;
 }
+
 
 export interface Warehouse {
   id?: number;
@@ -308,6 +356,11 @@ class POSDB extends Dexie {
       accounts: "++id, code, name, type",
       journalEntries: "++id, date, refType, refId",
     });
+    this.version(3).stores({
+      customers: "++id, name, doc, phone, city, active",
+      suppliers: "++id, name, nit, city, country, supplierType, active",
+    });
+
   }
 }
 
