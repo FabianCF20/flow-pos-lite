@@ -159,14 +159,37 @@ export interface AppSettings {
 
 export interface Supplier {
   id?: number;
-  name: string;
+  name: string;               // razón social
+  tradeName?: string;
+  docType?: DocType;
   nit?: string;
+  dv?: string;
+  taxRegime?: TaxRegime;
+  supplierType?: "nacional" | "importacion" | "servicios";
   phone?: string;
+  phone2?: string;
   email?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
   address?: string;
+  city?: string;
+  state?: string;
+  country?: string;           // país de origen (importaciones)
+  website?: string;
+  currency?: string;          // USD, EUR, COP...
+  incoterm?: "EXW" | "FOB" | "CIF" | "CFR" | "DAP" | "DDP" | "FCA";
+  leadTimeDays?: number;      // tiempo de entrega
+  paymentTerms?: number;      // días de plazo
+  creditLimit?: number;
+  bankName?: string;
+  bankAccount?: string;
+  swift?: string;             // SWIFT / IBAN proveedores del exterior
   notes?: string;
+  active?: boolean;
   createdAt: number;
 }
+
 
 export interface Warehouse {
   id?: number;
