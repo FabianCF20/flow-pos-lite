@@ -76,20 +76,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
-      { title: "POS Offline" },
-      { name: "description", content: "Punto de venta offline para cualquier negocio" },
-      { name: "theme-color", content: "#0a0a1a" },
+      { title: "ERP Importaciones — Offline" },
+      { name: "description", content: "ERP offline para empresas importadoras: compras, inventario, ventas, cartera y contabilidad." },
+      { name: "theme-color", content: "#0d3b2e" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "POS" },
-      { property: "og:title", content: "POS Offline" },
-      { property: "og:description", content: "Punto de venta offline para cualquier negocio" },
+      { name: "apple-mobile-web-app-title", content: "ERP" },
+      { property: "og:title", content: "ERP Importaciones — Offline" },
+      { property: "og:description", content: "ERP offline para empresas importadoras: compras, inventario, ventas, cartera y contabilidad." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
+      { rel: "preconnect", href: "https://fonts.googleapis.com" },
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap",
+      },
       { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "icon", href: "/icon-192.png", type: "image/png" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
@@ -108,13 +114,13 @@ function RootShell({ children }: { children: React.ReactNode }) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="manifest" href="/manifest.webmanifest" />
-        <meta name="theme-color" content="#0a0a1a" />
+        <meta name="theme-color" content="#0d3b2e" />
         <link rel="icon" href="/icon-192.png" type="image/png" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="POS" />
+        <meta name="apple-mobile-web-app-title" content="ERP" />
         <HeadContent />
       </head>
       <body>

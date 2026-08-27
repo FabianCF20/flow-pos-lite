@@ -53,13 +53,13 @@ function LoginPage() {
   // Pantalla de selección de usuario (siempre que haya usuarios y ninguno elegido)
   if (users && users.length >= 1 && !selected) {
     return (
-      <div className="min-h-screen px-5 py-8 bg-gradient-to-b from-background via-background to-[oklch(0.10_0.06_275)]">
+      <div className="min-h-screen px-5 py-8 bg-surface">
         <div className="w-full max-w-sm mx-auto">
           <div className="text-center mb-8">
             <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-primary-glow grid place-items-center mb-4 shadow-lg shadow-primary/30">
               <Lock className="h-6 w-6 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold">Elige tu usuario</h1>
+            <h1 className="text-2xl font-display font-semibold">Elige tu usuario</h1>
             <p className="text-sm text-muted-foreground mt-1">Selecciona una cuenta para continuar</p>
           </div>
           <div className="space-y-2">
@@ -88,7 +88,7 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen grid place-items-center px-5 py-8 bg-gradient-to-b from-background via-background to-[oklch(0.10_0.06_275)]">
+    <div className="min-h-screen grid place-items-center px-5 py-8 bg-surface">
       <div className="w-full max-w-sm">
         {users && users.length >= 1 && (
           <button
@@ -104,7 +104,7 @@ function LoginPage() {
               <div className="mx-auto h-16 w-16 rounded-full bg-primary/15 grid place-items-center text-primary font-bold text-2xl mb-3">
                 {selected.name[0]?.toUpperCase()}
               </div>
-              <h1 className="text-2xl font-bold">{selected.name}</h1>
+              <h1 className="text-2xl font-display font-semibold">{selected.name}</h1>
               <p className="text-sm text-muted-foreground mt-1 capitalize">{selected.role} · Ingresa tu PIN</p>
             </>
           ) : (
@@ -112,7 +112,7 @@ function LoginPage() {
               <div className="mx-auto h-14 w-14 rounded-2xl bg-gradient-to-br from-primary to-primary-glow grid place-items-center mb-4 shadow-lg shadow-primary/30">
                 <Lock className="h-6 w-6 text-primary-foreground" />
               </div>
-              <h1 className="text-2xl font-bold">POS Offline</h1>
+              <h1 className="text-2xl font-display font-semibold">ERP Importaciones</h1>
               <p className="text-sm text-muted-foreground mt-1">Ingresa tu PIN para continuar</p>
             </>
           )}
