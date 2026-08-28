@@ -454,9 +454,12 @@ export async function ensureSeed() {
       receiptFooter: "¡Gracias por su compra!",
     });
   }
-  if ((await db.accounts.count()) === 0) {
-    await db.accounts.bulkAdd(DEFAULT_ACCOUNTS as Account[]);
-  }
+  // Sincroniza el PUC: agrega cuentas nuevas sin borrar las personalizadas
+  const existing = await db.accounts.toArray();
+  const codes = new Set(existing.map((a) => a.code));
+  const missing = DEFAULT_ACCOUNTS.filter((a) => !codes.has(a.code));
+  if (missing.length) await db.accounts.bulkAdd(missing as Account[]);
+
   if ((await db.warehouses.count()) === 0) {
     await db.warehouses.add({ name: "Bodega principal", isDefault: true, createdAt: Date.now() });
   }
