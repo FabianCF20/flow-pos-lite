@@ -283,6 +283,10 @@ export interface Account {
   code: string;
   name: string;
   type: AccountType;
+  parentCode?: string;
+  active?: boolean;
+  system?: boolean;      // cuenta usada por automatismos, no borrable
+
 }
 
 export interface JournalLine {
