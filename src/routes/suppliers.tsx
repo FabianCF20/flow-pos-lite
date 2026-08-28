@@ -40,10 +40,11 @@ function SuppliersPage() {
               <Truck className="h-5 w-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate">{s.name}</div>
+              <div className="font-medium text-sm truncate">{s.name}{s.tradeName ? ` · ${s.tradeName}` : ""}</div>
               <div className="text-xs text-muted-foreground truncate">
-                {[s.nit && `NIT ${s.nit}`, s.phone, s.email].filter(Boolean).join(" · ") || "Sin datos de contacto"}
+                {[s.nit && `${s.docType ?? "NIT"} ${s.nit}`, s.phone, [s.city, s.country].filter(Boolean).join(", "), s.supplierType === "importacion" && s.incoterm].filter(Boolean).join(" · ") || "Sin datos de contacto"}
               </div>
+
             </div>
             <button onClick={() => setEditing(s)} className="h-9 w-9 rounded-lg bg-muted grid place-items-center"><Pencil className="h-4 w-4" /></button>
             <button
