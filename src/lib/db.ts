@@ -294,17 +294,23 @@ export interface JournalLine {
   accountName: string;
   debit: number;
   credit: number;
+  note?: string;
+  thirdParty?: string;   // tercero (cliente / proveedor / empleado)
 }
 
 export interface JournalEntry {
   id?: number;
+  number?: number;       // consecutivo del comprobante
   date: number;
   description: string;
   refType?: string;
   refId?: number;
+  thirdParty?: string;
   lines: JournalLine[];
   userId?: number;
+  closing?: boolean;     // asiento de cierre de ejercicio
 }
+
 
 export interface Employee {
   id?: number;
