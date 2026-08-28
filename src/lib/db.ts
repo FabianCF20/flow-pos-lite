@@ -376,19 +376,61 @@ class POSDB extends Dexie {
 
 export const db = new POSDB();
 
+/** Plan Único de Cuentas (PUC Colombia) simplificado para empresa importadora / comercializadora. */
 export const DEFAULT_ACCOUNTS: Omit<Account, "id">[] = [
-  { code: "1105", name: "Caja", type: "activo" },
-  { code: "1110", name: "Bancos", type: "activo" },
-  { code: "1305", name: "Clientes (cartera)", type: "activo" },
-  { code: "1435", name: "Inventario de mercancías", type: "activo" },
-  { code: "2205", name: "Proveedores nacionales", type: "pasivo" },
-  { code: "2408", name: "IVA por pagar", type: "pasivo" },
-  { code: "3105", name: "Capital social", type: "patrimonio" },
-  { code: "4135", name: "Ingresos por ventas", type: "ingreso" },
-  { code: "6135", name: "Costo de ventas", type: "costo" },
+  // 1 — Activo
+  { code: "1105", name: "Caja general", type: "activo", system: true },
+  { code: "1110", name: "Bancos", type: "activo", system: true },
+  { code: "1305", name: "Clientes (cartera)", type: "activo", system: true },
+  { code: "1330", name: "Anticipos a proveedores", type: "activo" },
+  { code: "1355", name: "IVA descontable", type: "activo", system: true },
+  { code: "1360", name: "Retenciones a favor (autoretención)", type: "activo" },
+  { code: "1435", name: "Inventario de mercancías", type: "activo", system: true },
+  { code: "1465", name: "Mercancía en tránsito (importaciones)", type: "activo" },
+  { code: "1524", name: "Equipo de oficina y cómputo", type: "activo" },
+  { code: "1592", name: "Depreciación acumulada", type: "activo" },
+  // 2 — Pasivo
+  { code: "2205", name: "Proveedores nacionales", type: "pasivo", system: true },
+  { code: "2210", name: "Proveedores del exterior", type: "pasivo" },
+  { code: "2335", name: "Costos y gastos por pagar", type: "pasivo", system: true },
+  { code: "2365", name: "Retención en la fuente por pagar", type: "pasivo" },
+  { code: "2367", name: "IVA retenido por pagar", type: "pasivo" },
+  { code: "2368", name: "ICA retenido por pagar", type: "pasivo" },
+  { code: "2380", name: "Anticipos de clientes", type: "pasivo" },
+  { code: "2408", name: "IVA generado por pagar", type: "pasivo", system: true },
+  { code: "2505", name: "Salarios por pagar", type: "pasivo" },
+  { code: "2610", name: "Prestaciones sociales por pagar", type: "pasivo" },
+  { code: "2805", name: "Obligaciones financieras", type: "pasivo" },
+  // 3 — Patrimonio
+  { code: "3105", name: "Capital social", type: "patrimonio", system: true },
+  { code: "3605", name: "Utilidad del ejercicio", type: "patrimonio", system: true },
+  { code: "3705", name: "Resultados de ejercicios anteriores", type: "patrimonio", system: true },
+  // 4 — Ingresos
+  { code: "4135", name: "Ingresos por ventas", type: "ingreso", system: true },
+  { code: "4175", name: "Devoluciones en ventas", type: "ingreso", system: true },
+  { code: "4210", name: "Ingresos financieros", type: "ingreso" },
+  { code: "4295", name: "Otros ingresos (diferencia en cambio)", type: "ingreso" },
+  // 5 — Gastos
   { code: "5105", name: "Gastos de personal", type: "gasto" },
-  { code: "5195", name: "Gastos diversos", type: "gasto" },
+  { code: "5110", name: "Honorarios", type: "gasto" },
+  { code: "5115", name: "Impuestos (ICA, predial, otros)", type: "gasto" },
+  { code: "5120", name: "Arrendamientos", type: "gasto" },
+  { code: "5125", name: "Contribuciones y afiliaciones", type: "gasto" },
+  { code: "5135", name: "Servicios públicos y comunicaciones", type: "gasto" },
+  { code: "5140", name: "Gastos legales", type: "gasto" },
+  { code: "5145", name: "Mantenimiento y reparaciones", type: "gasto" },
+  { code: "5150", name: "Adecuación e instalación", type: "gasto" },
+  { code: "5155", name: "Gastos de viaje", type: "gasto" },
+  { code: "5160", name: "Depreciaciones", type: "gasto" },
+  { code: "5195", name: "Gastos diversos", type: "gasto", system: true },
+  { code: "5305", name: "Gastos financieros e intereses", type: "gasto" },
+  { code: "5310", name: "Diferencia en cambio (gasto)", type: "gasto" },
+  // 6 — Costos
+  { code: "6135", name: "Costo de ventas", type: "costo", system: true },
+  { code: "6140", name: "Fletes y gastos de importación", type: "costo" },
+  { code: "6145", name: "Aranceles y tributos aduaneros", type: "costo" },
 ];
+
 
 export async function ensureSeed() {
   const usersCount = await db.users.count();
