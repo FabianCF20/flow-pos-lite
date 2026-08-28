@@ -9,12 +9,20 @@ export const ACC = {
   cash: "1105",
   bank: "1110",
   ar: "1305",
+  vatDeductible: "1355",
   inventory: "1435",
+  inTransit: "1465",
   ap: "2205",
+  apForeign: "2210",
+  accrued: "2335",
   taxPayable: "2408",
   equity: "3105",
+  profit: "3605",
+  retained: "3705",
   revenue: "4135",
+  salesReturns: "4175",
   cogs: "6135",
+  freight: "6140",
   payroll: "5105",
   misc: "5195",
 } as const;
@@ -23,9 +31,17 @@ export async function accountByCode(code: string): Promise<Account | undefined> 
   return (await db.accounts.toArray()).find((a) => a.code === code);
 }
 
-async function line(code: string, debit: number, credit: number): Promise<JournalLine> {
+async function line(code: string, debit: number, credit: number, extra?: { note?: string; thirdParty?: string }): Promise<JournalLine> {
   const acc = await accountByCode(code);
-  return { accountCode: code, accountName: acc?.name ?? code, debit, credit };
+  const l: JournalLine = { accountCode: code, accountName: acc?.name ?? code, debit, credit };
+  if (extra?.note) l.note = extra.note;
+  if (extra?.thirdParty) l.thirdParty = extra.thirdParty;
+  return l;
+}
+
+async function nextEntryNumber(): Promise<number> {
+  const all = await db.journalEntries.toArray();
+  return all.reduce((max, e) => Math.max(max, e.number ?? 0), 0) + 1;
 }
 
 export async function postEntry(opts: {
@@ -34,17 +50,28 @@ export async function postEntry(opts: {
   refId?: number;
   date?: number;
   userId?: number;
-  lines: { code: string; debit?: number; credit?: number }[];
+  thirdParty?: string;
+  closing?: boolean;
+  lines: { code: string; debit?: number; credit?: number; note?: string; thirdParty?: string }[];
 }): Promise<number | null> {
   const lines: JournalLine[] = [];
   for (const l of opts.lines) {
     const debit = Math.round(l.debit ?? 0);
     const credit = Math.round(l.credit ?? 0);
     if (debit === 0 && credit === 0) continue;
-    lines.push(await line(l.code, debit, credit));
+    const extra: { note?: string; thirdParty?: string } = {};
+    if (l.note) extra.note = l.note;
+    if (l.thirdParty ?? opts.thirdParty) extra.thirdParty = (l.thirdParty ?? opts.thirdParty)!;
+    lines.push(await line(l.code, debit, credit, extra));
   }
   if (lines.length === 0) return null;
+  const totalDebit = lines.reduce((a, l) => a + l.debit, 0);
+  const totalCredit = lines.reduce((a, l) => a + l.credit, 0);
+  if (Math.abs(totalDebit - totalCredit) > 1) {
+    throw new Error(`Partida doble descuadrada: débitos ${totalDebit} vs créditos ${totalCredit}`);
+  }
   const entry: JournalEntry = {
+    number: await nextEntryNumber(),
     date: opts.date ?? Date.now(),
     description: opts.description,
     lines,
@@ -52,8 +79,11 @@ export async function postEntry(opts: {
   if (opts.refType !== undefined) entry.refType = opts.refType;
   if (opts.refId !== undefined) entry.refId = opts.refId;
   if (opts.userId !== undefined) entry.userId = opts.userId;
+  if (opts.thirdParty !== undefined) entry.thirdParty = opts.thirdParty;
+  if (opts.closing) entry.closing = true;
   return db.journalEntries.add(entry);
 }
+
 
 function paymentAccount(method: PaymentMethod): string {
   if (method === "card" || method === "transfer") return ACC.bank;
@@ -129,19 +159,28 @@ export async function postSale(sale: Sale, userId?: number, creditDays = 30): Pr
   }
 
   const isCredit = sale.paymentMethod === "credit";
+  const { base, tax } = await splitTax(sale.total);
+  let thirdParty = "Cliente ocasional";
+  if (sale.customerId) {
+    const c = await db.customers.get(sale.customerId);
+    if (c) thirdParty = c.name;
+  }
   await postEntry({
     description: `Venta #${sale.number}`,
     refType: "sale",
     refId: sale.id!,
     date: sale.createdAt,
+    thirdParty,
     ...(userId !== undefined ? { userId } : {}),
     lines: [
       { code: isCredit ? ACC.ar : paymentAccount(sale.paymentMethod), debit: sale.total },
-      { code: ACC.revenue, credit: sale.total },
+      { code: ACC.revenue, credit: base },
+      { code: ACC.taxPayable, credit: tax },
       { code: ACC.cogs, debit: cost },
       { code: ACC.inventory, credit: cost },
     ],
   });
+
 
   if (isCredit) {
     let customerName = "Cliente ocasional";
