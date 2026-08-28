@@ -159,19 +159,28 @@ export async function postSale(sale: Sale, userId?: number, creditDays = 30): Pr
   }
 
   const isCredit = sale.paymentMethod === "credit";
+  const { base, tax } = await splitTax(sale.total);
+  let thirdParty = "Cliente ocasional";
+  if (sale.customerId) {
+    const c = await db.customers.get(sale.customerId);
+    if (c) thirdParty = c.name;
+  }
   await postEntry({
     description: `Venta #${sale.number}`,
     refType: "sale",
     refId: sale.id!,
     date: sale.createdAt,
+    thirdParty,
     ...(userId !== undefined ? { userId } : {}),
     lines: [
       { code: isCredit ? ACC.ar : paymentAccount(sale.paymentMethod), debit: sale.total },
-      { code: ACC.revenue, credit: sale.total },
+      { code: ACC.revenue, credit: base },
+      { code: ACC.taxPayable, credit: tax },
       { code: ACC.cogs, debit: cost },
       { code: ACC.inventory, credit: cost },
     ],
   });
+
 
   if (isCredit) {
     let customerName = "Cliente ocasional";
