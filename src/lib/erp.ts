@@ -1,5 +1,5 @@
 import {
-  db, getDefaultWarehouseId, type Account, type JournalEntry, type JournalLine,
+  db, getDefaultWarehouseId, getSettings, type Account, type JournalEntry, type JournalLine,
   type Purchase, type Sale, type StockMove, type StockMoveType, type PaymentMethod,
 } from "./db";
 
