@@ -323,6 +323,24 @@ export interface Employee {
   createdAt: number;
 }
 
+/** Documento soporte (factura, comprobante de pago, recibo) guardado localmente. */
+export type AttachmentRef =
+  | "sale" | "purchase" | "ap_payment" | "ar_payment" | "expense" | "journal" | "supplier" | "customer";
+
+export interface Attachment {
+  id?: number;
+  refType: AttachmentRef;
+  refId: number;
+  name: string;
+  mime: string;
+  size: number;
+  data: string;          // dataURL (imagen comprimida o PDF en base64)
+  note?: string;
+  userId?: number;
+  createdAt: number;
+}
+
+
 class POSDB extends Dexie {
   categories!: Table<Category, number>;
   products!: Table<Product, number>;
@@ -342,6 +360,8 @@ class POSDB extends Dexie {
   arPayments!: Table<ArPayment, number>;
   accounts!: Table<Account, number>;
   journalEntries!: Table<JournalEntry, number>;
+  attachments!: Table<Attachment, number>;
+
 
   constructor() {
     super("pos_offline_db");
@@ -369,6 +389,9 @@ class POSDB extends Dexie {
     this.version(3).stores({
       customers: "++id, name, doc, phone, city, active",
       suppliers: "++id, name, nit, city, country, supplierType, active",
+    });
+    this.version(4).stores({
+      attachments: "++id, refType, refId, createdAt",
     });
 
   }

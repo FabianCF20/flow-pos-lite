@@ -1,5 +1,5 @@
 import {
-  db, getDefaultWarehouseId, type Account, type JournalEntry, type JournalLine,
+  db, getDefaultWarehouseId, getSettings, type Account, type JournalEntry, type JournalLine,
   type Purchase, type Sale, type StockMove, type StockMoveType, type PaymentMethod,
 } from "./db";
 
@@ -85,10 +85,20 @@ export async function postEntry(opts: {
 }
 
 
+/** Separa un total en base gravable + IVA según la configuración de la empresa. */
+export async function splitTax(total: number): Promise<{ base: number; tax: number }> {
+  const s = await getSettings();
+  const rate = (s.taxRate ?? 0) / 100;
+  if (rate <= 0) return { base: Math.round(total), tax: 0 };
+  const base = Math.round(total / (1 + rate));
+  return { base, tax: Math.round(total) - base };
+}
+
 function paymentAccount(method: PaymentMethod): string {
   if (method === "card" || method === "transfer") return ACC.bank;
   return ACC.cash;
 }
+
 
 /* --------------------------------- Kardex ---------------------------------- */
 
@@ -222,13 +232,15 @@ export async function reverseSale(sale: Sale, userId?: number): Promise<void> {
     });
   }
   const isCredit = sale.paymentMethod === "credit";
+  const { base, tax } = await splitTax(sale.total);
   await postEntry({
     description: `Anulación venta #${sale.number}`,
     refType: "void",
     refId: sale.id!,
     ...(userId !== undefined ? { userId } : {}),
     lines: [
-      { code: ACC.revenue, debit: sale.total },
+      { code: ACC.salesReturns, debit: base },
+      { code: ACC.taxPayable, debit: tax },
       { code: isCredit ? ACC.ar : paymentAccount(sale.paymentMethod), credit: sale.total },
       { code: ACC.inventory, debit: cost },
       { code: ACC.cogs, credit: cost },
@@ -303,10 +315,11 @@ export async function receivePurchase(purchase: Purchase, userId?: number): Prom
     description: `Compra #${purchase.number} — ${purchase.supplierName}`,
     refType: "purchase",
     refId: purchase.id!,
+    thirdParty: purchase.supplierName,
     ...(userId !== undefined ? { userId } : {}),
     lines: [
       { code: ACC.inventory, debit: purchase.subtotal },
-      { code: ACC.taxPayable, debit: purchase.tax },
+      { code: ACC.vatDeductible, debit: purchase.tax },
       { code: ACC.ap, credit: purchase.total },
     ],
   });
@@ -415,4 +428,96 @@ export async function trialBalance(from?: number, to?: number): Promise<AccountB
     r.balance = debitNature ? r.debit - r.credit : r.credit - r.debit;
   }
   return rows.sort((a, b) => a.code.localeCompare(b.code));
+}
+
+/* --------------------------- Estado de resultados --------------------------- */
+
+export interface IncomeStatement {
+  sales: number;          // 4135 ingresos por ventas
+  returns: number;        // 4175 devoluciones en ventas
+  otherIncome: number;    // otros ingresos (4210, 4295, …)
+  netRevenue: number;     // ventas netas + otros ingresos
+  cogs: number;           // 6135
+  otherCosts: number;     // 6140, 6145, …
+  grossProfit: number;
+  expenses: number;       // grupo 5
+  netProfit: number;
+  margin: number;         // % sobre ventas netas
+  revenueRows: AccountBalance[];
+  costRows: AccountBalance[];
+  expenseRows: AccountBalance[];
+}
+
+/** P&G del periodo, priorizando el detalle de los ingresos por ventas. */
+export async function incomeStatement(from?: number, to?: number): Promise<IncomeStatement> {
+  const rows = await trialBalance(from, to);
+  const nonZero = rows.filter((r) => r.debit !== 0 || r.credit !== 0);
+  const revenueRows = nonZero.filter((r) => r.type === "ingreso");
+  const costRows = nonZero.filter((r) => r.type === "costo");
+  const expenseRows = nonZero.filter((r) => r.type === "gasto");
+
+  const val = (code: string) => revenueRows.find((r) => r.code === code)?.balance ?? 0;
+  const sales = val(ACC.revenue);
+  const returns = Math.abs(val(ACC.salesReturns));
+  const otherIncome = revenueRows
+    .filter((r) => r.code !== ACC.revenue && r.code !== ACC.salesReturns)
+    .reduce((a, r) => a + r.balance, 0);
+
+  const cogs = costRows.find((r) => r.code === ACC.cogs)?.balance ?? 0;
+  const otherCosts = costRows.filter((r) => r.code !== ACC.cogs).reduce((a, r) => a + r.balance, 0);
+  const expenses = expenseRows.reduce((a, r) => a + r.balance, 0);
+
+  const netRevenue = sales - returns + otherIncome;
+  const grossProfit = netRevenue - cogs - otherCosts;
+  const netProfit = grossProfit - expenses;
+
+  return {
+    sales, returns, otherIncome, netRevenue, cogs, otherCosts, grossProfit,
+    expenses, netProfit,
+    margin: netRevenue > 0 ? (netProfit / netRevenue) * 100 : 0,
+    revenueRows, costRows, expenseRows,
+  };
+}
+
+/** Ingresos por ventas registrados directamente en el módulo de ventas (control cruzado). */
+export async function salesIncome(from?: number, to?: number) {
+  const sales = (await db.sales.toArray()).filter(
+    (s) => s.status !== "voided" &&
+      (from === undefined || s.createdAt >= from) &&
+      (to === undefined || s.createdAt <= to),
+  );
+  const gross = sales.reduce((a, s) => a + s.total, 0);
+  const { base, tax } = await splitTax(gross);
+  const byMethod = new Map<string, number>();
+  for (const s of sales) byMethod.set(s.paymentMethod, (byMethod.get(s.paymentMethod) ?? 0) + s.total);
+  return { count: sales.length, gross, base, tax, byMethod: [...byMethod.entries()] };
+}
+
+/** Libro mayor de una cuenta con saldo corrido. */
+export async function ledger(code: string, from?: number, to?: number) {
+  const entries = (await db.journalEntries.toArray())
+    .filter((e) => (from === undefined || e.date >= from) && (to === undefined || e.date <= to))
+    .sort((a, b) => a.date - b.date);
+  let running = 0;
+  const rows: { date: number; number?: number; description: string; debit: number; credit: number; balance: number; thirdParty?: string }[] = [];
+  for (const e of entries) {
+    for (const l of e.lines) {
+      if (l.accountCode !== code) continue;
+      running += l.debit - l.credit;
+      rows.push({
+        date: e.date,
+        description: e.description,
+        debit: l.debit,
+        credit: l.credit,
+        balance: running,
+        ...(e.number !== undefined ? { number: e.number } : {}),
+        ...(l.thirdParty ?? e.thirdParty ? { thirdParty: (l.thirdParty ?? e.thirdParty)! } : {}),
+      });
+    }
+  }
+  return rows;
+}
+
+export function toCSV(rows: (string | number)[][]): string {
+  return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
 }

@@ -7,6 +7,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 import { Sheet, Field } from "./suppliers";
 import { receivePurchase, paySupplier } from "@/lib/erp";
+import { Attachments } from "@/components/Attachments";
 import { Plus, PackageCheck, Trash2, ShoppingBag, Minus, CircleDollarSign } from "lucide-react";
 import { toast } from "sonner";
 
@@ -302,6 +303,14 @@ function PurchaseDetail({ purchase, onClose }: { purchase: Purchase; onClose: ()
           ))}
         </div>
       )}
+
+      <Attachments
+        refType="purchase"
+        refId={live.id!}
+        title="Factura y soportes de la compra"
+        hint="Adjunta la factura del proveedor, BL, DUA o comprobantes de pago."
+      />
     </Sheet>
+
   );
 }

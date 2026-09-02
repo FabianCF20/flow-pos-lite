@@ -7,6 +7,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 import { Sheet, Field } from "./suppliers";
 import { payReceivable } from "@/lib/erp";
+import { Attachments } from "@/components/Attachments";
 import { HandCoins, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -132,6 +133,14 @@ function ReceivableDetail({ rec, onClose }: { rec: Receivable; onClose: () => vo
           ))}
         </div>
       )}
+
+      <Attachments
+        refType="ar_payment"
+        refId={live.id!}
+        title="Evidencias de pago"
+        hint="Sube consignaciones, transferencias o la factura de la venta a crédito."
+      />
     </Sheet>
+
   );
 }
