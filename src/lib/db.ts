@@ -360,6 +360,8 @@ class POSDB extends Dexie {
   arPayments!: Table<ArPayment, number>;
   accounts!: Table<Account, number>;
   journalEntries!: Table<JournalEntry, number>;
+  attachments!: Table<Attachment, number>;
+
 
   constructor() {
     super("pos_offline_db");
