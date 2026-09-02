@@ -323,6 +323,24 @@ export interface Employee {
   createdAt: number;
 }
 
+/** Documento soporte (factura, comprobante de pago, recibo) guardado localmente. */
+export type AttachmentRef =
+  | "sale" | "purchase" | "ap_payment" | "ar_payment" | "expense" | "journal" | "supplier" | "customer";
+
+export interface Attachment {
+  id?: number;
+  refType: AttachmentRef;
+  refId: number;
+  name: string;
+  mime: string;
+  size: number;
+  data: string;          // dataURL (imagen comprimida o PDF en base64)
+  note?: string;
+  userId?: number;
+  createdAt: number;
+}
+
+
 class POSDB extends Dexie {
   categories!: Table<Category, number>;
   products!: Table<Product, number>;
