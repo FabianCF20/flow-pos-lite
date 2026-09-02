@@ -482,7 +482,7 @@ export async function incomeStatement(from?: number, to?: number): Promise<Incom
 /** Ingresos por ventas registrados directamente en el módulo de ventas (control cruzado). */
 export async function salesIncome(from?: number, to?: number) {
   const sales = (await db.sales.toArray()).filter(
-    (s) => s.status !== "void" &&
+    (s) => s.status !== "voided" &&
       (from === undefined || s.createdAt >= from) &&
       (to === undefined || s.createdAt <= to),
   );
