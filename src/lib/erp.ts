@@ -315,10 +315,11 @@ export async function receivePurchase(purchase: Purchase, userId?: number): Prom
     description: `Compra #${purchase.number} — ${purchase.supplierName}`,
     refType: "purchase",
     refId: purchase.id!,
+    thirdParty: purchase.supplierName,
     ...(userId !== undefined ? { userId } : {}),
     lines: [
       { code: ACC.inventory, debit: purchase.subtotal },
-      { code: ACC.taxPayable, debit: purchase.tax },
+      { code: ACC.vatDeductible, debit: purchase.tax },
       { code: ACC.ap, credit: purchase.total },
     ],
   });
