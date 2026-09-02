@@ -85,10 +85,20 @@ export async function postEntry(opts: {
 }
 
 
+/** Separa un total en base gravable + IVA según la configuración de la empresa. */
+export async function splitTax(total: number): Promise<{ base: number; tax: number }> {
+  const s = await getSettings();
+  const rate = (s.taxRate ?? 0) / 100;
+  if (rate <= 0) return { base: Math.round(total), tax: 0 };
+  const base = Math.round(total / (1 + rate));
+  return { base, tax: Math.round(total) - base };
+}
+
 function paymentAccount(method: PaymentMethod): string {
   if (method === "card" || method === "transfer") return ACC.bank;
   return ACC.cash;
 }
+
 
 /* --------------------------------- Kardex ---------------------------------- */
 
