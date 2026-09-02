@@ -132,6 +132,14 @@ function ReceivableDetail({ rec, onClose }: { rec: Receivable; onClose: () => vo
           ))}
         </div>
       )}
+
+      <Attachments
+        refType="ar_payment"
+        refId={live.id!}
+        title="Evidencias de pago"
+        hint="Sube consignaciones, transferencias o la factura de la venta a crédito."
+      />
     </Sheet>
+
   );
 }
