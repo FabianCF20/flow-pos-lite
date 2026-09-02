@@ -232,13 +232,15 @@ export async function reverseSale(sale: Sale, userId?: number): Promise<void> {
     });
   }
   const isCredit = sale.paymentMethod === "credit";
+  const { base, tax } = await splitTax(sale.total);
   await postEntry({
     description: `Anulación venta #${sale.number}`,
     refType: "void",
     refId: sale.id!,
     ...(userId !== undefined ? { userId } : {}),
     lines: [
-      { code: ACC.revenue, debit: sale.total },
+      { code: ACC.salesReturns, debit: base },
+      { code: ACC.taxPayable, debit: tax },
       { code: isCredit ? ACC.ar : paymentAccount(sale.paymentMethod), credit: sale.total },
       { code: ACC.inventory, debit: cost },
       { code: ACC.cogs, credit: cost },
