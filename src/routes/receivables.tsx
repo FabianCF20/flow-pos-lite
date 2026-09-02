@@ -7,6 +7,7 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 import { Sheet, Field } from "./suppliers";
 import { payReceivable } from "@/lib/erp";
+import { Attachments } from "@/components/Attachments";
 import { HandCoins, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 
