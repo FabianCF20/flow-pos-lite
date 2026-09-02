@@ -302,6 +302,14 @@ function PurchaseDetail({ purchase, onClose }: { purchase: Purchase; onClose: ()
           ))}
         </div>
       )}
+
+      <Attachments
+        refType="purchase"
+        refId={live.id!}
+        title="Factura y soportes de la compra"
+        hint="Adjunta la factura del proveedor, BL, DUA o comprobantes de pago."
+      />
     </Sheet>
+
   );
 }
