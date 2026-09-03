@@ -302,7 +302,7 @@ function JournalCard({ entry, settings }: { entry: any; settings: any }) {
 function LedgerTab() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
   const accounts = useLiveQuery(async () => (await db.accounts.toArray()).sort((a, b) => a.code.localeCompare(b.code)), []);
-  const [code, setCode] = useState(ACC.revenue);
+  const [code, setCode] = useState<string>(ACC.revenue);
   const rows = useLiveQuery(async () => {
     await db.journalEntries.count();
     return ledger(code);
