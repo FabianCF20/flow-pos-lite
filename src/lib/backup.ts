@@ -48,6 +48,8 @@ export async function importBackup(file: File): Promise<void> {
     if (data.arPayments) await db.arPayments.bulkAdd(data.arPayments);
     if (data.accounts) await db.accounts.bulkAdd(data.accounts);
     if (data.journalEntries) await db.journalEntries.bulkAdd(data.journalEntries);
+    if (data.attachments) await db.attachments.bulkAdd(data.attachments);
+
   });
 }
 
