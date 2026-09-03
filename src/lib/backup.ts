@@ -2,8 +2,9 @@ import { db } from "./db";
 
 export async function exportBackup(): Promise<Blob> {
   const data = {
-    version: 2,
+    version: 4,
     exportedAt: Date.now(),
+    attachments: await db.attachments.toArray(),
     categories: await db.categories.toArray(),
     products: await db.products.toArray(),
     customers: await db.customers.toArray(),
@@ -47,6 +48,8 @@ export async function importBackup(file: File): Promise<void> {
     if (data.arPayments) await db.arPayments.bulkAdd(data.arPayments);
     if (data.accounts) await db.accounts.bulkAdd(data.accounts);
     if (data.journalEntries) await db.journalEntries.bulkAdd(data.journalEntries);
+    if (data.attachments) await db.attachments.bulkAdd(data.attachments);
+
   });
 }
 
