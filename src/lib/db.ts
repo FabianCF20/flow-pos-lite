@@ -125,7 +125,9 @@ export type UserRole = "admin" | "cashier";
 export interface User {
   id?: number;
   name: string;
-  pin: string;       // 4-6 digit PIN
+  pin: string;       // PIN local (heredado; vacío con acceso por correo)
+  email?: string;    // correo de Firebase
+  uid?: string;      // UID de Firebase
   role: UserRole;
   active: boolean;
   createdAt: number;
@@ -392,6 +394,9 @@ class POSDB extends Dexie {
     });
     this.version(4).stores({
       attachments: "++id, refType, refId, createdAt",
+    });
+    this.version(5).stores({
+      users: "++id, name, role, active, email, uid",
     });
 
   }
