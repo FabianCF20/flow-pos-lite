@@ -12,6 +12,7 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ADMIN_EMAIL, authErrorMessage, fbAuth, fbDb } from "./firebase";
+import { getInvite } from "./users";
 import { db, ensureSeed, type User, type UserRole } from "./db";
 
 interface Result {
