@@ -164,9 +164,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const profile = await loadProfile(fb);
         if (!profile.active) {
+          toast.error("Tu cuenta no está autorizada o fue desactivada");
           await signOut(fbAuth());
           return;
         }
+
         const local = await mirrorLocal(fb, profile);
         if (!mounted) return;
         setUser(local);
