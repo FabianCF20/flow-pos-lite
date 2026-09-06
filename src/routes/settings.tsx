@@ -178,7 +178,7 @@ function SettingsPage() {
         </Section>
 
         <Section title="Usuarios">
-          <UsersList users={users ?? []} currentId={user?.id} />
+          <UsersList currentEmail={user?.email?.toLowerCase()} isAdmin={user?.role === "admin"} />
         </Section>
 
         <Section title="Backup">
