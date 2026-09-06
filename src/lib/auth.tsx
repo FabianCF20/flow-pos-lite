@@ -74,12 +74,21 @@ async function loadProfile(fb: FbUser): Promise<{ name: string; role: UserRole; 
         active: d.active !== false,
       };
     }
+    // Primer ingreso: el rol viene de la invitación creada por un administrador.
+    if (!isAdmin) {
+      const invite = await getInvite(email);
+      if (!invite) return { ...fallback, active: false };
+      fallback.name = invite.name || fallback.name;
+      fallback.role = invite.role;
+      fallback.active = invite.active;
+    }
     await setDoc(ref, { ...fallback, email, createdAt: serverTimestamp() });
   } catch {
     // Sin conexión o reglas restringidas: usamos el perfil por defecto.
   }
   return fallback;
 }
+
 
 /** Refleja el usuario de la nube en la base local para conservar los IDs del ERP. */
 async function mirrorLocal(fb: FbUser, p: { name: string; role: UserRole; active: boolean }): Promise<User> {
