@@ -222,6 +222,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /** Primer ingreso de un usuario invitado: crea su contraseña. */
+  async function registerInvited(email: string, password: string): Promise<Result> {
+    try {
+      const cred = await createUserWithEmailAndPassword(fbAuth(), email, password);
+      const invite = await getInvite(email).catch(() => null);
+      if (!invite || !invite.active) {
+        await signOut(fbAuth()).catch(() => {});
+        return { ok: false, error: "Este correo no está autorizado. Pide una invitación al administrador" };
+      }
+      if (invite.name) await updateProfile(cred.user, { displayName: invite.name }).catch(() => {});
+      try {
+        await setDoc(doc(fbDb(), "users", cred.user.uid), {
+          name: invite.name || email.split("@")[0],
+          email,
+          role: invite.role,
+          active: true,
+          createdAt: serverTimestamp(),
+        });
+      } catch {}
+      setPendingEmail(email);
+      setAwaiting(true);
+      return await sendSecondFactor(email);
+    } catch (e) {
+      const code = (e as { code?: string }).code ?? "";
+      if (code === "auth/email-already-in-use") return { ok: false, error: authErrorMessage("auth/wrong-password") };
+      return { ok: false, error: authErrorMessage(code) };
+    }
+  }
+
   async function signIn(email: string, password: string): Promise<Result> {
     const clean = email.trim().toLowerCase();
     try {
@@ -236,9 +265,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (missing && clean === ADMIN_EMAIL.toLowerCase()) {
         return await bootstrapAdmin(clean, password);
       }
+      if (missing) return await registerInvited(clean, password);
       return { ok: false, error: authErrorMessage(code) };
     }
   }
+
 
   async function cancelSecondFactor() {
     setAwaiting(false);
