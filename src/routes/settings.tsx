@@ -15,7 +15,7 @@ export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
 function SettingsPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
-  const users = useLiveQuery(() => db.users.toArray(), []);
+  
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [s, setS] = useState<AppSettings | null>(null);
