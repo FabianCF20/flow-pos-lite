@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
-import { db, getSettings, type AppSettings, type User } from "@/lib/db";
+import { db, getSettings, type AppSettings } from "@/lib/db";
+import { listDirectory, inviteUser, updateDirectoryUser, removeDirectoryUser, type DirectoryUser } from "@/lib/users";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/AppShell";
 import { exportBackup, importBackup, downloadBlob } from "@/lib/backup";
