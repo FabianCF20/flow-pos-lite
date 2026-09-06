@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Reglas de seguridad del ERP: publícalas en Firebase Console → Firestore → Reglas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Perfiles: cada usuario lee el suyo y lo crea en su primer ingreso.
+    // Solo un administrador puede ver la lista, cambiar roles o desactivar cuentas.
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.auth.uid == uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Invitaciones: el usuario invitado puede leer la suya al registrarse.
+    match /invites/{email} {
+      allow get: if signedIn();
+      allow list, create, update, delete: if isAdmin();
+    }
+
+    // Datos del ERP (pendiente de sincronización): solo usuarios autenticados.
+    match /erp/{document=**} {
+      allow read, write: if signedIn();
+    }
+  }
+}

@@ -1,7 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
-import { db, getSettings, type AppSettings, type User } from "@/lib/db";
+import { db, getSettings, type AppSettings } from "@/lib/db";
+import { listDirectory, inviteUser, updateDirectoryUser, removeDirectoryUser, type DirectoryUser } from "@/lib/users";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/AppShell";
 import { exportBackup, importBackup, downloadBlob } from "@/lib/backup";
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
 function SettingsPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
-  const users = useLiveQuery(() => db.users.toArray(), []);
+  
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [s, setS] = useState<AppSettings | null>(null);
@@ -177,7 +178,7 @@ function SettingsPage() {
         </Section>
 
         <Section title="Usuarios">
-          <UsersList users={users ?? []} currentId={user?.id} />
+          <UsersList currentEmail={user?.email?.toLowerCase()} isAdmin={user?.role === "admin"} />
         </Section>
 
         <Section title="Backup">
@@ -198,52 +199,98 @@ function SettingsPage() {
   );
 }
 
-function UsersList({ users, currentId }: { users: User[]; currentId?: number }) {
+function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: boolean }) {
+  const [list, setList] = useState<DirectoryUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState(false);
-  const [name, setName] = useState(""); const [pin, setPin] = useState(""); const [role, setRole] = useState<"admin"|"cashier">("cashier");
+  const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [role, setRole] = useState<"admin"|"cashier">("cashier");
 
-  async function add() {
-    if (!name.trim() || pin.length < 4) { toast.error("Nombre y PIN (4+) requeridos"); return; }
-    await db.users.add({ name, pin, role, active: true, createdAt: Date.now() });
-    setName(""); setPin(""); setShow(false); toast.success("Usuario creado");
+  async function reload() {
+    try { setList(await listDirectory()); setError(null); }
+    catch { setError("No se pudo cargar la lista (revisa la conexión o los permisos)"); }
+    finally { setLoading(false); }
   }
-  async function remove(u: User) {
-    if (u.id === currentId) { toast.error("No puedes eliminar tu sesión"); return; }
-    if (!confirm(`¿Eliminar ${u.name}?`)) return;
-    await db.users.delete(u.id!); toast.success("Eliminado");
+  useEffect(() => { reload(); }, []);
+
+  async function invite() {
+    try {
+      await inviteUser(email, name, role);
+      toast.success("Invitación creada. El usuario define su contraseña al entrar");
+      setEmail(""); setName(""); setShow(false); reload();
+    } catch (e: any) { toast.error(e?.message ?? "No se pudo invitar"); }
   }
+  async function toggle(u: DirectoryUser) {
+    try { await updateDirectoryUser(u, { active: !u.active }); reload(); toast.success(u.active ? "Desactivado" : "Activado"); }
+    catch { toast.error("No se pudo actualizar"); }
+  }
+  async function changeRole(u: DirectoryUser, r: "admin"|"cashier") {
+    try { await updateDirectoryUser(u, { role: r }); reload(); toast.success("Rol actualizado"); }
+    catch { toast.error("No se pudo actualizar"); }
+  }
+  async function remove(u: DirectoryUser) {
+    if (u.email === currentEmail) { toast.error("No puedes quitar tu propia cuenta"); return; }
+    if (!confirm(`¿Quitar el acceso de ${u.name}?`)) return;
+    try { await removeDirectoryUser(u); reload(); toast.success("Acceso retirado"); }
+    catch (e: any) { toast.error(e?.message ?? "No se pudo quitar"); }
+  }
+
+  if (!isAdmin) return <p className="text-xs text-muted-foreground">Solo un administrador puede gestionar usuarios.</p>;
+  if (loading) return <p className="text-xs text-muted-foreground">Cargando usuarios…</p>;
 
   return (
     <div className="space-y-2">
-      {users.map((u) => (
-        <div key={u.id} className="rounded-lg bg-background border border-border p-3 flex items-center gap-3">
+      {error && <p className="text-xs text-destructive">{error}</p>}
+      {list.map((u) => (
+        <div key={u.key} className="rounded-lg bg-background border border-border p-3 flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-primary/15 grid place-items-center text-primary font-bold">{u.name[0]?.toUpperCase()}</div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium">{u.name} {u.id === currentId && <span className="text-xs text-muted-foreground">(tú)</span>}</div>
-            <div className="text-xs text-muted-foreground capitalize">{u.role}</div>
+            <div className="text-sm font-medium truncate">
+              {u.name} {u.email === currentEmail && <span className="text-xs text-muted-foreground">(tú)</span>}
+            </div>
+            <div className="text-xs text-muted-foreground truncate">{u.email}</div>
+            <div className="text-[11px] mt-0.5 flex gap-2">
+              {u.pending && <span className="text-gold">Pendiente de primer ingreso</span>}
+              {!u.active && <span className="text-destructive">Desactivado</span>}
+            </div>
           </div>
+          <select
+            value={u.role}
+            onChange={(e) => changeRole(u, e.target.value as any)}
+            className="h-9 px-2 rounded-lg bg-card border border-border text-xs"
+          >
+            <option value="cashier">Cajero</option>
+            <option value="admin">Administrador</option>
+          </select>
+          <button onClick={() => toggle(u)} className="text-xs text-muted-foreground hover:text-foreground underline">
+            {u.active ? "Desactivar" : "Activar"}
+          </button>
           <button onClick={() => remove(u)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
         </div>
       ))}
       {!show ? (
-        <button onClick={() => setShow(true)} className="w-full h-11 rounded-xl bg-card border border-border font-medium inline-flex items-center justify-center gap-2"><Plus className="h-4 w-4" /> Nuevo usuario</button>
+        <button onClick={() => setShow(true)} className="w-full h-11 rounded-xl bg-card border border-border font-medium inline-flex items-center justify-center gap-2"><Plus className="h-4 w-4" /> Invitar usuario</button>
       ) : (
         <div className="rounded-lg border border-border p-3 space-y-2">
+          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <input value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} placeholder="PIN" inputMode="numeric" maxLength={6} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <select value={role} onChange={(e) => setRole(e.target.value as any)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
             <option value="cashier">Cajero</option>
             <option value="admin">Administrador</option>
           </select>
+          <p className="text-[11px] text-muted-foreground">
+            El usuario entra con este correo y crea su contraseña en el primer ingreso; luego confirma el enlace enviado a su correo.
+          </p>
           <div className="flex gap-2">
             <button onClick={() => setShow(false)} className="flex-1 h-10 rounded-lg border border-border text-sm">Cancelar</button>
-            <button onClick={add} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Guardar</button>
+            <button onClick={invite} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Invitar</button>
           </div>
         </div>
       )}
     </div>
   );
 }
+
 
 function Section({ title, children }: any) {
   return <div className="rounded-xl bg-card border border-border p-4 space-y-3"><div className="font-semibold">{title}</div>{children}</div>;

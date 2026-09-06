@@ -12,7 +12,9 @@ import {
 } from "firebase/auth";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 import { ADMIN_EMAIL, authErrorMessage, fbAuth, fbDb } from "./firebase";
+import { getInvite } from "./users";
 import { db, ensureSeed, type User, type UserRole } from "./db";
+import { toast } from "sonner";
 
 interface Result {
   ok: boolean;
@@ -74,12 +76,21 @@ async function loadProfile(fb: FbUser): Promise<{ name: string; role: UserRole; 
         active: d.active !== false,
       };
     }
+    // Primer ingreso: el rol viene de la invitación creada por un administrador.
+    if (!isAdmin) {
+      const invite = await getInvite(email);
+      if (!invite) return { ...fallback, active: false };
+      fallback.name = invite.name || fallback.name;
+      fallback.role = invite.role;
+      fallback.active = invite.active;
+    }
     await setDoc(ref, { ...fallback, email, createdAt: serverTimestamp() });
   } catch {
     // Sin conexión o reglas restringidas: usamos el perfil por defecto.
   }
   return fallback;
 }
+
 
 /** Refleja el usuario de la nube en la base local para conservar los IDs del ERP. */
 async function mirrorLocal(fb: FbUser, p: { name: string; role: UserRole; active: boolean }): Promise<User> {
@@ -154,9 +165,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         const profile = await loadProfile(fb);
         if (!profile.active) {
+          toast.error("Tu cuenta no está autorizada o fue desactivada");
           await signOut(fbAuth());
           return;
         }
+
         const local = await mirrorLocal(fb, profile);
         if (!mounted) return;
         setUser(local);
@@ -212,6 +225,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /** Primer ingreso de un usuario invitado: crea su contraseña. */
+  async function registerInvited(email: string, password: string): Promise<Result> {
+    try {
+      const cred = await createUserWithEmailAndPassword(fbAuth(), email, password);
+      const invite = await getInvite(email).catch(() => null);
+      if (!invite || !invite.active) {
+        await signOut(fbAuth()).catch(() => {});
+        return { ok: false, error: "Este correo no está autorizado. Pide una invitación al administrador" };
+      }
+      if (invite.name) await updateProfile(cred.user, { displayName: invite.name }).catch(() => {});
+      try {
+        await setDoc(doc(fbDb(), "users", cred.user.uid), {
+          name: invite.name || email.split("@")[0],
+          email,
+          role: invite.role,
+          active: true,
+          createdAt: serverTimestamp(),
+        });
+      } catch {}
+      setPendingEmail(email);
+      setAwaiting(true);
+      return await sendSecondFactor(email);
+    } catch (e) {
+      const code = (e as { code?: string }).code ?? "";
+      if (code === "auth/email-already-in-use") return { ok: false, error: authErrorMessage("auth/wrong-password") };
+      return { ok: false, error: authErrorMessage(code) };
+    }
+  }
+
   async function signIn(email: string, password: string): Promise<Result> {
     const clean = email.trim().toLowerCase();
     try {
@@ -226,9 +268,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (missing && clean === ADMIN_EMAIL.toLowerCase()) {
         return await bootstrapAdmin(clean, password);
       }
+      if (missing) return await registerInvited(clean, password);
       return { ok: false, error: authErrorMessage(code) };
     }
   }
+
 
   async function cancelSecondFactor() {
     setAwaiting(false);
