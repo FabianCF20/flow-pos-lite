@@ -406,11 +406,83 @@ class POSDB extends Dexie {
     this.version(5).stores({
       users: "++id, name, role, active, email, uid",
     });
+    // v6: marcas de tiempo para sincronizar con la nube
+    this.version(6).stores({
+      products: "++id, name, sku, barcode, categoryId, active, updatedAt",
+      customers: "++id, name, doc, phone, city, active, updatedAt",
+      suppliers: "++id, name, nit, city, country, supplierType, active, updatedAt",
+    }).upgrade(async (tx) => {
+      const now = Date.now();
+      for (const name of ["products", "customers", "suppliers"]) {
+        await tx.table(name).toCollection().modify((r: any) => {
+          r.updatedAt = r.updatedAt ?? r.createdAt ?? now;
+        });
+      }
+    });
 
   }
 }
 
 export const db = new POSDB();
+
+/** Tablas que se sincronizan con la nube. */
+export const SYNCED_TABLES = ["products", "customers", "suppliers"] as const;
+export type SyncedTable = (typeof SYNCED_TABLES)[number];
+
+const TOMBSTONES_KEY = "erp.sync.tombstones";
+
+export interface Tombstone {
+  table: SyncedTable;
+  id: number;
+  deletedAt: number;
+}
+
+export function readTombstones(): Tombstone[] {
+  try {
+    const raw = localStorage.getItem(TOMBSTONES_KEY);
+    return raw ? (JSON.parse(raw) as Tombstone[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeTombstones(list: Tombstone[]) {
+  try {
+    localStorage.setItem(TOMBSTONES_KEY, JSON.stringify(list.slice(-500)));
+  } catch {}
+}
+
+function addTombstone(table: SyncedTable, id: number) {
+  const list = readTombstones().filter((t) => !(t.table === table && t.id === id));
+  list.push({ table, id, deletedAt: Date.now() });
+  writeTombstones(list);
+}
+
+/** Cuando aplicamos cambios que vienen de la nube no volvemos a marcarlos como pendientes. */
+let applyingRemote = false;
+export function withRemoteApply<T>(fn: () => Promise<T>): Promise<T> {
+  applyingRemote = true;
+  return fn().finally(() => {
+    applyingRemote = false;
+  });
+}
+
+for (const name of SYNCED_TABLES) {
+  const table = (db as any)[name] as Table<any, number>;
+  table.hook("creating", (_k, obj: any) => {
+    if (applyingRemote) return;
+    obj.updatedAt = Date.now();
+  });
+  table.hook("updating", (mods: any) => {
+    if (applyingRemote) return;
+    if ("updatedAt" in mods) return;
+    return { updatedAt: Date.now() };
+  });
+  table.hook("deleting", (key) => {
+    if (applyingRemote) return;
+    if (typeof key === "number") addTombstone(name, key);
+  });
+}
 
 /** Plan Único de Cuentas (PUC Colombia) simplificado para empresa importadora / comercializadora. */
 export const DEFAULT_ACCOUNTS: Omit<Account, "id">[] = [
