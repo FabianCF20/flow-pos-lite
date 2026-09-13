@@ -24,6 +24,8 @@ export interface Product {
   updatedAt?: number;
   /** Valor de updatedAt ya enviado a la nube. */
   syncedAt?: number;
+  /** Identificador del documento en la nube. */
+  remoteId?: string;
 }
 
 export type DocType = "CC" | "NIT" | "CE" | "PP" | "TI" | "NITE" | "PEP";
@@ -60,6 +62,7 @@ export interface Customer {
   createdAt: number;
   updatedAt?: number;
   syncedAt?: number;
+  remoteId?: string;
 }
 
 
@@ -198,6 +201,7 @@ export interface Supplier {
   createdAt: number;
   updatedAt?: number;
   syncedAt?: number;
+  remoteId?: string;
 }
 
 
@@ -408,9 +412,9 @@ class POSDB extends Dexie {
     });
     // v6: marcas de tiempo para sincronizar con la nube
     this.version(6).stores({
-      products: "++id, name, sku, barcode, categoryId, active, updatedAt",
-      customers: "++id, name, doc, phone, city, active, updatedAt",
-      suppliers: "++id, name, nit, city, country, supplierType, active, updatedAt",
+      products: "++id, name, sku, barcode, categoryId, active, updatedAt, remoteId",
+      customers: "++id, name, doc, phone, city, active, updatedAt, remoteId",
+      suppliers: "++id, name, nit, city, country, supplierType, active, updatedAt, remoteId",
     }).upgrade(async (tx) => {
       const now = Date.now();
       for (const name of ["products", "customers", "suppliers"]) {
