@@ -20,6 +20,10 @@ export interface Product {
   image?: string; // dataURL (base64) — foto del producto
   active: boolean;
   createdAt: number;
+  /** Última modificación (sincronización con la nube). */
+  updatedAt?: number;
+  /** Valor de updatedAt ya enviado a la nube. */
+  syncedAt?: number;
 }
 
 export type DocType = "CC" | "NIT" | "CE" | "PP" | "TI" | "NITE" | "PEP";
@@ -54,6 +58,8 @@ export interface Customer {
   notes?: string;
   active?: boolean;
   createdAt: number;
+  updatedAt?: number;
+  syncedAt?: number;
 }
 
 
@@ -190,6 +196,8 @@ export interface Supplier {
   notes?: string;
   active?: boolean;
   createdAt: number;
+  updatedAt?: number;
+  syncedAt?: number;
 }
 
 
