@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
+import { SyncStatus } from "@/components/SyncStatus";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
   Users, Settings, LogOut, MoreHorizontal, Tag, Truck, ShoppingBag,
@@ -215,6 +216,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="text-sm font-display font-semibold truncate">{sectionTitle}</span>
             </div>
             <div className="flex items-center gap-2">
+              <SyncStatus />
               <button
                 onClick={toggle}
                 aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}

@@ -11,6 +11,7 @@ import { useEffect } from "react";
 
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth";
+import { SyncProvider } from "@/lib/sync";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -155,10 +156,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <AppShell>
-          <Outlet />
-        </AppShell>
-        <Toaster richColors position="top-center" />
+        <SyncProvider>
+          <AppShell>
+            <Outlet />
+          </AppShell>
+          <Toaster richColors position="top-center" />
+        </SyncProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
