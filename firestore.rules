@@ -29,9 +29,13 @@ service cloud.firestore {
       allow list, create, update, delete: if isAdmin();
     }
 
-    // Datos del ERP (pendiente de sincronización): solo usuarios autenticados.
-    match /erp/{document=**} {
-      allow read, write: if signedIn();
+    // Datos del ERP sincronizados desde los dispositivos (productos, clientes, proveedores).
+    // Cualquier usuario autenticado del ERP puede leerlos y escribirlos; solo un
+    // administrador puede borrar documentos definitivamente (las bajas normales
+    // se marcan con deleted = true para que se propaguen a los demás dispositivos).
+    match /erp/{company}/{collection}/{docId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
     }
   }
 }
