@@ -511,6 +511,11 @@ class POSDB extends Dexie {
         });
       }
     });
+    // v7: devoluciones en ventas (notas crédito) y notas débito electrónicas
+    this.version(7).stores({
+      saleReturns: "++id, number, saleId, customerId, status, createdAt",
+      debitNotes: "++id, number, saleId, customerId, status, createdAt",
+    });
 
   }
 }
