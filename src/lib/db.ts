@@ -166,9 +166,15 @@ export interface AppSettings {
   factusPassword?: string;
   factusClientId?: string;
   factusClientSecret?: string;
-  factusNumberingRange?: number;   // range id from Factus dashboard
+  factusNumberingRange?: number;        // rango de numeración de facturas
+  factusCreditRange?: number;           // rango de numeración de notas crédito
+  factusDebitRange?: number;            // rango de numeración de notas débito
   factusDefaultDocType?: string;   // "CC" | "NIT" | "CE" | ...
   factusMunicipalityId?: number;   // default municipality
+  factusUnitMeasureId?: number;    // unidad de medida por defecto (70 = Unidad)
+  factusAutoInvoice?: boolean;     // emitir factura automáticamente al cerrar la venta
+  factusAutoCreditNote?: boolean;  // emitir nota crédito automáticamente al anular/devolver
+  factusTributeId?: number;        // tributo de los productos (1 = IVA)
 }
 
 // ===================== ERP =====================
