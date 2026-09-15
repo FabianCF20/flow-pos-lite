@@ -424,7 +424,8 @@ export interface Employee {
 
 /** Documento soporte (factura, comprobante de pago, recibo) guardado localmente. */
 export type AttachmentRef =
-  | "sale" | "purchase" | "ap_payment" | "ar_payment" | "expense" | "journal" | "supplier" | "customer";
+  | "sale" | "purchase" | "ap_payment" | "ar_payment" | "expense" | "journal" | "supplier" | "customer"
+  | "sale_return" | "debit_note";
 
 export interface Attachment {
   id?: number;
@@ -460,6 +461,8 @@ class POSDB extends Dexie {
   accounts!: Table<Account, number>;
   journalEntries!: Table<JournalEntry, number>;
   attachments!: Table<Attachment, number>;
+  saleReturns!: Table<SaleReturn, number>;
+  debitNotes!: Table<DebitNote, number>;
 
 
   constructor() {
