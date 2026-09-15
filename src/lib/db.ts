@@ -76,14 +76,19 @@ export interface SaleItem {
 
 export type PaymentMethod = "cash" | "card" | "transfer" | "credit" | "other";
 
+export type FactusDocKind = "invoice" | "credit_note" | "debit_note";
+
 export interface FactusInvoiceInfo {
   number?: string;         // e.g. SETP990000001
-  cufe?: string;
+  cufe?: string;           // CUFE (factura) o CUDE (notas)
   qr?: string;             // QR string or URL
   pdfUrl?: string;
   xmlUrl?: string;
   status?: string;         // validated, pending, error
   errorMessage?: string;
+  docKind?: FactusDocKind;
+  relatedNumber?: string;  // factura referenciada (notas)
+  validatedAt?: number;
   raw?: any;
   createdAt: number;
 }
@@ -161,9 +166,15 @@ export interface AppSettings {
   factusPassword?: string;
   factusClientId?: string;
   factusClientSecret?: string;
-  factusNumberingRange?: number;   // range id from Factus dashboard
+  factusNumberingRange?: number;        // rango de numeración de facturas
+  factusCreditRange?: number;           // rango de numeración de notas crédito
+  factusDebitRange?: number;            // rango de numeración de notas débito
   factusDefaultDocType?: string;   // "CC" | "NIT" | "CE" | ...
   factusMunicipalityId?: number;   // default municipality
+  factusUnitMeasureId?: number;    // unidad de medida por defecto (70 = Unidad)
+  factusAutoInvoice?: boolean;     // emitir factura automáticamente al cerrar la venta
+  factusAutoCreditNote?: boolean;  // emitir nota crédito automáticamente al anular/devolver
+  factusTributeId?: number;        // tributo de los productos (1 = IVA)
 }
 
 // ===================== ERP =====================
@@ -291,6 +302,80 @@ export interface ArPayment {
   createdAt: number;
 }
 
+/* ---------------- Devoluciones en ventas / notas crédito ---------------- */
+
+/** Conceptos de corrección DIAN para nota crédito. */
+export type CreditNoteConcept = 1 | 2 | 3 | 4 | 5;
+export const CREDIT_NOTE_CONCEPTS: { code: CreditNoteConcept; label: string }[] = [
+  { code: 1, label: "Devolución parcial de bienes" },
+  { code: 2, label: "Anulación de factura electrónica" },
+  { code: 3, label: "Rebaja o descuento total o parcial" },
+  { code: 4, label: "Ajuste de precio" },
+  { code: 5, label: "Otros" },
+];
+
+/** Conceptos de corrección DIAN para nota débito. */
+export type DebitNoteConcept = 1 | 2 | 3 | 4;
+export const DEBIT_NOTE_CONCEPTS: { code: DebitNoteConcept; label: string }[] = [
+  { code: 1, label: "Intereses" },
+  { code: 2, label: "Gastos por cobrar" },
+  { code: 3, label: "Cambio del valor" },
+  { code: 4, label: "Otros" },
+];
+
+export interface SaleReturnItem {
+  productId: number;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  total: number;
+  unitCost?: number;
+}
+
+export type SaleReturnStatus = "completed" | "cancelled";
+export type RefundMode = "cash" | "card" | "transfer" | "credit_balance";
+
+export interface SaleReturn {
+  id?: number;
+  number: number;               // consecutivo interno de devolución
+  saleId: number;
+  saleNumber: number;
+  customerId?: number;
+  customerName: string;
+  items: SaleReturnItem[];
+  subtotal: number;             // base gravable
+  tax: number;                  // IVA devuelto
+  total: number;                // total devuelto (con IVA)
+  concept: CreditNoteConcept;
+  reason?: string;
+  refundMode: RefundMode;       // cómo se devuelve el dinero
+  restock: boolean;             // ¿reingresa a inventario?
+  fullVoid: boolean;            // anulación total de la factura
+  status: SaleReturnStatus;
+  userId?: number;
+  createdAt: number;
+  factus?: FactusInvoiceInfo;   // nota crédito electrónica
+}
+
+/** Nota débito electrónica (cargos adicionales sobre una factura). */
+export interface DebitNote {
+  id?: number;
+  number: number;
+  saleId: number;
+  saleNumber: number;
+  customerId?: number;
+  customerName: string;
+  concept: DebitNoteConcept;
+  reason?: string;
+  base: number;
+  tax: number;
+  total: number;
+  status: "completed" | "cancelled";
+  userId?: number;
+  createdAt: number;
+  factus?: FactusInvoiceInfo;
+}
+
 export type AccountType = "activo" | "pasivo" | "patrimonio" | "ingreso" | "gasto" | "costo";
 export interface Account {
   id?: number;
@@ -339,7 +424,8 @@ export interface Employee {
 
 /** Documento soporte (factura, comprobante de pago, recibo) guardado localmente. */
 export type AttachmentRef =
-  | "sale" | "purchase" | "ap_payment" | "ar_payment" | "expense" | "journal" | "supplier" | "customer";
+  | "sale" | "purchase" | "ap_payment" | "ar_payment" | "expense" | "journal" | "supplier" | "customer"
+  | "sale_return" | "debit_note";
 
 export interface Attachment {
   id?: number;
@@ -375,6 +461,8 @@ class POSDB extends Dexie {
   accounts!: Table<Account, number>;
   journalEntries!: Table<JournalEntry, number>;
   attachments!: Table<Attachment, number>;
+  saleReturns!: Table<SaleReturn, number>;
+  debitNotes!: Table<DebitNote, number>;
 
 
   constructor() {
@@ -422,6 +510,11 @@ class POSDB extends Dexie {
           r.updatedAt = r.updatedAt ?? r.createdAt ?? now;
         });
       }
+    });
+    // v7: devoluciones en ventas (notas crédito) y notas débito electrónicas
+    this.version(7).stores({
+      saleReturns: "++id, number, saleId, customerId, status, createdAt",
+      debitNotes: "++id, number, saleId, customerId, status, createdAt",
     });
 
   }
