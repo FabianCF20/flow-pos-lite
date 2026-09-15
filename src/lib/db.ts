@@ -76,14 +76,19 @@ export interface SaleItem {
 
 export type PaymentMethod = "cash" | "card" | "transfer" | "credit" | "other";
 
+export type FactusDocKind = "invoice" | "credit_note" | "debit_note";
+
 export interface FactusInvoiceInfo {
   number?: string;         // e.g. SETP990000001
-  cufe?: string;
+  cufe?: string;           // CUFE (factura) o CUDE (notas)
   qr?: string;             // QR string or URL
   pdfUrl?: string;
   xmlUrl?: string;
   status?: string;         // validated, pending, error
   errorMessage?: string;
+  docKind?: FactusDocKind;
+  relatedNumber?: string;  // factura referenciada (notas)
+  validatedAt?: number;
   raw?: any;
   createdAt: number;
 }
