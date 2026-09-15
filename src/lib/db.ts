@@ -302,6 +302,80 @@ export interface ArPayment {
   createdAt: number;
 }
 
+/* ---------------- Devoluciones en ventas / notas crédito ---------------- */
+
+/** Conceptos de corrección DIAN para nota crédito. */
+export type CreditNoteConcept = 1 | 2 | 3 | 4 | 5;
+export const CREDIT_NOTE_CONCEPTS: { code: CreditNoteConcept; label: string }[] = [
+  { code: 1, label: "Devolución parcial de bienes" },
+  { code: 2, label: "Anulación de factura electrónica" },
+  { code: 3, label: "Rebaja o descuento total o parcial" },
+  { code: 4, label: "Ajuste de precio" },
+  { code: 5, label: "Otros" },
+];
+
+/** Conceptos de corrección DIAN para nota débito. */
+export type DebitNoteConcept = 1 | 2 | 3 | 4;
+export const DEBIT_NOTE_CONCEPTS: { code: DebitNoteConcept; label: string }[] = [
+  { code: 1, label: "Intereses" },
+  { code: 2, label: "Gastos por cobrar" },
+  { code: 3, label: "Cambio del valor" },
+  { code: 4, label: "Otros" },
+];
+
+export interface SaleReturnItem {
+  productId: number;
+  name: string;
+  qty: number;
+  unitPrice: number;
+  total: number;
+  unitCost?: number;
+}
+
+export type SaleReturnStatus = "completed" | "cancelled";
+export type RefundMode = "cash" | "card" | "transfer" | "credit_balance";
+
+export interface SaleReturn {
+  id?: number;
+  number: number;               // consecutivo interno de devolución
+  saleId: number;
+  saleNumber: number;
+  customerId?: number;
+  customerName: string;
+  items: SaleReturnItem[];
+  subtotal: number;             // base gravable
+  tax: number;                  // IVA devuelto
+  total: number;                // total devuelto (con IVA)
+  concept: CreditNoteConcept;
+  reason?: string;
+  refundMode: RefundMode;       // cómo se devuelve el dinero
+  restock: boolean;             // ¿reingresa a inventario?
+  fullVoid: boolean;            // anulación total de la factura
+  status: SaleReturnStatus;
+  userId?: number;
+  createdAt: number;
+  factus?: FactusInvoiceInfo;   // nota crédito electrónica
+}
+
+/** Nota débito electrónica (cargos adicionales sobre una factura). */
+export interface DebitNote {
+  id?: number;
+  number: number;
+  saleId: number;
+  saleNumber: number;
+  customerId?: number;
+  customerName: string;
+  concept: DebitNoteConcept;
+  reason?: string;
+  base: number;
+  tax: number;
+  total: number;
+  status: "completed" | "cancelled";
+  userId?: number;
+  createdAt: number;
+  factus?: FactusInvoiceInfo;
+}
+
 export type AccountType = "activo" | "pasivo" | "patrimonio" | "ingreso" | "gasto" | "costo";
 export interface Account {
   id?: number;
