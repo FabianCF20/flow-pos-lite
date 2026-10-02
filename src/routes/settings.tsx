@@ -10,6 +10,7 @@ import { isBluetoothSupported, pickPrinter, printText } from "@/lib/printer";
 import { Download, Upload, Printer, Plus, Trash2, LogOut, FileCheck2, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { testFactusAuth, isFactusConfigured } from "@/lib/factus";
+import { FactusExtra } from "@/components/FactusExtra";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -151,6 +152,7 @@ function SettingsPage() {
                 />
               </label>
 
+              <FactusExtra s={s} setS={setS} />
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   onClick={save}

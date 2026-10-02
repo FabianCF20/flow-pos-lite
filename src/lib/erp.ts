@@ -1,4 +1,5 @@
 import {
+  type SaleReturn, type SaleReturnItem, type RefundMode, type CreditNoteConcept, type DebitNote, type DebitNoteConcept,
   db, getDefaultWarehouseId, getSettings, type Account, type JournalEntry, type JournalLine,
   type Purchase, type Sale, type StockMove, type StockMoveType, type PaymentMethod,
 } from "./db";
@@ -520,4 +521,181 @@ export async function ledger(code: string, from?: number, to?: number) {
 
 export function toCSV(rows: (string | number)[][]): string {
   return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+}
+
+/* ------------------------ Devoluciones / notas crédito ------------------------ */
+
+
+/** Cantidades ya devueltas por producto para una venta. */
+export async function returnedQtyBySale(saleId: number): Promise<Map<number, number>> {
+  const rets = await db.saleReturns.where("saleId").equals(saleId).toArray();
+  const map = new Map<number, number>();
+  for (const r of rets) {
+    if (r.status !== "completed") continue;
+    for (const it of r.items) map.set(it.productId, (map.get(it.productId) ?? 0) + it.qty);
+  }
+  return map;
+}
+
+function refundAccount(mode: RefundMode): string {
+  if (mode === "card" || mode === "transfer") return ACC.bank;
+  if (mode === "credit_balance") return "2380"; // saldo a favor del cliente
+  return ACC.cash;
+}
+
+/**
+ * Registra una devolución en ventas: kardex, stock, asiento contable,
+ * ajuste de cartera y, si es total, anula la venta.
+ */
+export async function createSaleReturn(input: {
+  sale: Sale;
+  items: SaleReturnItem[];
+  concept: CreditNoteConcept;
+  reason?: string;
+  refundMode: RefundMode;
+  restock: boolean;
+  userId?: number;
+}): Promise<SaleReturn> {
+  const { sale } = input;
+  if (sale.status === "voided") throw new Error("La venta ya está anulada");
+  const items = input.items.filter((i) => i.qty > 0);
+  if (!items.length) throw new Error("Selecciona al menos un producto a devolver");
+
+  const already = await returnedQtyBySale(sale.id!);
+  for (const it of items) {
+    const sold = sale.items.filter((s) => s.productId === it.productId).reduce((a, s) => a + s.qty, 0);
+    if (it.qty + (already.get(it.productId) ?? 0) > sold) {
+      throw new Error(`Cantidad a devolver de "${it.name}" supera lo vendido`);
+    }
+  }
+
+  const total = Math.round(items.reduce((a, i) => a + i.total, 0));
+  const { base, tax } = await splitTax(total);
+  let customerName = "Cliente ocasional";
+  if (sale.customerId) {
+    const c = await db.customers.get(sale.customerId);
+    if (c) customerName = c.name;
+  }
+
+  // ¿Devuelve todo lo vendido? → anulación total
+  const totalSold = sale.items.reduce((a, s) => a + s.qty, 0);
+  const totalReturned = [...already.values()].reduce((a, n) => a + n, 0) + items.reduce((a, i) => a + i.qty, 0);
+  const fullVoid = totalReturned >= totalSold;
+
+  const number = (await db.saleReturns.count()) + 1;
+  let cost = 0;
+  const withCost: SaleReturnItem[] = [];
+  for (const it of items) {
+    const p = await db.products.get(it.productId);
+    const unitCost = p?.cost ?? 0;
+    cost += unitCost * it.qty;
+    withCost.push({ ...it, unitCost });
+  }
+
+  const ret: SaleReturn = {
+    number, saleId: sale.id!, saleNumber: sale.number, customerName,
+    items: withCost, subtotal: base, tax, total,
+    concept: fullVoid && input.concept === 1 ? 2 : input.concept,
+    refundMode: input.refundMode, restock: input.restock, fullVoid,
+    status: "completed", createdAt: Date.now(),
+    ...(sale.customerId !== undefined ? { customerId: sale.customerId } : {}),
+    ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.userId !== undefined ? { userId: input.userId } : {}),
+  };
+  const id = await db.saleReturns.add(ret);
+  ret.id = id;
+
+  // Inventario
+  const affectsGoods = ret.concept === 1 || ret.concept === 2;
+  if (input.restock && affectsGoods) {
+    const warehouseId = await getDefaultWarehouseId();
+    for (const it of withCost) {
+      const p = await db.products.get(it.productId);
+      if (p?.trackStock) await db.products.update(it.productId, { stock: p.stock + it.qty });
+      await addStockMove({
+        productId: it.productId, productName: it.name, warehouseId, type: "in", qty: it.qty,
+        ...(it.unitCost !== undefined ? { unitCost: it.unitCost } : {}),
+        refType: "void", refId: sale.id!,
+        note: `Devolución #${number} de venta #${sale.number}`,
+        ...(input.userId !== undefined ? { userId: input.userId } : {}),
+      });
+    }
+  }
+
+  // Cartera: si la venta fue a crédito, la devolución descuenta el saldo pendiente
+  let creditAccount = refundAccount(input.refundMode);
+  if (sale.paymentMethod === "credit") {
+    const rec = (await db.receivables.where("saleId").equals(sale.id!).toArray())[0];
+    if (rec?.id) {
+      const pending = rec.total - rec.paid;
+      const applied = Math.min(pending, total);
+      const newTotal = rec.total - applied;
+      await db.receivables.update(rec.id, {
+        total: newTotal,
+        status: rec.paid >= newTotal ? (newTotal <= 0 ? "cancelled" : "paid") : "open",
+      });
+      if (applied >= total) creditAccount = ACC.ar;
+    }
+  }
+
+  await postEntry({
+    description: `Nota crédito / devolución #${number} — venta #${sale.number}`,
+    refType: "sale_return", refId: id, thirdParty: customerName,
+    ...(input.userId !== undefined ? { userId: input.userId } : {}),
+    lines: [
+      { code: ACC.salesReturns, debit: base },
+      { code: ACC.taxPayable, debit: tax },
+      { code: creditAccount, credit: total },
+      ...(input.restock && affectsGoods
+        ? [{ code: ACC.inventory, debit: cost }, { code: ACC.cogs, credit: cost }]
+        : []),
+    ],
+  });
+
+  if (fullVoid) await db.sales.update(sale.id!, { status: "voided" });
+  return ret;
+}
+
+/** Registra una nota débito (cargo adicional) sobre una venta. */
+export async function createDebitNote(input: {
+  sale: Sale; concept: DebitNoteConcept; reason?: string; total: number; userId?: number;
+}): Promise<DebitNote> {
+  const { sale } = input;
+  if (input.total <= 0) throw new Error("Valor inválido");
+  const total = Math.round(input.total);
+  const { base, tax } = await splitTax(total);
+  let customerName = "Cliente ocasional";
+  if (sale.customerId) {
+    const c = await db.customers.get(sale.customerId);
+    if (c) customerName = c.name;
+  }
+  const number = (await db.debitNotes.count()) + 1;
+  const note: DebitNote = {
+    number, saleId: sale.id!, saleNumber: sale.number, customerName,
+    concept: input.concept, base, tax, total, status: "completed", createdAt: Date.now(),
+    ...(sale.customerId !== undefined ? { customerId: sale.customerId } : {}),
+    ...(input.reason ? { reason: input.reason } : {}),
+    ...(input.userId !== undefined ? { userId: input.userId } : {}),
+  };
+  const id = await db.debitNotes.add(note);
+  note.id = id;
+
+  // El cargo queda en cartera del cliente
+  await db.receivables.add({
+    saleId: sale.id!, saleNumber: sale.number,
+    ...(sale.customerId !== undefined ? { customerId: sale.customerId } : {}),
+    customerName, total, paid: 0, status: "open",
+    dueDate: Date.now() + 30 * 86400000, createdAt: Date.now(),
+  });
+  await postEntry({
+    description: `Nota débito #${number} — venta #${sale.number}`,
+    refType: "debit_note", refId: id, thirdParty: customerName,
+    ...(input.userId !== undefined ? { userId: input.userId } : {}),
+    lines: [
+      { code: ACC.ar, debit: total },
+      { code: input.concept === 1 ? "4210" : ACC.revenue, credit: base },
+      { code: ACC.taxPayable, credit: tax },
+    ],
+  });
+  return note;
 }
