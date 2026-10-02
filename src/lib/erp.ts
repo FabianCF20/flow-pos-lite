@@ -1,4 +1,5 @@
 import {
+  type SaleReturn, type SaleReturnItem, type RefundMode, type CreditNoteConcept, type DebitNote, type DebitNoteConcept,
   db, getDefaultWarehouseId, getSettings, type Account, type JournalEntry, type JournalLine,
   type Purchase, type Sale, type StockMove, type StockMoveType, type PaymentMethod,
 } from "./db";
@@ -524,7 +525,6 @@ export function toCSV(rows: (string | number)[][]): string {
 
 /* ------------------------ Devoluciones / notas crédito ------------------------ */
 
-import type { SaleReturn, SaleReturnItem, RefundMode, CreditNoteConcept, DebitNote, DebitNoteConcept } from "./db";
 
 /** Cantidades ya devueltas por producto para una venta. */
 export async function returnedQtyBySale(saleId: number): Promise<Map<number, number>> {
