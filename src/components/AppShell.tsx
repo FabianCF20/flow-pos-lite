@@ -6,7 +6,7 @@ import { SyncStatus } from "@/components/SyncStatus";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
   Users, Settings, LogOut, MoreHorizontal, Tag, Truck, ShoppingBag,
-  Boxes, HandCoins, Landmark, Sun, Moon, Ship,
+  Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2,
 } from "lucide-react";
 
 const primaryNavAdmin = [
@@ -33,6 +33,7 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/", label: "Inicio", icon: LayoutDashboard },
       { to: "/pos", label: "Vender", icon: ShoppingCart },
       { to: "/sales", label: "Ventas", icon: BarChart3 },
+      { to: "/returns", label: "Devoluciones y notas", icon: Undo2 },
       { to: "/receivables", label: "Cartera", icon: HandCoins },
       { to: "/customers", label: "Clientes", icon: Users },
     ],
@@ -73,6 +74,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/": "Panel general",
   "/pos": "Punto de venta",
   "/sales": "Ventas",
+  "/returns": "Devoluciones y notas",
   "/receivables": "Cartera",
   "/customers": "Clientes",
   "/purchases": "Compras e importaciones",
