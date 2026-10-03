@@ -6,4 +6,5 @@
 - [x] Gestión de usuarios (invitar / activar / desactivar / rol) desde Ajustes con Firebase
 - [x] Reglas de seguridad de Firestore por rol (`firestore.rules`)
 - [x] Sincronizar productos, clientes y proveedores con Firestore (caché offline, conflictos por `updatedAt`, borrados propagados)
+- [x] Factus: facturas, notas crédito (devoluciones/anulaciones), notas débito, rangos y catálogos
 - [ ] Sincronizar ventas, compras, cartera, contabilidad y adjuntos con Firestore
