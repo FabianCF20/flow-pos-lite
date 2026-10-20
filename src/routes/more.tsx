@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark } from "lucide-react";
+import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/more")({ component: MorePage });
@@ -15,6 +15,7 @@ function MorePage() {
     { to: "/purchases", icon: ShoppingBag, label: "Compras" },
     { to: "/suppliers", icon: Truck, label: "Proveedores" },
     { to: "/inventory", icon: Boxes, label: "Inventario" },
+    { to: "/production", icon: Factory, label: "Producción" },
     { to: "/accounting", icon: Landmark, label: "Contabilidad" },
     { to: "/categories", icon: Tag, label: "Categorías" },
     { to: "/products", icon: Package, label: "Productos" },

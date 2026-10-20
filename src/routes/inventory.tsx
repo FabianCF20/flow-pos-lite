@@ -29,6 +29,7 @@ function InventoryPage() {
   const [tab, setTab] = useState<Tab>("stock");
   const products = useLiveQuery(async () => (await db.products.toArray()).filter((p) => p.active), []);
   const warehouses = useLiveQuery(() => db.warehouses.toArray(), []);
+  const measures = useLiveQuery(() => db.measures.toArray(), []);
   const moves = useLiveQuery(async () => (await db.stockMoves.toArray()).sort((a, b) => b.createdAt - a.createdAt).slice(0, 200), []);
   const [adjusting, setAdjusting] = useState(false);
   const [transferring, setTransferring] = useState(false);
@@ -75,7 +76,7 @@ function InventoryPage() {
                   <div className="text-sm font-medium truncate">{p.name}</div>
                   <div className="text-xs text-muted-foreground">Costo {formatMoney(p.cost ?? 0, settings)} · Venta {formatMoney(p.price, settings)}</div>
                 </div>
-                <div className={`text-sm font-semibold ${p.trackStock && p.stock <= 5 ? "text-warning" : ""}`}>{p.stock} u.</div>
+                <div className={`text-sm font-semibold ${p.trackStock && p.stock <= 5 ? "text-warning" : ""}`}>{p.stock} {measures?.find(m => m.id === p.measureId)?.symbol ?? "u"}</div>
               </div>
               {(warehouses?.length ?? 0) > 1 && (
                 <div className="mt-2 flex flex-wrap gap-1.5">
