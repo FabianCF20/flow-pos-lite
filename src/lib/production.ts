@@ -54,7 +54,9 @@ export async function saveMeasure(input: Measure) {
 }
 
 export async function assertProductMeasureChange(product: Product | null, measureId: number | undefined) {
-  if (!product || product.measureId === measureId || product.measureId === undefined) return;
+  if (!product || product.measureId === measureId) return;
+  const baseId = (await db.measures.where("symbol").equals("u").first())?.id;
+  if ((product.measureId ?? baseId) === (measureId ?? baseId)) return;
   const referenced = (await db.productionRecipes.toArray()).some(r => r.productId === product.id || r.materials.some(m => m.productId === product.id));
   if (product.stock !== 0 || referenced) throw new Error("No cambies la medida de un producto con existencias o fórmulas; crea otro producto");
 }
