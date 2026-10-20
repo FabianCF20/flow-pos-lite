@@ -1,16 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { db, getSettings, type Product } from "@/lib/db";
 import { formatMoney } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 import { Plus, Search, X, Trash2, Edit3, Camera, ImagePlus, Package, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { fileToCompressedDataURL } from "@/lib/image";
+import { assertProductMeasureChange, ensureDefaultMeasure } from "@/lib/production";
 
 export const Route = createFileRoute("/products")({ component: ProductsPage });
 
 function ProductsPage() {
+  useEffect(() => { ensureDefaultMeasure().catch(() => {}); }, []);
   const products = useLiveQuery(() => db.products.toArray(), []);
   const categories = useLiveQuery(() => db.categories.toArray(), []);
   const settings = useLiveQuery(() => getSettings(), [], undefined);
@@ -110,6 +112,8 @@ function ProductsPage() {
 }
 
 function ProductForm({ product, categories, onClose, onSaved }: any) {
+  const measures = useLiveQuery(() => db.measures.toArray(), []) ?? [];
+  const [measureId, setMeasureId] = useState<number | undefined>(product?.measureId);
   const [name, setName] = useState(product?.name ?? "");
   const [price, setPrice] = useState(String(product?.price ?? ""));
   const [cost, setCost] = useState(String(product?.cost ?? ""));
@@ -127,12 +131,15 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
   async function save() {
     if (!name.trim()) { toast.error("Nombre requerido"); return; }
     if (!categoryId) { toast.error("Selecciona una categoría"); return; }
+    try { await assertProductMeasureChange(product, measureId); }
+    catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo cambiar la medida"); return; }
     const data: Product = {
       name: name.trim(),
       price: Number(price) || 0,
       cost: cost ? Number(cost) : undefined,
       stock: Number(stock) || 0,
       trackStock,
+      measureId,
       barcode: barcode || undefined,
       sku: sku || undefined,
       categoryId,
@@ -254,6 +261,12 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
           {trackStock && (
             <Field label="Stock actual"><input type="number" inputMode="numeric" value={stock} onChange={(e) => setStock(e.target.value)} className="ipt text-right" /></Field>
           )}
+          <Field label="Medida de inventario y costo">
+            <select value={measureId ?? ""} onChange={e => setMeasureId(e.target.value ? Number(e.target.value) : undefined)} className="ipt">
+              <option value="">Unidad (u)</option>
+              {measures.filter(m => m.symbol !== "u").map(m => <option key={m.id} value={m.id}>{m.name} ({m.symbol})</option>)}
+            </select>
+          </Field>
 
           <div className="grid grid-cols-2 gap-3">
             <Field label="Código de barras"><input value={barcode} onChange={(e) => setBarcode(e.target.value)} className="ipt" /></Field>

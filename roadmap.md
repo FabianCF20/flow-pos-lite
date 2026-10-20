@@ -8,3 +8,4 @@
 - [x] Sincronizar productos, clientes y proveedores con Firestore (caché offline, conflictos por `updatedAt`, borrados propagados)
 - [x] Factus: facturas, notas crédito (devoluciones/anulaciones), notas débito, rangos y catálogos
 - [ ] Sincronizar ventas, compras, cartera, contabilidad y adjuntos con Firestore
+- [ ] Panel de producción: medidas editables, fórmulas, consumo de materiales e ingreso de terminados.

@@ -15,6 +15,7 @@ export interface Product {
   cost?: number;        // unit cost
   stock: number;
   trackStock: boolean;
+  measureId?: number; // unidad en la que se expresa stock y costo
   categoryId?: number;
   imageEmoji?: string;
   image?: string; // dataURL (base64) — foto del producto
@@ -234,7 +235,7 @@ export interface StockMove {
   qty: number;              // siempre positivo
   unitCost?: number;
   balanceAfter?: number;    // saldo del producto en la bodega
-  refType?: "sale" | "purchase" | "adjust" | "transfer" | "void";
+  refType?: "sale" | "purchase" | "adjust" | "transfer" | "void" | "production";
   refId?: number;
   note?: string;
   userId?: number;
@@ -441,6 +442,61 @@ export interface Attachment {
 }
 
 
+export interface Measure {
+  id?: number;
+  name: string;
+  symbol: string;
+  group: string;
+  factor: number; // equivalencia respecto a la unidad base del grupo
+}
+
+export interface RecipeMaterial {
+  productId: number;
+  qty: number;
+  measureId: number;
+}
+
+export interface ProductionRecipe {
+  id?: number;
+  name: string;
+  productId: number;
+  outputQty: number;
+  outputMeasureId: number;
+  materials: RecipeMaterial[];
+  updatedAt: number;
+}
+
+export interface ProductionMaterialSnapshot {
+  productId: number;
+  name: string;
+  qty: number;
+  measure: string;
+  stockQty: number;
+  stockMeasure: string;
+  unitCost: number;
+}
+
+export interface ProductionOrder {
+  id?: number;
+  recipeId: number;
+  recipeName: string;
+  productId: number;
+  productName: string;
+  qty: number;
+  measure: string;
+  stockQty: number;
+  stockMeasure: string;
+  materials: ProductionMaterialSnapshot[];
+  warehouseId: number;
+  status: "draft" | "completed" | "cancelled";
+  totalCost: number;
+  notes?: string;
+  userId?: number;
+  userName?: string;
+  createdAt: number;
+  completedAt?: number;
+}
+
 class POSDB extends Dexie {
   categories!: Table<Category, number>;
   products!: Table<Product, number>;
@@ -463,6 +519,9 @@ class POSDB extends Dexie {
   attachments!: Table<Attachment, number>;
   saleReturns!: Table<SaleReturn, number>;
   debitNotes!: Table<DebitNote, number>;
+  measures!: Table<Measure, number>;
+  productionRecipes!: Table<ProductionRecipe, number>;
+  productionOrders!: Table<ProductionOrder, number>;
 
 
   constructor() {
@@ -515,6 +574,11 @@ class POSDB extends Dexie {
     this.version(7).stores({
       saleReturns: "++id, number, saleId, customerId, status, createdAt",
       debitNotes: "++id, number, saleId, customerId, status, createdAt",
+    });
+    this.version(8).stores({
+      measures: "++id, &symbol, group",
+      productionRecipes: "++id, productId, name",
+      productionOrders: "++id, recipeId, productId, status, createdAt",
     });
 
   }
