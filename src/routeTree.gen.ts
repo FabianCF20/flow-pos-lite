@@ -19,6 +19,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as PosRouteImport } from './routes/pos'
+import { Route as ProductionRouteImport } from './routes/production'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as PurchasesRouteImport } from './routes/purchases'
 import { Route as ReceivablesRouteImport } from './routes/receivables'
@@ -80,6 +81,11 @@ const MoreRoute = MoreRouteImport.update({
 const PosRoute = PosRouteImport.update({
   id: '/pos',
   path: '/pos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProductionRoute = ProductionRouteImport.update({
+  id: '/production',
+  path: '/production',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductsRoute = ProductsRouteImport.update({
@@ -157,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
+  '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
   '/purchases': typeof PurchasesRoute
   '/receivables': typeof ReceivablesRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
+  '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
   '/purchases': typeof PurchasesRoute
   '/receivables': typeof ReceivablesRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
+  '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
   '/purchases': typeof PurchasesRoute
   '/receivables': typeof ReceivablesRoute
@@ -232,6 +241,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/more'
     | '/pos'
+    | '/production'
     | '/products'
     | '/purchases'
     | '/receivables'
@@ -256,6 +266,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/more'
     | '/pos'
+    | '/production'
     | '/products'
     | '/purchases'
     | '/receivables'
@@ -280,6 +291,7 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/more'
     | '/pos'
+    | '/production'
     | '/products'
     | '/purchases'
     | '/receivables'
@@ -305,6 +317,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   MoreRoute: typeof MoreRoute
   PosRoute: typeof PosRoute
+  ProductionRoute: typeof ProductionRoute
   ProductsRoute: typeof ProductsRoute
   PurchasesRoute: typeof PurchasesRoute
   ReceivablesRoute: typeof ReceivablesRoute
@@ -389,6 +402,13 @@ declare module '@tanstack/react-router' {
       path: '/pos'
       fullPath: '/pos'
       preLoaderRoute: typeof PosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/production': {
+      id: '/production'
+      path: '/production'
+      fullPath: '/production'
+      preLoaderRoute: typeof ProductionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/products': {
@@ -489,6 +509,7 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   MoreRoute: MoreRoute,
   PosRoute: PosRoute,
+  ProductionRoute: ProductionRoute,
   ProductsRoute: ProductsRoute,
   PurchasesRoute: PurchasesRoute,
   ReceivablesRoute: ReceivablesRoute,
