@@ -9,3 +9,6 @@
 - [x] Factus: facturas, notas crédito (devoluciones/anulaciones), notas débito, rangos y catálogos
 - [ ] Sincronizar ventas, compras, cartera, contabilidad y adjuntos con Firestore
 - [ ] Panel de producción: medidas editables, fórmulas, consumo de materiales e ingreso de terminados.
+- [ ] Equivalencias encadenadas entre medidas y selección flexible de unidades de producción.
+- [ ] Adaptar todas las vistas a computadores sin perder el uso móvil.
+- [ ] Verificar conversiones, inventario y pantallas con pruebas.

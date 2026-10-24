@@ -35,7 +35,25 @@ export async function saveMeasure(input: Measure) {
   if (!data.name || !data.symbol || !data.group) throw new Error("Completa nombre, símbolo y grupo");
   positive(data.factor, "Equivalencia");
   return db.transaction("rw", [db.measures, db.products, db.productionRecipes, db.productionOrders], async () => {
-    const duplicate = (await db.measures.toArray()).find(m => m.id !== data.id && m.symbol.toLowerCase() === data.symbol.toLowerCase());
+    const measures = await db.measures.toArray();
+    if (data.referenceMeasureId !== undefined) {
+      const reference = measures.find(m => m.id === data.referenceMeasureId);
+      if (!reference) throw new Error("Medida de referencia no encontrada");
+      const seen = new Set<number>(data.id !== undefined ? [data.id] : []);
+      let current: Measure | undefined = reference;
+      while (current?.id !== undefined) {
+        if (seen.has(current.id)) throw new Error("Una medida no puede depender de sí misma");
+        seen.add(current.id);
+        current = measures.find(m => m.id === current?.referenceMeasureId);
+      }
+      positive(data.referenceQty ?? 0, "Cantidad equivalente");
+      data.group = reference.group;
+      data.factor = (data.referenceQty ?? 0) * reference.factor;
+      positive(data.factor, "Equivalencia");
+    } else {
+      delete data.referenceQty;
+    }
+    const duplicate = measures.find(m => m.id !== data.id && m.symbol.toLowerCase() === data.symbol.toLowerCase());
     if (duplicate) throw new Error("Este símbolo ya existe");
     if (data.id !== undefined) {
       const old = await db.measures.get(data.id);
@@ -44,7 +62,8 @@ export async function saveMeasure(input: Measure) {
       if (old.group !== data.group || old.factor !== data.factor) {
         const used = (await db.products.toArray()).some(p => p.measureId === data.id)
           || (await db.productionRecipes.toArray()).some(r => r.outputMeasureId === data.id || r.materials.some(m => m.measureId === data.id));
-        if (used) throw new Error("Medida en uso: crea otra equivalencia para conservar el inventario");
+        const dependent = measures.some(m => m.referenceMeasureId === data.id);
+        if (used || dependent) throw new Error("Medida en uso: crea otra equivalencia para conservar el inventario");
       }
       await db.measures.put(data);
       return data.id;
@@ -61,15 +80,17 @@ export async function assertProductMeasureChange(product: Product | null, measur
   if (product.stock !== 0 || referenced) throw new Error("No cambies la medida de un producto con existencias o fórmulas; crea otro producto");
 }
 
-async function recipeSnapshot(recipe: ProductionRecipe, qty: number) {
+async function recipeSnapshot(recipe: ProductionRecipe, qty: number, selectedMeasureId = recipe.outputMeasureId) {
   positive(recipe.outputQty, "Rendimiento");
   positive(qty, "Cantidad a producir");
   const output = await db.products.get(recipe.productId);
-  const outputMeasure = await db.measures.get(recipe.outputMeasureId);
-  if (!output?.active || !output.trackStock || !outputMeasure) throw new Error("Selecciona un producto terminado activo con inventario y medida");
+  const outputMeasure = await db.measures.get(selectedMeasureId);
+  const recipeMeasure = await db.measures.get(recipe.outputMeasureId);
+  if (!output?.active || !output.trackStock || !outputMeasure || !recipeMeasure) throw new Error("Selecciona un producto terminado activo con inventario y medida");
   if (!recipe.materials.length) throw new Error("Agrega al menos un material");
   const stockMeasure = await measureFor(output);
   const stockQty = convertQuantity(qty, outputMeasure, stockMeasure);
+  const recipeQty = convertQuantity(qty, outputMeasure, recipeMeasure);
   if (stockQty <= 0) throw new Error("Cantidad demasiado pequeña");
   const seen = new Set<number>();
   const materials = [];
@@ -82,7 +103,7 @@ async function recipeSnapshot(recipe: ProductionRecipe, qty: number) {
     if (!product?.active || !product.trackStock || !measure) throw new Error("Selecciona materiales activos con inventario y medida");
     positive(item.qty, "Cantidad del material");
     const base = await measureFor(product);
-    const amount = round(item.qty * qty / recipe.outputQty);
+    const amount = round(item.qty * recipeQty / recipe.outputQty);
     const required = convertQuantity(amount, measure, base);
     if (required <= 0) throw new Error("Cantidad de material demasiado pequeña");
     if (!Number.isFinite(product.cost ?? 0) || (product.cost ?? 0) < 0) throw new Error(`Costo inválido: ${product.name}`);
@@ -99,12 +120,12 @@ export async function saveRecipe(recipe: ProductionRecipe) {
   });
 }
 
-export async function createProductionOrder(input: { recipeId: number; qty: number; warehouseId: number; notes?: string; userId?: number; userName?: string }) {
+export async function createProductionOrder(input: { recipeId: number; qty: number; outputMeasureId?: number; warehouseId: number; notes?: string; userId?: number; userName?: string }) {
   return db.transaction("rw", [db.productionOrders, db.productionRecipes, db.products, db.measures, db.warehouses], async () => {
     const recipe = await db.productionRecipes.get(input.recipeId);
     if (!recipe) throw new Error("Fórmula no encontrada");
     if (!(await db.warehouses.get(input.warehouseId))) throw new Error("Selecciona una bodega");
-    const snapshot = await recipeSnapshot(recipe, input.qty);
+    const snapshot = await recipeSnapshot(recipe, input.qty, input.outputMeasureId);
     return db.productionOrders.add({ ...input, ...snapshot, recipeName: recipe.name, status: "draft", createdAt: Date.now() });
   });
 }

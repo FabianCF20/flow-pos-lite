@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { type Measure, type Product, type ProductionRecipe, type Warehouse } from "@/lib/db";
-import { saveMeasure, saveRecipe, createProductionOrder } from "@/lib/production";
+import { saveMeasure, saveRecipe, createProductionOrder, convertQuantity } from "@/lib/production";
 import { useAuth } from "@/lib/auth";
 
 export const controlClass = "mt-1 w-full min-w-0 h-11 rounded-md border border-input bg-background px-3 text-sm";
@@ -20,14 +20,27 @@ export function MeasureForm({ measure, measures, close }: { measure?: Measure; m
   const [symbol, setSymbol] = useState(measure?.symbol ?? "");
   const [group, setGroup] = useState(measure?.group ?? "");
   const [factor, setFactor] = useState(String(measure?.factor ?? 1));
+  const [referenceId, setReferenceId] = useState(String(measure?.referenceMeasureId ?? ""));
+  const [referenceQty, setReferenceQty] = useState(String(measure?.referenceQty ?? 1));
+  const reference = measures.find(m => m.id === Number(referenceId));
+  const eligible = measures.filter(m => {
+    const seen = new Set<number>();
+    let current: Measure | undefined = m;
+    while (current?.id !== undefined) {
+      if (current.id === measure?.id || seen.has(current.id)) return false;
+      seen.add(current.id);
+      current = measures.find(item => item.id === current?.referenceMeasureId);
+    }
+    return true;
+  });
   const [busy, setBusy] = useState(false);
   return <ProductionModal title={measure ? "Editar medida" : "Nueva medida"} close={close}>
-    <form className="space-y-4" onSubmit={async e => { e.preventDefault(); setBusy(true); try { await saveMeasure({ ...(measure?.id !== undefined ? { id: measure.id } : {}), name, symbol, group, factor: Number(factor) }); toast.success("Medida guardada"); close(); } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo guardar"); } finally { setBusy(false); } }}>
+    <form className="space-y-4" onSubmit={async e => { e.preventDefault(); setBusy(true); try { await saveMeasure({ ...(measure?.id !== undefined ? { id: measure.id } : {}), name, symbol, group: reference?.group ?? group, factor: reference ? reference.factor * Number(referenceQty) : Number(factor), ...(reference ? { referenceMeasureId: reference.id, referenceQty: Number(referenceQty) } : {}) }); toast.success("Medida guardada"); close(); } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo guardar"); } finally { setBusy(false); } }}>
       <ProductionField label="Nombre"><input required className={controlClass} value={name} onChange={e => setName(e.target.value)} placeholder="Kilogramo" /></ProductionField>
       <ProductionField label="Símbolo"><input required className={controlClass} value={symbol} onChange={e => setSymbol(e.target.value)} placeholder="kg" /></ProductionField>
-      <ProductionField label="Grupo de equivalencias"><input required list="measure-groups" className={controlClass} value={group} onChange={e => setGroup(e.target.value)} placeholder="Peso" /></ProductionField>
+      <ProductionField label="Medida de referencia"><select className={controlClass} value={referenceId} onChange={e => setReferenceId(e.target.value)}><option value="">Sin referencia · equivalencia base</option>{eligible.map(m => <option key={m.id} value={m.id}>{m.name} ({m.symbol})</option>)}</select></ProductionField>
+      {reference ? <><ProductionField label={`1 ${name || "nueva medida"} equivale a (${reference.symbol})`}><input required type="number" min="0.00000001" step="any" className={controlClass} value={referenceQty} onChange={e => setReferenceQty(e.target.value)} /></ProductionField><div className="border-y border-border py-3 text-sm space-y-1"><p className="font-semibold">1 {symbol || name || "medida"} = {referenceQty} {reference.symbol}</p>{measures.filter(m => m.group === reference.group && m.id !== measure?.id).map(m => <p key={m.id} className="text-muted-foreground">{Number((Number(referenceQty) * reference.factor / m.factor).toFixed(8))} {m.symbol}</p>)}</div></> : <><ProductionField label="Grupo de equivalencias"><input required list="measure-groups" className={controlClass} value={group} onChange={e => setGroup(e.target.value)} placeholder="Peso" /></ProductionField><ProductionField label="Equivalencia en unidad base del grupo"><input required type="number" min="0.00000001" step="any" className={controlClass} value={factor} onChange={e => setFactor(e.target.value)} /></ProductionField></>}
       <datalist id="measure-groups">{Array.from(new Set(measures.map(m => m.group))).map(g => <option key={g} value={g} />)}</datalist>
-      <ProductionField label="Equivalencia en unidad base del grupo"><input required type="number" min="0.00000001" step="any" className={controlClass} value={factor} onChange={e => setFactor(e.target.value)} /></ProductionField>
       <Button type="submit" disabled={busy} className="w-full">Guardar medida</Button>
     </form>
   </ProductionModal>;
@@ -67,13 +80,19 @@ export function OrderForm({ recipes, measures, warehouses, close }: { recipes: P
   const { user } = useAuth();
   const [recipeId, setRecipe] = useState("");
   const [qty, setQty] = useState("1");
+  const [outputMeasureId, setOutputMeasureId] = useState("");
   const [warehouseId, setWarehouse] = useState(String((warehouses.find(w => w.isDefault) ?? warehouses[0])?.id ?? ""));
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const recipe = recipes.find(r => r.id === Number(recipeId));
-  return <ProductionModal title="Nueva orden de producción" close={close}><form className="space-y-4" onSubmit={async e => { e.preventDefault(); setBusy(true); try { await createProductionOrder({ recipeId: Number(recipeId), qty: Number(qty), warehouseId: Number(warehouseId), notes, userId: user?.id, userName: user?.name }); toast.success("Orden creada"); close(); } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo crear"); } finally { setBusy(false); } }}>
-    <ProductionField label="Fórmula"><select required className={controlClass} value={recipeId} onChange={e => { setRecipe(e.target.value); setQty(String(recipes.find(r => r.id === Number(e.target.value))?.outputQty ?? 1)); }}><option value="">Selecciona fórmula</option>{recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></ProductionField>
-    <ProductionField label={`Cantidad a producir${recipe ? ` (${measures.find(m => m.id === recipe.outputMeasureId)?.symbol ?? ""})` : ""}`}><input required type="number" min="0.00000001" step="any" className={controlClass} value={qty} onChange={e => setQty(e.target.value)} /></ProductionField>
+  const recipeMeasure = measures.find(m => m.id === recipe?.outputMeasureId);
+  const selectedMeasure = measures.find(m => m.id === Number(outputMeasureId));
+  let batches = 0;
+  if (recipe && recipeMeasure && selectedMeasure && Number(qty) > 0) batches = convertQuantity(Number(qty), selectedMeasure, recipeMeasure) / recipe.outputQty;
+  return <ProductionModal title="Nueva orden de producción" close={close}><form className="space-y-4" onSubmit={async e => { e.preventDefault(); setBusy(true); try { await createProductionOrder({ recipeId: Number(recipeId), qty: Number(qty), outputMeasureId: Number(outputMeasureId), warehouseId: Number(warehouseId), notes, userId: user?.id, userName: user?.name }); toast.success("Orden creada"); close(); } catch (error) { toast.error(error instanceof Error ? error.message : "No se pudo crear"); } finally { setBusy(false); } }}>
+    <ProductionField label="Fórmula"><select required className={controlClass} value={recipeId} onChange={e => { const next = recipes.find(r => r.id === Number(e.target.value)); setRecipe(e.target.value); setQty(String(next?.outputQty ?? 1)); setOutputMeasureId(String(next?.outputMeasureId ?? "")); }}><option value="">Selecciona fórmula</option>{recipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}</select></ProductionField>
+    <div className="grid grid-cols-2 gap-3"><ProductionField label="Cantidad a producir"><input required type="number" min="0.00000001" step="any" className={controlClass} value={qty} onChange={e => setQty(e.target.value)} /></ProductionField><ProductionField label="Medida de producción"><select required className={controlClass} value={outputMeasureId} onChange={e => setOutputMeasureId(e.target.value)}><option value="">Selecciona</option>{measures.filter(m => m.group === recipeMeasure?.group).map(m => <option key={m.id} value={m.id}>{m.name} ({m.symbol})</option>)}</select></ProductionField></div>
+    {recipe && batches > 0 && <div className="border-y border-border py-3 space-y-2"><h3 className="text-sm font-semibold">Materiales requeridos</h3>{recipe.materials.map(m => <div key={m.productId} className="flex justify-between gap-3 text-sm"><span>Material #{m.productId}</span><span className="tabular">{Number((m.qty * batches).toFixed(8))} {measures.find(unit => unit.id === m.measureId)?.symbol}</span></div>)}</div>}
     <ProductionField label="Bodega de materiales y terminados"><select required className={controlClass} value={warehouseId} onChange={e => setWarehouse(e.target.value)}>{warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}</select></ProductionField>
     <ProductionField label="Referencia o notas"><input className={controlClass} value={notes} onChange={e => setNotes(e.target.value)} /></ProductionField>
     <Button type="submit" disabled={busy} className="w-full">Crear orden pendiente</Button>

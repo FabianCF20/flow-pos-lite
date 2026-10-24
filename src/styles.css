@@ -157,7 +157,7 @@
     overscroll-behavior-y: none;
     font-feature-settings: "tnum" 0;
   }
-  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: -0.015em; }
+  h1, h2, h3, .font-display { font-family: var(--font-display); letter-spacing: 0; }
   /* Cifras alineadas para tablas contables */
   .tabular { font-variant-numeric: tabular-nums; }
   /* Safe areas for installed PWA on Android */
@@ -170,4 +170,20 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
+}
+
+.erp-main > div { width: 100%; min-width: 0; }
+.erp-main input, .erp-main select, [role="dialog"] input, [role="dialog"] select { min-width: 0; max-width: 100%; }
+.erp-main .grid > *, [role="dialog"] .grid > * { min-width: 0; }
+.erp-main [class*="tracking-"], aside [class*="tracking-"], header [class*="tracking-"] { letter-spacing: 0; }
+.desktop-items { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.75rem; }
+.desktop-items > * { min-width: 0; margin-top: 0; }
+.desktop-items > .text-center { grid-column: 1 / -1; }
+@media (min-width: 1024px) {
+  .erp-main > div { max-width: 1600px; margin-inline: auto; }
+  .desktop-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .desktop-items > .list-toolbar { grid-column: 1 / -1; }
+}
+@media (min-width: 1536px) {
+  .desktop-items.catalog-items { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
