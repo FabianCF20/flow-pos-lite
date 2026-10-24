@@ -448,6 +448,8 @@ export interface Measure {
   symbol: string;
   group: string;
   factor: number; // equivalencia respecto a la unidad base del grupo
+  referenceMeasureId?: number;
+  referenceQty?: number; // cantidad de la medida de referencia por esta medida
 }
 
 export interface RecipeMaterial {
