@@ -3,6 +3,7 @@ import { useEffect, useMemo, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { SyncStatus } from "@/components/SyncStatus";
+import { Button } from "@/components/ui/button";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
   Users, Settings, LogOut, MoreHorizontal, Tag, Truck, ShoppingBag,
@@ -148,7 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       {/* Sidebar (md+) */}
-      <aside className="hidden md:flex w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+      <aside className="hidden md:flex sticky top-0 h-dvh w-56 xl:w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
         <div className="px-5 py-5 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-glow grid place-items-center text-primary-foreground">
@@ -196,12 +197,12 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
         </nav>
 
-        <button
+        <Button variant="ghost"
           onClick={() => { logout(); navigate({ to: "/login" }); }}
           className="m-3 flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
         >
           <LogOut className="h-4 w-4" /> Salir
-        </button>
+        </Button>
       </aside>
 
       {/* Main */}
@@ -221,13 +222,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
             <div className="flex items-center gap-2">
               <SyncStatus />
-              <button
+              <Button variant="outline" size="icon"
                 onClick={toggle}
                 aria-label={theme === "dark" ? "Activar modo claro" : "Activar modo oscuro"}
                 className="h-9 w-9 grid place-items-center rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground transition-colors"
               >
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-              </button>
+              </Button>
               <div className="hidden md:flex items-center gap-2 pl-2 border-l border-border">
                 <div className="h-8 w-8 rounded-full bg-accent text-accent-foreground grid place-items-center text-xs font-semibold">
                   {user.name.slice(0, 2).toUpperCase()}
@@ -243,7 +244,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 pb-20 md:pb-8">{children}</main>
+        <main className="erp-main flex-1 min-w-0 w-full pb-20 md:pb-8">{children}</main>
 
         {/* Bottom nav (mobile) */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border safe-bottom">
@@ -275,7 +276,7 @@ export function PageHeader({ title, subtitle, right }: { title: string; subtitle
   return (
     <div className="px-4 md:px-6 pt-5 md:pt-7 pb-4 flex items-start justify-between gap-3">
       <div className="min-w-0">
-        <h1 className="text-xl md:text-2xl font-display font-semibold tracking-tight truncate">{title}</h1>
+        <h1 className="text-xl md:text-2xl font-display font-semibold break-words">{title}</h1>
         {subtitle && <p className="text-xs md:text-sm text-muted-foreground mt-1">{subtitle}</p>}
       </div>
       {right}
