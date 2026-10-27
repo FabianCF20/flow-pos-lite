@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useRef, useState } from "react";
@@ -9,7 +10,7 @@ import { toast } from "sonner";
 import { fileToCompressedDataURL } from "@/lib/image";
 import { assertProductMeasureChange, ensureDefaultMeasure } from "@/lib/production";
 
-export const Route = createFileRoute("/products")({ component: ProductsPage });
+export const Route = createFileRoute("/products")({ head: () => pageHead("Productos", "Catálogo de productos, costos, existencias y medidas."), component: ProductsPage });
 
 function ProductsPage() {
   useEffect(() => { ensureDefaultMeasure().catch(() => {}); }, []);
@@ -74,7 +75,7 @@ function ProductsPage() {
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="desktop-items catalog-items">
           {filtered.map((p) => (
             <div key={p.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
               <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0 grid place-items-center">
@@ -163,7 +164,7 @@ function ProductForm({ product, categories, onClose, onSaved }: any) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
-      <div className="absolute bottom-0 inset-x-0 md:inset-0 md:m-auto md:max-w-lg md:h-fit md:rounded-2xl bg-card rounded-t-2xl max-h-[92vh] overflow-y-auto safe-bottom">
+      <div className="absolute bottom-0 inset-x-0 md:inset-0 md:m-auto md:max-w-2xl md:h-fit md:rounded-2xl bg-card rounded-t-2xl max-h-[92vh] overflow-y-auto safe-bottom">
         <div className="sticky top-0 bg-card flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="font-semibold">{product ? "Editar" : "Nuevo"} producto</div>
           <button onClick={onClose}><X className="h-5 w-5" /></button>

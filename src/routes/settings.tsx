@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
@@ -12,7 +13,7 @@ import { toast } from "sonner";
 import { testFactusAuth, isFactusConfigured } from "@/lib/factus";
 import { FactusExtra } from "@/components/FactusExtra";
 
-export const Route = createFileRoute("/settings")({ component: SettingsPage });
+export const Route = createFileRoute("/settings")({ head: () => pageHead("Ajustes", "Configura empresa, usuarios, facturación y respaldos."), component: SettingsPage });
 
 function SettingsPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
@@ -55,7 +56,7 @@ function SettingsPage() {
   return (
     <div>
       <PageHeader title="Ajustes" subtitle="Negocio, usuarios, backup, impresora" />
-      <div className="px-4 md:px-6 space-y-4 max-w-2xl">
+      <div className="px-4 md:px-6 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
         <Section title="Negocio">
           <Inp label="Nombre" value={s.businessName} onChange={(v) => setS({ ...s, businessName: v })} />
           <Inp label="Dirección" value={s.address ?? ""} onChange={(v) => setS({ ...s, address: v })} />
@@ -295,7 +296,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
 
 
 function Section({ title, children }: any) {
-  return <div className="rounded-xl bg-card border border-border p-4 space-y-3"><div className="font-semibold">{title}</div>{children}</div>;
+  return <div className="min-w-0 border-t border-border pt-4 space-y-3"><div className="font-semibold">{title}</div>{children}</div>;
 }
 function Inp({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return <label className="block"><span className="text-xs text-muted-foreground">{label}</span><input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border outline-none focus:border-primary text-sm" /></label>;

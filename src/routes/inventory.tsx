@@ -17,6 +17,8 @@ export const Route = createFileRoute("/inventory")({
       { name: "description", content: "Controla existencias por bodega, ajustes, traslados y el kardex de cada producto." },
       { property: "og:title", content: "Inventario y bodegas — ERP" },
       { property: "og:description", content: "Controla existencias por bodega, ajustes, traslados y el kardex de cada producto." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: InventoryPage,
@@ -60,8 +62,8 @@ function InventoryPage() {
       </div>
 
       {tab === "stock" && (
-        <div className="px-4 md:px-6 space-y-2">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="px-4 md:px-6 desktop-items catalog-items">
+          <div className="list-toolbar grid grid-cols-2 sm:flex gap-2">
             <button onClick={() => setAdjusting(true)} className="h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2">
               <SlidersHorizontal className="h-4 w-4" /> Ajustar
             </button>
@@ -94,8 +96,8 @@ function InventoryPage() {
       )}
 
       {tab === "warehouses" && (
-        <div className="px-4 md:px-6 space-y-2">
-          <button onClick={() => setNewWh(true)} className="h-11 w-full rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2">
+        <div className="px-4 md:px-6 desktop-items catalog-items">
+          <button onClick={() => setNewWh(true)} className="list-toolbar h-11 w-full rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2">
             <Plus className="h-4 w-4" /> Nueva bodega
           </button>
           {warehouses?.map((w) => (

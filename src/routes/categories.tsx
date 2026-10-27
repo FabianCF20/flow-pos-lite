@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useEffect, useState } from "react";
@@ -7,7 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { Plus, X, Trash2, Edit3, Tag } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/categories")({ component: CategoriesPage });
+export const Route = createFileRoute("/categories")({ head: () => pageHead("Categorías", "Organiza el catálogo de productos por categorías."), component: CategoriesPage });
 
 const PALETTE = [
   "#4f46e5", "#0ea5e9", "#f59e0b", "#10b981", "#ef4444",
@@ -48,7 +49,7 @@ function CategoriesPage() {
         }
       />
 
-      <div className="px-4 md:px-6 space-y-2">
+      <div className="px-4 md:px-6 desktop-items catalog-items">
         {(categories ?? []).map((c) => (
           <div key={c.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg grid place-items-center shrink-0" style={{ background: c.color ?? "#4f46e5" }}>

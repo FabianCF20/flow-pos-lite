@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo } from "react";
@@ -5,7 +6,7 @@ import { db, getSettings } from "@/lib/db";
 import { formatMoney, startOfDay, endOfDay, formatDateShort } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 
-export const Route = createFileRoute("/reports")({ component: ReportsPage });
+export const Route = createFileRoute("/reports")({ head: () => pageHead("Reportes", "Ventas diarias, productos y medios de pago."), component: ReportsPage });
 
 function ReportsPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
@@ -51,19 +52,19 @@ function ReportsPage() {
   return (
     <div>
       <PageHeader title="Reportes" subtitle="Resumen de ventas" />
-      <div className="px-4 md:px-6 space-y-3">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-xl bg-card border border-border p-4">
+      <div className="px-4 md:px-6 grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="grid grid-cols-2 gap-3 lg:col-span-2">
+          <div className="min-w-0 border-t border-border py-4">
             <div className="text-xs text-muted-foreground">Hoy</div>
             <div className="text-xl font-bold mt-1">{formatMoney(totalToday, settings)}</div>
           </div>
-          <div className="rounded-xl bg-card border border-border p-4">
+          <div className="min-w-0 border-t border-border py-4">
             <div className="text-xs text-muted-foreground">Últimos 7 días</div>
             <div className="text-xl font-bold mt-1">{formatMoney(total7, settings)}</div>
           </div>
         </div>
 
-        <div className="rounded-xl bg-card border border-border p-4">
+        <div className="min-w-0 border-t border-border py-4">
           <div className="text-sm font-semibold mb-3">Ventas por día</div>
           <div className="flex items-end gap-2 h-32">
             {byDay.map((d, i) => (
@@ -75,7 +76,7 @@ function ReportsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl bg-card border border-border p-4">
+        <div className="min-w-0 border-t border-border py-4">
           <div className="text-sm font-semibold mb-3">Top productos</div>
           {topProducts.length === 0 && <div className="text-sm text-muted-foreground">Sin datos</div>}
           <ul className="space-y-2">
@@ -88,7 +89,7 @@ function ReportsPage() {
           </ul>
         </div>
 
-        <div className="rounded-xl bg-card border border-border p-4">
+        <div className="min-w-0 border-t border-border py-4">
           <div className="text-sm font-semibold mb-3">Por método de pago</div>
           {byMethod.length === 0 && <div className="text-sm text-muted-foreground">Sin datos</div>}
           <ul className="space-y-1.5 text-sm">

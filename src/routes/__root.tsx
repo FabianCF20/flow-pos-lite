@@ -14,6 +14,7 @@ import { AuthProvider } from "@/lib/auth";
 import { SyncProvider } from "@/lib/sync";
 import { AppShell } from "@/components/AppShell";
 import { Toaster } from "@/components/ui/sonner";
+import { configureAppServiceWorker } from "@/lib/pwa";
 
 function NotFoundComponent() {
   return (
@@ -136,21 +137,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (!("serviceWorker" in navigator)) return;
-    // Registrar al cargar para que auditores PWA (Lighthouse/PWABuilder)
-    // detecten el service worker controlando la página.
-    const register = () => {
-      navigator.serviceWorker
-        .register("/sw.js", { scope: "/" })
-        .catch(() => {});
-    };
-    if (document.readyState === "complete") {
-      register();
-    } else {
-      window.addEventListener("load", register, { once: true });
-      return () => window.removeEventListener("load", register);
-    }
+    configureAppServiceWorker().catch(() => {});
   }, []);
 
   return (

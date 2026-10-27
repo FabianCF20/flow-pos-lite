@@ -132,7 +132,7 @@ function AccountingPage() {
 
       {tab === "results" && (
         <div className="px-4 md:px-6 space-y-3">
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
             <Kpi label="Ingresos por ventas" value={formatMoney(pl?.sales ?? 0, settings)} accent="text-primary" />
             <Kpi label="Ingresos netos" value={formatMoney(pl?.netRevenue ?? 0, settings)} />
             <Kpi label="Utilidad bruta" value={formatMoney(pl?.grossProfit ?? 0, settings)} />
@@ -226,7 +226,7 @@ function AccountingPage() {
       {tab === "ledger" && <LedgerTab />}
 
       {tab === "accounts" && (
-        <div className="px-4 md:px-6 space-y-2">
+        <div className="px-4 md:px-6 desktop-items catalog-items">
           {accounts?.map((a) => (
             <div key={a.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-primary/15 text-primary grid place-items-center"><Landmark className="h-4 w-4" /></div>

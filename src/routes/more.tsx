@@ -1,10 +1,11 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/more")({ component: MorePage });
+export const Route = createFileRoute("/more")({ head: () => pageHead("Módulos", "Módulos de operación, producción y finanzas."), component: MorePage });
 
 function MorePage() {
   const { user, logout } = useAuth();
@@ -29,7 +30,7 @@ function MorePage() {
   return (
     <div>
       <PageHeader title="Más" subtitle={user?.name} />
-      <div className="px-4 space-y-2">
+      <div className="px-4 md:px-6 desktop-items catalog-items">
         {items.map((it) => {
           const Icon = it.icon;
           return (
@@ -40,10 +41,10 @@ function MorePage() {
             </Link>
           );
         })}
-        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="w-full mt-4 h-12 rounded-xl border border-border font-medium inline-flex items-center justify-center gap-2">
+        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="list-toolbar w-full mt-4 h-12 rounded-xl border border-border font-medium inline-flex items-center justify-center gap-2">
           <UserCog className="h-4 w-4" /> Cambiar de usuario
         </button>
-        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="w-full h-12 rounded-xl border border-border text-destructive font-medium inline-flex items-center justify-center gap-2">
+        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="list-toolbar w-full h-12 rounded-xl border border-border text-destructive font-medium inline-flex items-center justify-center gap-2">
           <LogOut className="h-4 w-4" /> Cerrar sesión
         </button>
       </div>

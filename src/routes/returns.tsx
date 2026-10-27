@@ -41,8 +41,8 @@ function ReturnsPage() {
   return (
     <div>
       <PageHeader title="Devoluciones y notas" subtitle="Notas crédito y débito sobre ventas" />
-      <div className="px-4 md:px-6 space-y-3">
-        <div className="flex gap-2">
+      <div className="px-4 md:px-6 desktop-items">
+        <div className="list-toolbar flex flex-wrap gap-2">
           <button onClick={() => setTab("credit")} className={`h-10 px-4 rounded-lg text-sm font-medium border ${tab === "credit" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border"}`}>Notas crédito</button>
           <button onClick={() => setTab("debit")} className={`h-10 px-4 rounded-lg text-sm font-medium border ${tab === "debit" ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border"}`}>Notas débito</button>
           <button onClick={() => setNewFor(tab)} className="ml-auto h-10 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2">
@@ -170,7 +170,7 @@ function NewDoc({ kind, onClose }: { kind: "credit" | "debit"; onClose: () => vo
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
-      <div className="absolute bottom-0 inset-x-0 md:inset-0 md:m-auto md:max-w-lg md:h-fit md:rounded-2xl bg-card rounded-t-2xl max-h-[92vh] overflow-y-auto safe-bottom">
+      <div className="absolute bottom-0 inset-x-0 md:inset-0 md:m-auto md:max-w-2xl md:h-fit md:rounded-2xl bg-card rounded-t-2xl max-h-[92vh] overflow-y-auto safe-bottom">
         <div className="sticky top-0 bg-card flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="font-semibold">{kind === "credit" ? "Nueva devolución / nota crédito" : "Nueva nota débito"}</div>
           <button onClick={onClose} aria-label="Cerrar"><X className="h-5 w-5" /></button>

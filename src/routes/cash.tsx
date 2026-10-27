@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
@@ -8,7 +9,7 @@ import { PageHeader } from "@/components/AppShell";
 import { ArrowDownCircle, ArrowUpCircle, X, DoorOpen, DoorClosed } from "lucide-react";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/cash")({ component: CashPage });
+export const Route = createFileRoute("/cash")({ head: () => pageHead("Caja", "Administra apertura, efectivo y cierre de caja."), component: CashPage });
 
 function CashPage() {
   const { user } = useAuth();
@@ -34,7 +35,7 @@ function CashPage() {
     <div>
       <PageHeader title="Caja" subtitle={open ? `Abierta — ${formatDate(open.openedAt)}` : "Sin sesión activa"} />
 
-      <div className="px-4 md:px-6 space-y-3">
+      <div className="px-4 md:px-6 grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
         {!open ? (
           <div className="rounded-2xl bg-card border border-border p-5 text-center">
             <DoorClosed className="h-10 w-10 mx-auto text-muted-foreground" />
