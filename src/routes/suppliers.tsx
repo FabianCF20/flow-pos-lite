@@ -13,6 +13,8 @@ export const Route = createFileRoute("/suppliers")({
       { name: "description", content: "Gestiona proveedores, contactos y datos tributarios de tu empresa." },
       { property: "og:title", content: "Proveedores — ERP" },
       { property: "og:description", content: "Gestiona proveedores, contactos y datos tributarios de tu empresa." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: SuppliersPage,
@@ -33,7 +35,7 @@ function SuppliersPage() {
           </button>
         }
       />
-      <div className="px-4 md:px-6 space-y-2">
+      <div className="px-4 md:px-6 desktop-items catalog-items">
         {suppliers?.map((s) => (
           <div key={s.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/15 text-primary grid place-items-center">
@@ -184,7 +186,7 @@ export function Group({ title }: { title: string }) {
 
 export function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: string[] }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="text-xs text-muted-foreground">{label}</span>
       <select
         value={value}
@@ -200,7 +202,7 @@ export function Select({ label, value, onChange, options }: { label: string; val
 export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm">
-      <div className="absolute bottom-0 inset-x-0 md:inset-0 md:m-auto md:max-w-md md:h-fit md:rounded-2xl bg-card rounded-t-2xl max-h-[92vh] overflow-y-auto safe-bottom">
+      <div className="absolute bottom-0 inset-x-0 md:inset-0 md:m-auto md:max-w-2xl md:h-fit md:rounded-2xl bg-card rounded-t-2xl max-h-[92vh] overflow-y-auto safe-bottom">
         <div className="sticky top-0 bg-card flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="font-semibold">{title}</div>
           <button onClick={onClose}><X className="h-5 w-5" /></button>
@@ -213,7 +215,7 @@ export function Sheet({ title, onClose, children }: { title: string; onClose: ()
 
 export function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
   return (
-    <label className="block">
+    <label className="block min-w-0">
       <span className="text-xs text-muted-foreground">{label}</span>
       <input
         type={type}

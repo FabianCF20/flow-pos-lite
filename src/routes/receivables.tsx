@@ -18,6 +18,8 @@ export const Route = createFileRoute("/receivables")({
       { name: "description", content: "Controla ventas a crédito, abonos parciales, vencimientos y clientes en mora." },
       { property: "og:title", content: "Cartera y cuentas por cobrar — ERP" },
       { property: "og:description", content: "Controla ventas a crédito, abonos parciales, vencimientos y clientes en mora." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ReceivablesPage,
@@ -36,9 +38,9 @@ function ReceivablesPage() {
     <div>
       <PageHeader title="Cartera" subtitle={`Por cobrar: ${formatMoney(totalDue, settings)}`} />
 
-      <div className="px-4 md:px-6 space-y-3">
+      <div className="px-4 md:px-6 desktop-items">
         {overdue.length > 0 && (
-          <div className="rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning inline-flex items-center gap-2">
+          <div className="list-toolbar rounded-xl border border-warning/30 bg-warning/10 p-3 text-sm text-warning inline-flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" /> {overdue.length} cuenta(s) en mora
           </div>
         )}

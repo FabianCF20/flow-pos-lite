@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useMemo, useState } from "react";
@@ -13,7 +14,7 @@ import {
 import { toast } from "sonner";
 import { postSale } from "@/lib/erp";
 
-export const Route = createFileRoute("/pos")({ component: POSPage });
+export const Route = createFileRoute("/pos")({ head: () => pageHead("Punto de venta", "Ventas y cobros con inventario local."), component: POSPage });
 
 type CartItem = SaleItem & { stock: number; trackStock: boolean };
 
@@ -133,7 +134,7 @@ function POSPage() {
   }
 
   return (
-    <div className="md:grid md:grid-cols-[1fr_360px] md:gap-4 md:px-4 md:pt-4">
+    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] lg:gap-5 lg:px-6 lg:pt-4">
       {/* Catalog */}
       <div className="min-w-0">
         <PageHeader title="Vender" subtitle={openSession ? "Caja abierta" : "Caja cerrada — abre antes de cobrar"} />
@@ -157,7 +158,7 @@ function POSPage() {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5">
             {filtered.map((p) => (
               <button
                 key={p.id}
@@ -198,7 +199,7 @@ function POSPage() {
       </div>
 
       {/* Cart — desktop sidebar */}
-      <aside className="hidden md:flex flex-col rounded-xl bg-card border border-border h-[calc(100vh-2rem)] sticky top-4">
+      <aside className="hidden lg:flex flex-col rounded-xl bg-card border border-border h-[calc(100dvh-6rem)] min-h-80 sticky top-20">
         <CartView cart={cart} settings={settings} onChangeQty={changeQty} onRemove={removeItem} onClear={() => setCart([])} onCheckout={() => setShowPay(true)} subtotal={subtotal} />
       </aside>
 
@@ -206,7 +207,7 @@ function POSPage() {
       {cart.length > 0 && (
         <button
           onClick={() => setShowPay(true)}
-          className="md:hidden fixed left-3 right-3 bottom-[68px] z-30 h-14 px-4 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-between active:scale-[0.99]"
+          className="lg:hidden fixed left-3 right-3 bottom-[68px] md:bottom-4 md:left-auto md:w-80 z-30 h-14 px-4 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-between active:scale-[0.99]"
         >
           <span className="flex items-center gap-2">
             <span className="h-7 min-w-7 px-1.5 rounded-full bg-white/20 grid place-items-center text-xs font-bold">

@@ -18,6 +18,8 @@ export const Route = createFileRoute("/purchases")({
       { name: "description", content: "Registra órdenes de compra, recibe mercancía y controla lo que debes a proveedores." },
       { property: "og:title", content: "Compras y cuentas por pagar — ERP" },
       { property: "og:description", content: "Registra órdenes de compra, recibe mercancía y controla lo que debes a proveedores." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: PurchasesPage,
@@ -43,7 +45,7 @@ function PurchasesPage() {
           </button>
         }
       />
-      <div className="px-4 md:px-6 space-y-2">
+      <div className="px-4 md:px-6 desktop-items catalog-items">
         {purchases?.map((p) => (
           <button key={p.id} onClick={() => setSelected(p)} className="w-full text-left rounded-xl bg-card border border-border p-3 flex items-center gap-3">
             <div className={`h-10 w-10 rounded-lg grid place-items-center ${p.status === "received" ? "bg-success/15 text-success" : "bg-warning/15 text-warning"}`}>

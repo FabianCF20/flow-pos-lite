@@ -32,7 +32,7 @@ function CustomersPage() {
           <Plus className="h-4 w-4" /> Nuevo
         </button>
       } />
-      <div className="px-4 md:px-6 space-y-2">
+      <div className="px-4 md:px-6 desktop-items catalog-items">
         {items?.map((c) => (
           <button key={c.id} onClick={() => setEditing(c)} className="w-full text-left rounded-xl bg-card border border-border p-3 flex items-center gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/15 text-primary grid place-items-center">

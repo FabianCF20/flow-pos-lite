@@ -1,3 +1,4 @@
+import { pageHead } from "@/lib/page-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState } from "react";
@@ -12,7 +13,7 @@ import { toast } from "sonner";
 import { emitFactusInvoice, isFactusConfigured } from "@/lib/factus";
 import { reverseSale } from "@/lib/erp";
 
-export const Route = createFileRoute("/sales")({ component: SalesPage });
+export const Route = createFileRoute("/sales")({ head: () => pageHead("Ventas", "Consulta tickets, pagos y facturas electrónicas."), component: SalesPage });
 
 function SalesPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined);
@@ -22,7 +23,7 @@ function SalesPage() {
   return (
     <div>
       <PageHeader title="Ventas" subtitle={`Últimas ${sales?.length ?? 0}`} />
-      <div className="px-4 md:px-6 space-y-2">
+      <div className="px-4 md:px-6 desktop-items catalog-items">
         {sales?.map((s) => (
           <button key={s.id} onClick={() => setSelected(s)} className="w-full text-left rounded-xl bg-card border border-border p-3 flex items-center gap-3">
             <div className={`h-10 w-10 rounded-lg grid place-items-center ${s.status === "voided" ? "bg-destructive/15 text-destructive" : "bg-primary/15 text-primary"}`}>
