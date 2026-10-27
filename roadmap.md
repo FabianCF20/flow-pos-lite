@@ -13,3 +13,4 @@
 - [x] Adaptar todas las vistas a computadores sin perder el uso móvil.
 - [x] Verificar conversiones e inventario (6 pruebas) y formularios aislados en computador/celular.
 - [ ] Revisar todas las pantallas y flujo completo con sesión Firebase real: falta sesión autorizada de prueba.
+- [ ] Corregir la caché de vista previa que mezcla versiones al iniciar y verificar recargas.
