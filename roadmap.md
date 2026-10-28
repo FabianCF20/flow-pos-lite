@@ -14,3 +14,5 @@
 - [x] Verificar conversiones e inventario (6 pruebas) y formularios aislados en computador/celular.
 - [ ] Revisar todas las pantallas y flujo completo con sesión Firebase real: falta sesión autorizada de prueba.
 - [x] Corregir la caché de vista previa: inicio y recarga sin errores; limpieza preserva inventario y cachés ajenas.
+- [ ] Usuarios: creación de cuentas, roles separados y permisos por módulo (consulta/modificación).
+- [ ] Aplicar permisos a navegación, sincronización y reglas de datos; probar restricciones.
