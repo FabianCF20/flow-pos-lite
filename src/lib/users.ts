@@ -1,107 +1,82 @@
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDoc,
-  getDocs,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from "firebase/firestore";
-import { fbDb, ADMIN_EMAIL } from "./firebase";
-import type { UserRole } from "./db";
+import { initializeApp, deleteApp } from "firebase/app";
+import { createUserWithEmailAndPassword, deleteUser, getAuth, inMemoryPersistence, sendPasswordResetEmail, setPersistence, signOut, updateProfile } from "firebase/auth";
+import { collection, doc, getDocs, serverTimestamp, writeBatch, setDoc } from "firebase/firestore";
+import { fbDb, fbAuth, firebaseConfig } from "./firebase";
+import { assertAccess, fetchAccessSession } from "./access-session";
+import { PRESET_ROLES, validPermissions, type AccessRole, type Permissions } from "./permissions";
 
 export interface DirectoryUser {
-  /** Identificador del documento (uid si ya inició sesión, correo si está pendiente). */
-  key: string;
-  uid?: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  active: boolean;
-  /** Aún no ha iniciado sesión por primera vez. */
-  pending: boolean;
+  key: string; uid?: string; email: string; name: string;
+  roleId: string; active: boolean; pending: boolean; overrides: Permissions;
 }
-
-function inviteId(email: string) {
-  return email.trim().toLowerCase();
+async function requireAdministrator() {
+  const session = await fetchAccessSession();
+  if (!session?.assignment.active || session.assignment.roleId !== "admin") throw new Error("Solo un administrador puede gestionar usuarios y roles");
 }
-
-/** Invitación pendiente para un correo (define el rol al registrarse). */
-export async function getInvite(email: string) {
-  const snap = await getDoc(doc(fbDb(), "invites", inviteId(email)));
-  if (!snap.exists()) return null;
-  const d = snap.data() as { name?: string; role?: UserRole; active?: boolean };
-  return { name: d.name ?? "", role: (d.role ?? "cashier") as UserRole, active: d.active !== false };
+export async function listRoles(): Promise<AccessRole[]> {
+  await requireAdministrator();
+  const snapshot = await getDocs(collection(fbDb(), "accessRoles"));
+  return snapshot.docs.map(d => ({ ...d.data(), id: d.id }) as AccessRole);
 }
-
-/** Lista de usuarios: registrados en la nube + invitaciones pendientes. */
+export async function saveRole(role: AccessRole) {
+  await requireAdministrator();
+  if (!role.name.trim() || !validPermissions(role.permissions)) throw new Error("Nombre o permisos no válidos");
+  if (!/^[a-z0-9_-]+$/.test(role.id)) throw new Error("Identificador de rol no válido");
+  if (role.id === "admin") throw new Error("El rol administrador se conserva para evitar bloqueos");
+  await setDoc(doc(fbDb(), "accessRoles", role.id), { name: role.name.trim(), permissions: role.permissions, updatedAt: serverTimestamp() });
+}
+export async function initializeRoles() {
+  await requireAdministrator();
+  const existing = new Set((await getDocs(collection(fbDb(), "accessRoles"))).docs.map(d => d.id));
+  const batch = writeBatch(fbDb());
+  for (const role of PRESET_ROLES) if (!existing.has(role.id)) batch.set(doc(fbDb(), "accessRoles", role.id), { name: role.name, permissions: role.permissions });
+  await batch.commit();
+}
 export async function listDirectory(): Promise<DirectoryUser[]> {
-  const [usersSnap, invitesSnap] = await Promise.all([
-    getDocs(collection(fbDb(), "users")),
-    getDocs(collection(fbDb(), "invites")),
-  ]);
-  const registered: DirectoryUser[] = usersSnap.docs.map((d) => {
-    const v = d.data() as { name?: string; email?: string; role?: UserRole; active?: boolean };
-    const email = (v.email ?? "").toLowerCase();
-    return {
-      key: d.id,
-      uid: d.id,
-      email,
-      name: v.name || email.split("@")[0] || "Usuario",
-      role: (v.role ?? "cashier") as UserRole,
-      active: v.active !== false,
-      pending: false,
-    };
-  });
-  const taken = new Set(registered.map((u) => u.email));
-  const pending: DirectoryUser[] = invitesSnap.docs
-    .filter((d) => !taken.has(d.id.toLowerCase()))
-    .map((d) => {
-      const v = d.data() as { name?: string; role?: UserRole; active?: boolean };
-      return {
-        key: d.id,
-        email: d.id.toLowerCase(),
-        name: v.name || d.id.split("@")[0],
-        role: (v.role ?? "cashier") as UserRole,
-        active: v.active !== false,
-        pending: true,
-      };
-    });
-  return [...registered, ...pending].sort((a, b) => a.name.localeCompare(b.name));
+  await requireAdministrator();
+  const [profiles, assignments] = await Promise.all([getDocs(collection(fbDb(), "users")), getDocs(collection(fbDb(), "userAccess"))]);
+  const byEmail = new Map(assignments.docs.map(d => [d.id, d.data()]));
+  return profiles.docs.map(d => {
+    const profile = d.data(); const email = String(profile.email ?? "").toLowerCase(); const a = byEmail.get(email);
+    return { key: d.id, uid: d.id, email, name: String(profile.name ?? email), roleId: String(a?.roleId ?? ""), active: a?.active === true, pending: !a, overrides: (a?.overrides ?? {}) as Permissions };
+  }).sort((a,b) => a.name.localeCompare(b.name));
 }
-
-/** Invita a un usuario: podrá crear su contraseña al iniciar sesión por primera vez. */
-export async function inviteUser(email: string, name: string, role: UserRole) {
-  const id = inviteId(email);
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(id)) throw new Error("Correo no válido");
-  await setDoc(doc(fbDb(), "invites", id), {
-    name: name.trim() || id.split("@")[0],
-    email: id,
-    role,
-    active: true,
-    createdAt: serverTimestamp(),
-  });
-}
-
-export async function updateDirectoryUser(
-  u: DirectoryUser,
-  patch: Partial<Pick<DirectoryUser, "name" | "role" | "active">>,
-) {
-  const col = u.pending ? "invites" : "users";
-  await updateDoc(doc(fbDb(), col, u.key), patch);
-  if (!u.pending && u.email) {
-    // Mantenemos la invitación alineada por si se vuelve a registrar.
-    const ref = doc(fbDb(), "invites", inviteId(u.email));
-    const snap = await getDoc(ref);
-    if (snap.exists()) await updateDoc(ref, patch);
+export async function createDirectoryUser(input: { name: string; email: string; password: string; roleId: string; overrides: Permissions }) {
+  await requireAdministrator();
+  const email = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !input.name.trim()) throw new Error("Completa nombre y correo válido");
+  if (input.password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
+  if (!validPermissions(input.overrides)) throw new Error("Permisos no válidos");
+  const app = initializeApp(firebaseConfig, `user-creation-${Date.now()}`);
+  const secondary = getAuth(app);
+  await setPersistence(secondary, inMemoryPersistence);
+  let created: Awaited<ReturnType<typeof createUserWithEmailAndPassword>> | undefined;
+  try {
+    created = await createUserWithEmailAndPassword(secondary, email, input.password);
+    await updateProfile(created.user, { displayName: input.name.trim() });
+    const batch = writeBatch(fbDb());
+    batch.set(doc(fbDb(), "users", created.user.uid), { name: input.name.trim(), email, createdAt: serverTimestamp() });
+    batch.set(doc(fbDb(), "userAccess", email), { uid: created.user.uid, email, roleId: input.roleId, active: true, overrides: input.overrides, updatedAt: serverTimestamp() });
+    await batch.commit();
+  } catch (error) {
+    if (created) await deleteUser(created.user).catch(() => {});
+    throw error;
+  } finally {
+    await signOut(secondary).catch(() => {});
+    await deleteApp(app);
   }
 }
-
-export async function removeDirectoryUser(u: DirectoryUser) {
-  if (u.email === ADMIN_EMAIL.toLowerCase()) throw new Error("No se puede quitar al administrador principal");
-  await deleteDoc(doc(fbDb(), u.pending ? "invites" : "users", u.key));
-  if (!u.pending && u.email) {
-    await deleteDoc(doc(fbDb(), "invites", inviteId(u.email))).catch(() => {});
-  }
+export async function updateDirectoryUser(user: DirectoryUser, patch: { name?: string; roleId?: string; active?: boolean; overrides?: Permissions }) {
+  await requireAdministrator();
+  if (!user.uid) throw new Error("Cuenta no registrada");
+  if (fbAuth().currentUser?.uid === user.uid && (patch.roleId !== undefined || patch.active !== undefined || patch.overrides !== undefined)) throw new Error("No puedes modificar tu propio acceso");
+  if (patch.overrides && !validPermissions(patch.overrides)) throw new Error("Permisos no válidos");
+  const batch = writeBatch(fbDb());
+  if (patch.name !== undefined) batch.update(doc(fbDb(), "users", user.uid), { name: patch.name.trim() });
+  batch.set(doc(fbDb(), "userAccess", user.email), { uid: user.uid, email: user.email, roleId: patch.roleId ?? user.roleId, active: patch.active ?? user.active, overrides: patch.overrides ?? user.overrides, updatedAt: serverTimestamp() });
+  await batch.commit();
+}
+export async function resetDirectoryPassword(email: string) {
+  await requireAdministrator();
+  await sendPasswordResetEmail(fbAuth(), email);
 }

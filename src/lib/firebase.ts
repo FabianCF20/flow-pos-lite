@@ -3,7 +3,7 @@ import { getAuth, browserLocalPersistence, setPersistence, type Auth } from "fir
 import { getFirestore, type Firestore } from "firebase/firestore";
 
 // La apiKey web de Firebase es pública por diseño (se restringe por dominio en la consola).
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyAqv_nq2IGEhG3FuJqubAuCPwPFUN7GtIA",
   authDomain: "spost-5f898.firebaseapp.com",
   projectId: "spost-5f898",
