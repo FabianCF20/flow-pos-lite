@@ -1,6 +1,6 @@
 // POS Offline — Service Worker
 // Estrategia: cache-first para assets estáticos, network-first para navegación (con fallback a caché).
-const CACHE = 'pos-offline-v2';
+const CACHE = 'pos-offline-v3';
 const CORE = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -10,7 +10,7 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((k) => k.startsWith('pos-offline-') && k !== CACHE).map((k) => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });
@@ -54,20 +54,26 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // Never cache Vite's mutable modules: mixing old router and new hydration code
+  // can prevent React from mounting, before the application cleanup can run.
+  if (/^\/(?:src\/|node_modules\/|@|__|~oauth|api\/)/.test(url.pathname)) return;
 
   // Navegación: network-first con fallback a caché y luego a "/"
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req).then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
         return res;
       }).catch(() => caches.match(req).then((m) => m || caches.match('/')))
     );
     return;
   }
 
-  // Estáticos: cache-first
+  // Only immutable built assets and installability files are cache-first.
+  if (!/^\/assets\/.+-[a-zA-Z0-9_-]{8,}\.[a-zA-Z0-9]+$/.test(url.pathname) && !CORE.includes(url.pathname)) return;
   event.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
