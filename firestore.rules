@@ -86,6 +86,8 @@ service cloud.firestore {
         : collectionName == 'productCodeIndexes' ? 'products'
         : collectionName == 'productSkuIndexes' ? 'products'
         : collectionName == 'productBarcodeIndexes' ? 'products'
+        : collectionName == 'inventoryBalances' ? 'inventory'
+        : collectionName == 'inventoryMovements' ? 'inventory'
         : 'none';
     }
 
@@ -128,7 +130,8 @@ service cloud.firestore {
     // La empresa se mantiene aislada por ruta. El módulo se resuelve en el servidor
     // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
-      allow get, list: if canRead(moduleForCollection(collection));
+      allow get, list: if canRead(moduleForCollection(collection))
+        || (collection == 'organizationUnits' && canRead('inventory'));
       allow create, update: if canWrite(moduleForCollection(collection));
       allow delete: if isAdmin();
     }
