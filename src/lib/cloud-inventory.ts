@@ -31,6 +31,7 @@ export interface InventoryMovement extends CloudRecord {
   reason: string;
   referenceType?: string;
   referenceId?: string;
+  idempotencyKey?: string;
 }
 
 export interface InventoryWarehouse extends CloudRecord {
@@ -114,16 +115,36 @@ export async function postInventoryMovement(input: {
   const warehouseRef = reference("organizationUnits", input.warehouseId);
   const balanceId = await balanceDocumentId(input.productId, input.warehouseId);
   const balanceRef = reference("inventoryBalances", balanceId);
-  const movementId = crypto.randomUUID();
+  if (input.idempotencyKey && input.idempotencyKey.length > 128) {
+    throw new Error("La clave de operación no puede superar 128 caracteres.");
+  }
+  const movementId = input.idempotencyKey
+    ? await balanceDocumentId(input.idempotencyKey, "inventoryMovement")
+    : crypto.randomUUID();
   const movementRef = reference("inventoryMovements", movementId);
   const now = Date.now();
 
   return runTransaction(fbDb(), async (transaction) => {
-    const [productSnapshot, warehouseSnapshot, balanceSnapshot] = await Promise.all([
+    const [productSnapshot, warehouseSnapshot, balanceSnapshot, movementSnapshot] = await Promise.all([
       transaction.get(productRef),
       transaction.get(warehouseRef),
       transaction.get(balanceRef),
+      transaction.get(movementRef),
     ]);
+
+    if (movementSnapshot.exists()) {
+      const existing = movementSnapshot.data();
+      const requestedDelta = input.type === "receipt"
+        ? input.quantity
+        : input.type === "issue" ? -input.quantity : input.quantity;
+      const sameOperation = existing.productId === input.productId
+        && existing.warehouseId === input.warehouseId
+        && existing.type === input.type
+        && existing.quantityDelta === requestedDelta
+        && existing.reason === input.reason.trim();
+      if (!sameOperation) throw new Error("La clave de operación ya fue utilizada para otro movimiento.");
+      return movementId;
+    }
 
     if (!productSnapshot.exists() || productSnapshot.data().deleted === true || productSnapshot.data().active === false) {
       throw new Error("El producto no existe o está inactivo.");
