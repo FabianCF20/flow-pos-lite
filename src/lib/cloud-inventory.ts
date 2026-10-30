@@ -31,7 +31,7 @@ export interface InventoryMovement extends CloudRecord {
   reason: string;
   referenceType?: string;
   referenceId?: string;
-  idempotencyKey?: string;
+  idempotencyKey: string;
 }
 
 export interface InventoryWarehouse extends CloudRecord {
@@ -115,12 +115,10 @@ export async function postInventoryMovement(input: {
   const warehouseRef = reference("organizationUnits", input.warehouseId);
   const balanceId = await balanceDocumentId(input.productId, input.warehouseId);
   const balanceRef = reference("inventoryBalances", balanceId);
-  if (input.idempotencyKey && input.idempotencyKey.length > 128) {
-    throw new Error("La clave de operación no puede superar 128 caracteres.");
+  if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
+    throw new Error("Debes enviar una clave única de operación de hasta 128 caracteres.");
   }
-  const movementId = input.idempotencyKey
-    ? await balanceDocumentId(input.idempotencyKey, "inventoryMovement")
-    : crypto.randomUUID();
+  const movementId = await balanceDocumentId(input.idempotencyKey, "inventoryMovement");
   const movementRef = reference("inventoryMovements", movementId);
   const now = Date.now();
 
