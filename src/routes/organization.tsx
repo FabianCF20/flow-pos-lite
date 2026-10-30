@@ -112,7 +112,7 @@ function OrganizationPage() {
 }
 
 function OrganizationForm({ units, onClose, onSaved }: { units: OrganizationUnit[]; onClose: () => void; onSaved: () => Promise<void> }) {
-  const [type, setType] = useState<OrganizationUnitType>("company");
+  const [type, setType] = useState<OrganizationUnitType>(units.some((unit) => unit.type === "company" && unit.active) ? "site" : "company");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState("");
