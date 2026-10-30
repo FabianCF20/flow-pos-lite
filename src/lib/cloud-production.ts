@@ -105,6 +105,7 @@ function validateFormulaInput(input: {
   }
   const seen = new Set<string>();
   const materials = input.materials.map((material) => {
+    if (material.productId === input.outputProductId) throw new Error("El producto terminado no puede ser material de su propia fórmula.");
     if (seen.has(material.productId)) throw new Error("Un producto no puede repetirse en la misma fórmula.");
     seen.add(material.productId);
     if (!Number.isFinite(material.quantity) || material.quantity <= 0) {
@@ -329,6 +330,9 @@ export async function approveProductionFormulaVersion(input: {
     }
     const version = versionSnapshot.data();
     if (version.status !== "draft") throw new Error("Solo se pueden aprobar versiones en borrador.");
+    if (Number(version.version) !== Number(formulaSnapshot.data().currentVersion)) {
+      throw new Error("Solo se puede aprobar la versión más reciente de la fórmula.");
+    }
     if (Number(version.revision ?? 1) !== input.expectedRevision) {
       throw new Error("La versión cambió en otro equipo. Actualiza antes de aprobar.");
     }
@@ -388,12 +392,21 @@ export async function createCloudProductionOrder(input: {
     if (!outputProductSnapshot.exists() || outputProductSnapshot.data().active !== true) {
       throw new Error("El producto terminado de la fórmula no está activo.");
     }
+    const versionMaterials = version.materials as (FormulaMaterial & { productName: string; productType: DairyProductType })[];
+    const materialSnapshots = await Promise.all(
+      versionMaterials.map((material) => transaction.get(ref("products", material.productId))),
+    );
+    for (let index = 0; index < materialSnapshots.length; index++) {
+      const materialProduct = materialSnapshots[index];
+      if (!materialProduct?.exists() || materialProduct.data().active !== true || materialProduct.data().deleted === true) {
+        throw new Error(`El material ${versionMaterials[index]?.productName ?? ""} ya no está activo.`);
+      }
+    }
     const factor = input.targetQuantity / Number(version.outputQuantity);
-    const materials = (version.materials as (FormulaMaterial & { productName: string; productType: DairyProductType })[])
-      .map((material) => ({
-        ...material,
-        requiredQuantity: material.quantity * factor,
-      }));
+    const materials = versionMaterials.map((material) => ({
+      ...material,
+      requiredQuantity: material.quantity * factor,
+    }));
     const order: DocumentData = {
       ...audit(user.uid, now),
       id: orderId,
