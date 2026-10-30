@@ -8,6 +8,8 @@ export const MODULES = [
   { id: "categories", label: "Categorías", path: "/categories" },
   { id: "inventory", label: "Inventario", path: "/inventory" },
   { id: "production", label: "Producción", path: "/production" },
+  { id: "production_formulas", label: "Fórmulas de producción", path: "/production/formulas" },
+  { id: "production_approval", label: "Aprobación de fórmulas", path: "/production/approval" },
   { id: "purchases", label: "Compras", path: "/purchases" },
   { id: "suppliers", label: "Proveedores", path: "/suppliers" },
   { id: "receivables", label: "Cartera", path: "/receivables" },
@@ -27,6 +29,8 @@ export const PRESET_ROLES: AccessRole[] = [
   { id: "admin", name: "Administrador", permissions: Object.fromEntries(MODULES.map(m => [m.id, "write"])) },
   { id: "cashier", name: "Cajero", permissions: grants(["products", "categories", "customers", "sales"], ["pos", "cash"]) },
   { id: "warehouse", name: "Inventario y producción", permissions: grants(["products", "categories", "suppliers"], ["inventory", "production"]) },
+  { id: "production_manager", name: "Jefe de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production", "production_formulas", "production_approval"]) },
+  { id: "production_operator", name: "Supervisor / operario de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production"]) },
   { id: "accountant", name: "Contabilidad", permissions: grants(["sales", "customers", "suppliers", "purchases", "reports"], ["accounting", "receivables"]) },
   { id: "viewer", name: "Consulta", permissions: grants(MODULES.filter(m => m.id !== "settings").map(m => m.id), []) },
 ];
