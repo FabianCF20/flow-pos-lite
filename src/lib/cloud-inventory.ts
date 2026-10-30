@@ -181,6 +181,11 @@ export async function postInventoryMovement(input: {
       throw new Error("El lote ya existe con una fecha de vencimiento diferente.");
     }
     const expiryDate = balanceSnapshot.data()?.expiryDate ?? input.expiryDate;
+    if (input.type === "receipt"
+      && ["raw_material", "finished_product"].includes(String(product.productType))
+      && expiryDate === undefined) {
+      throw new Error("Las materias primas y los productos terminados requieren fecha de vencimiento.");
+    }
     if (input.type !== "adjustment" && expiryDate !== undefined && expiryDate < Date.now()) {
       throw new Error("No se puede recibir ni consumir un lote vencido.");
     }
@@ -339,6 +344,10 @@ export async function transferInventory(input: {
     const sourceBefore = Number(sourceBalanceSnapshot.data()?.quantity ?? 0);
     const targetBefore = Number(targetBalanceSnapshot.data()?.quantity ?? 0);
     const expiryDate = sourceBalanceSnapshot.data()?.expiryDate ?? input.expiryDate;
+    if (["raw_material", "finished_product"].includes(String(productSnapshot.data()?.productType))
+      && expiryDate === undefined) {
+      throw new Error("El lote requiere una fecha de vencimiento registrada.");
+    }
     if (input.expiryDate !== undefined && sourceBalanceSnapshot.data()?.expiryDate !== undefined
       && sourceBalanceSnapshot.data()?.expiryDate !== input.expiryDate) {
       throw new Error("La fecha de vencimiento del lote no coincide con la bodega de origen.");
