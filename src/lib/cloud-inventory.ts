@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDocFromServer,
   getDocsFromServer,
   query,
   runTransaction,
@@ -100,8 +99,11 @@ export async function postInventoryMovement(input: {
   referenceId?: string;
 }): Promise<string> {
   const user = requireOnlineUser();
-  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
-    throw new Error("La cantidad debe ser mayor que cero.");
+  if (!Number.isFinite(input.quantity)
+    || (input.type === "adjustment" ? input.quantity === 0 : input.quantity <= 0)) {
+    throw new Error(input.type === "adjustment"
+      ? "El ajuste debe ser distinto de cero."
+      : "La cantidad debe ser mayor que cero.");
   }
   if (!input.reason.trim()) throw new Error("Debes indicar el motivo del movimiento.");
   if (input.unitCost !== undefined && (!Number.isFinite(input.unitCost) || input.unitCost < 0)) {
