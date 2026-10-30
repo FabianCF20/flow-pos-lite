@@ -99,7 +99,6 @@ function ProductionPage() {
   useEffect(() => { void reloadOrders(); }, [reloadOrders]);
 
   const selectedFormula = formulas.find((formula) => formula.id === selectedFormulaId) ?? null;
-  const finishedProducts = products.filter((product) => product.active && product.productType === "finished_product");
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Verificando permisos…</div>;
   if (!canRead) return <div className="p-6 text-sm text-destructive">No tienes permiso para consultar producción.</div>;
 
