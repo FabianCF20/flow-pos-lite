@@ -19,20 +19,20 @@ export interface InventoryBalance extends CloudRecord {
   quantity: number;
   baseUnit: string;
   lotCode: string;
-  expiryDate?: number;
+  expiryDate?: number | null;
 }
 
 export interface InventoryMovement extends CloudRecord {
   productId: string;
   warehouseId: string;
   lotCode: string;
-  expiryDate?: number;
+  expiryDate?: number | null;
   type: InventoryMovementType;
   quantityDelta: number;
   balanceBefore: number;
   balanceAfter: number;
   baseUnit: string;
-  unitCost?: number;
+  unitCost?: number | null;
   reason: string;
   referenceType?: string;
   referenceId?: string;
@@ -311,6 +311,7 @@ export async function transferInventory(input: {
         && existing.targetWarehouseId === input.targetWarehouseId
         && existing.quantity === input.quantity
         && existing.lotCode === lotCode
+        && existing.expiryDate === (input.expiryDate ?? existing.expiryDate ?? null)
         && existing.reason === input.reason.trim();
       if (!sameTransfer) throw new Error("La clave de operación ya fue utilizada para otro traslado.");
       return transferId;
