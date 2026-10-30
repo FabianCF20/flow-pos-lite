@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountingRouteImport } from './routes/accounting'
 import { Route as CashRouteImport } from './routes/cash'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as InventoryRouteImport } from './routes/inventory'
@@ -43,6 +44,11 @@ const AccountingRoute = AccountingRouteImport.update({
 const CashRoute = CashRouteImport.update({
   id: '/cash',
   path: '/cash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CategoriesRoute = CategoriesRouteImport.update({
@@ -135,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/cash': typeof CashRoute
+  '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
   '/inventory': typeof InventoryRoute
@@ -204,6 +211,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounting'
     | '/cash'
+    | '/catalog'
     | '/categories'
     | '/customers'
     | '/inventory'
@@ -271,6 +279,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountingRoute: typeof AccountingRoute
   CashRoute: typeof CashRoute
+  CatalogRoute: typeof CatalogRoute
   CategoriesRoute: typeof CategoriesRoute
   CustomersRoute: typeof CustomersRoute
   InventoryRoute: typeof InventoryRoute
@@ -311,6 +320,13 @@ declare module '@tanstack/react-router' {
       path: '/cash'
       fullPath: '/cash'
       preLoaderRoute: typeof CashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/categories': {
@@ -446,6 +462,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountingRoute: AccountingRoute,
   CashRoute: CashRoute,
+  CatalogRoute: CatalogRoute,
   CategoriesRoute: CategoriesRoute,
   CustomersRoute: CustomersRoute,
   InventoryRoute: InventoryRoute,
