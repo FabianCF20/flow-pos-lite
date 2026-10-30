@@ -22,7 +22,7 @@ Esta carpeta reúne la documentación funcional y técnica de Flow POS Lite.
 | [Mantenimiento](./MANTENIMIENTO.md) | Pruebas, copias de seguridad y mantenimiento |
 | [Manual de usuario](./MANUAL_USUARIO.md) | Guía de uso para el personal del negocio |
 | [Requisitos de operación láctea](./REQUISITOS_OPERACION_LACTEA.md) | Alcance, áreas, fórmulas, compras, inventarios, ventas y despachos |
-| [Sincronización multiusuario](./SINCRONIZACION_MULTIUSUARIO.md) | Arquitectura, consistencia, seguridad y migración a sincronización completa |\n| [Identidad global](./IDENTIDAD_GLOBAL.md) | Auditoría de IDs locales, relaciones y plan seguro de migración a UUID globales |
+| [Sincronización multiusuario](./SINCRONIZACION_MULTIUSUARIO.md) | Arquitectura, consistencia, seguridad y migración a sincronización completa |\n| [Identidad global](./IDENTIDAD_GLOBAL.md) | Auditoría de IDs locales, relaciones y plan seguro de migración a UUID globales |\n| [Implementación cloud-first](./IMPLEMENTACION_CLOUD_FIRST.md) | Avances reales de código, alcance migrado y siguientes pasos |
 
 ## Estado
 
