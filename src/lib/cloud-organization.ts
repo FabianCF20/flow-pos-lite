@@ -191,7 +191,7 @@ export async function updateOrganizationUnit(
     const current = { ...snapshot.data(), id: snapshot.id } as OrganizationUnit;
     const currentRevision = Number(current.revision ?? 1);
     let parentRef: DocumentReference | null = null;
-    let parentSnapshot: Awaited<ReturnType<typeof transaction.get>> | null = null;
+    let parentSnapshot: DocumentSnapshot | null = null;
 
     if (patch.active === false && current.active === true) {
       if (Number(current.activeChildrenCount ?? 0) > 0) {
