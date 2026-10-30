@@ -307,11 +307,12 @@ export async function transferInventory(input: {
     const baseUnit = String(product.baseUnit ?? "u");
 
     const makeBalance = (
+      balanceId: string,
       balanceSnapshot: typeof sourceBalanceSnapshot,
       warehouseId: string,
       quantity: number,
     ): DocumentData => ({
-      id: balanceSnapshot.exists() ? balanceSnapshot.id : "",
+      id: balanceId,
       companyId: CLOUD_COMPANY_ID,
       productId: input.productId,
       warehouseId,
@@ -325,8 +326,8 @@ export async function transferInventory(input: {
       deleted: false,
     });
 
-    transaction.set(sourceBalanceRef, makeBalance(sourceBalanceSnapshot, input.sourceWarehouseId, sourceAfter));
-    transaction.set(targetBalanceRef, makeBalance(targetBalanceSnapshot, input.targetWarehouseId, targetAfter));
+    transaction.set(sourceBalanceRef, makeBalance(sourceBalanceRef.id, sourceBalanceSnapshot, input.sourceWarehouseId, sourceAfter));
+    transaction.set(targetBalanceRef, makeBalance(targetBalanceRef.id, targetBalanceSnapshot, input.targetWarehouseId, targetAfter));
     transaction.set(transferRef, {
       id: transferId,
       companyId: CLOUD_COMPANY_ID,
