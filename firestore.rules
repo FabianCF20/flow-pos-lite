@@ -88,6 +88,7 @@ service cloud.firestore {
         : collectionName == 'productBarcodeIndexes' ? 'products'
         : collectionName == 'inventoryBalances' ? 'inventory'
         : collectionName == 'inventoryMovements' ? 'inventory'
+        : collectionName == 'inventoryTransfers' ? 'inventory'
         : 'none';
     }
 
