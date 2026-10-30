@@ -162,6 +162,9 @@ function CloudCatalogPage() {
         }
       />
       <div className="px-4 md:px-6 pb-8 space-y-4">
+        <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
+          Este es el catálogo cloud oficial. La conexión con el punto de venta, producción e inventario anteriores todavía está en implementación; los registros creados aquí no alimentan esas pantallas antiguas hasta completar su migración.
+        </p>
         <div className="flex gap-2 border-b border-border">
           <button onClick={() => setTab("products")} className={`px-3 py-2.5 text-sm border-b-2 ${tab === "products" ? "border-primary text-foreground font-semibold" : "border-transparent text-muted-foreground"}`}>
             <Package className="inline h-4 w-4 mr-1.5" /> Productos ({products.length})
