@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { moduleForPath } from "@/lib/permissions";
-import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory, Building2 } from "lucide-react";
+import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory, Building2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/more")({ head: () => pageHead("Módulos", "Módulos de operación, producción y finanzas."), component: MorePage });
@@ -19,8 +19,7 @@ function MorePage() {
     { to: "/inventory", icon: Boxes, label: "Inventario" },
     { to: "/production", icon: Factory, label: "Producción" },
     { to: "/accounting", icon: Landmark, label: "Contabilidad" },
-    { to: "/categories", icon: Tag, label: "Categorías" },
-    { to: "/products", icon: Package, label: "Productos" },
+    { to: "/catalog", icon: Package, label: "Catálogo maestro" },
     { to: "/customers", icon: Users, label: "Clientes" },
     { to: "/reports", icon: BarChart3, label: "Reportes" },
     { to: "/organization", icon: Building2, label: "Estructura organizacional" },
@@ -30,6 +29,7 @@ function MorePage() {
     const module = moduleForPath(item.to);
     if (module) return can(module, "read");
     if (item.to === "/organization") return can("settings", "write");
+    if (item.to === "/catalog") return can("products", "read") && can("categories", "read");
     return true;
   });
   return (
