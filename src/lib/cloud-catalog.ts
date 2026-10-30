@@ -297,7 +297,7 @@ export async function updateCloudProduct(
     const oldCategoryId = String(old.categoryId ?? "");
     const categoryChanged = oldCategoryId !== data.categoryId;
     const activeChanged = (old.active !== false) !== data.active;
-    let oldCategorySnapshot = categorySnapshot;
+    let oldCategorySnapshot: DocumentSnapshot = categorySnapshot;
     if (categoryChanged) {
       oldCategorySnapshot = await transaction.get(recordRef("categories", oldCategoryId));
       if (!oldCategorySnapshot.exists()) throw new Error("La categoría anterior del producto ya no existe.");
