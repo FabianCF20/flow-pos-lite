@@ -20,6 +20,12 @@ export interface FormulaMaterial {
   materialType: FormulaMaterialType;
 }
 
+export interface FormulaVersionMaterial extends FormulaMaterial {
+  productName: string;
+  productType: DairyProductType;
+  standardCost: number;
+}
+
 export interface ProductionFormula extends CloudRecord {
   code: string;
   name: string;
@@ -35,16 +41,14 @@ export interface ProductionFormulaVersion extends CloudRecord {
   version: number;
   outputQuantity: number;
   outputUnit: string;
-  materials: FormulaMaterial[];
+  materials: FormulaVersionMaterial[];
   status: FormulaVersionStatus;
   approvedBy?: string;
   approvedAt?: number;
   changeReason: string;
 }
 
-export interface ProductionOrderSnapshotMaterial extends FormulaMaterial {
-  productName: string;
-  productType: DairyProductType;
+export interface ProductionOrderSnapshotMaterial extends FormulaVersionMaterial {
   requiredQuantity: number;
 }
 
@@ -63,6 +67,7 @@ export interface CloudProductionOrder extends CloudRecord {
   warehouseId: string;
   status: "draft" | "in_progress" | "completed" | "cancelled";
   notes: string;
+  idempotencyKey: string;
 }
 
 function requireProductionUser() {
@@ -76,6 +81,11 @@ function requireProductionUser() {
 
 function ref(collectionName: string, id: string) {
   return doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, collectionName), id);
+}
+
+async function stableId(value: string, scope: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`${scope}:${value.trim()}`));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function requiredText(value: string, label: string, max = 120) {
@@ -103,11 +113,13 @@ function validateFormulaInput(input: {
   if (!Array.isArray(input.materials) || input.materials.length === 0) {
     throw new Error("Agrega al menos un ingrediente o material de empaque.");
   }
+  const outputProductId = requiredText(input.outputProductId, "producto terminado", 128);
   const seen = new Set<string>();
   const materials = input.materials.map((material) => {
-    if (material.productId === input.outputProductId) throw new Error("El producto terminado no puede ser material de su propia fórmula.");
-    if (seen.has(material.productId)) throw new Error("Un producto no puede repetirse en la misma fórmula.");
-    seen.add(material.productId);
+    const productId = requiredText(material.productId, "producto", 128);
+    if (productId === outputProductId) throw new Error("El producto terminado no puede ser material de su propia fórmula.");
+    if (seen.has(productId)) throw new Error("Un producto no puede repetirse en la misma fórmula.");
+    seen.add(productId);
     if (!Number.isFinite(material.quantity) || material.quantity <= 0) {
       throw new Error("Todas las cantidades de la fórmula deben ser mayores que cero.");
     }
@@ -115,7 +127,7 @@ function validateFormulaInput(input: {
       throw new Error("El tipo de material no es válido.");
     }
     return {
-      productId: requiredText(material.productId, "producto", 128),
+      productId,
       quantity: material.quantity,
       unit: requiredText(material.unit, "unidad", 16),
       materialType: material.materialType,
@@ -124,7 +136,7 @@ function validateFormulaInput(input: {
   return {
     name: requiredText(input.name, "nombre"),
     area: input.area,
-    outputProductId: requiredText(input.outputProductId, "producto terminado", 128),
+    outputProductId,
     outputQuantity: input.outputQuantity,
     outputUnit: requiredText(input.outputUnit, "unidad de rendimiento", 16),
     materials,
@@ -153,7 +165,8 @@ async function validateFormulaProducts(
   const byId = new Map(snapshots.map((snapshot) => [snapshot.id, snapshot]));
   const output = byId.get(input.outputProductId);
   if (!output?.exists() || output.data().deleted === true || output.data().active === false
-    || output.data().productType !== "finished_product") {
+    || output.data().productType !== "finished_product"
+    || output.data().trackInventory === false) {
     throw new Error("El producto de salida debe ser un producto terminado activo.");
   }
   if (String(output.data().baseUnit) !== input.outputUnit) {
@@ -169,6 +182,9 @@ async function validateFormulaProducts(
       throw new Error("Todos los ingredientes y materiales deben tener control de inventario.");
     }
     const productType = snapshot.data().productType;
+    if (!Number.isFinite(Number(snapshot.data().standardCost ?? 0)) || Number(snapshot.data().standardCost ?? 0) < 0) {
+      throw new Error(`El costo estándar de ${String(snapshot.data().name)} no es válido.`);
+    }
     if (material.materialType === "ingredient" && !["raw_material", "finished_product"].includes(String(productType))) {
       throw new Error("Los ingredientes deben ser materias primas o productos intermedios.");
     }
@@ -185,6 +201,7 @@ async function validateFormulaProducts(
       ...material,
       productName: String(byId.get(material.productId)?.data().name ?? ""),
       productType: String(byId.get(material.productId)?.data().productType) as DairyProductType,
+      standardCost: Number(byId.get(material.productId)?.data().standardCost ?? 0),
     })),
   };
 }
@@ -353,23 +370,39 @@ export async function createCloudProductionOrder(input: {
   warehouseId: string;
   targetQuantity: number;
   notes?: string;
+  idempotencyKey: string;
 }): Promise<string> {
   const user = requireProductionUser();
   if (!Number.isFinite(input.targetQuantity) || input.targetQuantity <= 0) {
     throw new Error("La cantidad a producir debe ser mayor que cero.");
   }
-  const orderId = crypto.randomUUID();
+  if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
+    throw new Error("Debes enviar una clave única de operación de hasta 128 caracteres.");
+  }
+  const orderId = await stableId(input.idempotencyKey, "productionOrder");
   const now = Date.now();
 
   await runTransaction(fbDb(), async (transaction) => {
+    const orderRef = ref("productionOrders", orderId);
     const formulaRef = ref("productionFormulas", input.formulaId);
     const versionRef = ref("productionFormulaVersions", input.formulaVersionId);
     const warehouseRef = ref("organizationUnits", input.warehouseId);
-    const [formulaSnapshot, versionSnapshot, warehouseSnapshot] = await Promise.all([
+    const [existingOrder, formulaSnapshot, versionSnapshot, warehouseSnapshot] = await Promise.all([
+      transaction.get(orderRef),
       transaction.get(formulaRef),
       transaction.get(versionRef),
       transaction.get(warehouseRef),
     ]);
+    if (existingOrder.exists()) {
+      const existing = existingOrder.data();
+      const sameOrder = existing.formulaId === input.formulaId
+        && existing.formulaVersionId === input.formulaVersionId
+        && existing.warehouseId === input.warehouseId
+        && existing.targetQuantity === input.targetQuantity
+        && existing.notes === (input.notes?.trim() ?? "");
+      if (!sameOrder) throw new Error("La clave de operación ya fue utilizada para otra orden.");
+      return;
+    }
 
     if (!formulaSnapshot.exists() || formulaSnapshot.data().active !== true) {
       throw new Error("La fórmula no existe o está inactiva.");
@@ -389,17 +422,26 @@ export async function createCloudProductionOrder(input: {
     const version = versionSnapshot.data();
     const outputProductRef = ref("products", String(formula.outputProductId));
     const outputProductSnapshot = await transaction.get(outputProductRef);
-    if (!outputProductSnapshot.exists() || outputProductSnapshot.data().active !== true) {
-      throw new Error("El producto terminado de la fórmula no está activo.");
+    if (!outputProductSnapshot.exists()
+      || outputProductSnapshot.data().active !== true
+      || outputProductSnapshot.data().productType !== "finished_product"
+      || outputProductSnapshot.data().trackInventory === false
+      || String(outputProductSnapshot.data().baseUnit) !== String(version.outputUnit)) {
+      throw new Error("El producto terminado de la fórmula no está activo o su unidad cambió.");
     }
-    const versionMaterials = version.materials as (FormulaMaterial & { productName: string; productType: DairyProductType })[];
+    const versionMaterials = version.materials as FormulaVersionMaterial[];
     const materialSnapshots = await Promise.all(
       versionMaterials.map((material) => transaction.get(ref("products", material.productId))),
     );
     for (let index = 0; index < materialSnapshots.length; index++) {
       const materialProduct = materialSnapshots[index];
-      if (!materialProduct?.exists() || materialProduct.data().active !== true || materialProduct.data().deleted === true) {
-        throw new Error(`El material ${versionMaterials[index]?.productName ?? ""} ya no está activo.`);
+      if (!materialProduct?.exists()
+        || materialProduct.data().active !== true
+        || materialProduct.data().deleted === true
+        || materialProduct.data().trackInventory === false
+        || materialProduct.data().productType !== versionMaterials[index]?.productType
+        || String(materialProduct.data().baseUnit) !== versionMaterials[index]?.unit) {
+        throw new Error(`El material ${versionMaterials[index]?.productName ?? ""} ya no está disponible o su configuración cambió.`);
       }
     }
     const factor = input.targetQuantity / Number(version.outputQuantity);
@@ -424,8 +466,9 @@ export async function createCloudProductionOrder(input: {
       warehouseId: input.warehouseId,
       status: "draft",
       notes: input.notes?.trim() ?? "",
+      idempotencyKey: input.idempotencyKey,
     };
-    transaction.set(ref("productionOrders", orderId), order);
+    transaction.set(orderRef, order);
   });
   return orderId;
 }
