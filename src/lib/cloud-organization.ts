@@ -124,7 +124,7 @@ export async function createOrganizationUnit(input: {
       }
       if (input.type === "production_line") {
         areaId = parentId;
-        siteId = String(parentSnapshot.data().siteId ?? parentSnapshot.data().parentId ?? "");
+        siteId = String(parentData.siteId ?? parentData.parentId ?? "");
       }
     }
 
