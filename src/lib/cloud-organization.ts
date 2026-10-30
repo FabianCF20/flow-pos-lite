@@ -24,6 +24,8 @@ export interface OrganizationUnit extends CloudRecord {
   name: string;
   type: OrganizationUnitType;
   parentId: string | null;
+  siteId?: string;
+  areaId?: string;
   active: boolean;
   description?: string;
   address?: string;
@@ -84,6 +86,8 @@ export async function createOrganizationUnit(input: {
   await runTransaction(fbDb(), async (transaction) => {
     const indexSnapshot = await transaction.get(indexRef);
     if (indexSnapshot.exists()) throw new Error("Ya existe una unidad organizacional con ese código.");
+    let siteId: string | undefined;
+    let areaId: string | undefined;
 
     if (input.type === "company") {
       if (parentId) throw new Error("La empresa no puede tener una unidad superior.");
@@ -103,8 +107,22 @@ export async function createOrganizationUnit(input: {
       if (!parent.exists() || parent.data().active !== true || parent.data().deleted === true) {
         throw new Error("La unidad superior no existe o está inactiva.");
       }
-      if (!allowedParents.includes(parent.data().type as OrganizationUnitType)) {
+      const parentType = parent.data().type as OrganizationUnitType;
+      if (!allowedParents.includes(parentType)) {
         throw new Error("La jerarquía seleccionada no es válida para este tipo de unidad.");
+      }
+      if (input.type === "site") siteId = id;
+      if (input.type === "area") siteId = parentId;
+      if (input.type === "warehouse") {
+        if (parentType === "site") siteId = parentId;
+        if (parentType === "area") {
+          areaId = parentId;
+          siteId = String(parent.data().siteId ?? parent.data().parentId ?? "");
+        }
+      }
+      if (input.type === "production_line") {
+        areaId = parentId;
+        siteId = String(parent.data().siteId ?? parent.data().parentId ?? "");
       }
     }
 
@@ -115,6 +133,8 @@ export async function createOrganizationUnit(input: {
       name,
       type: input.type,
       parentId,
+      ...(siteId ? { siteId } : {}),
+      ...(areaId ? { areaId } : {}),
       active: true,
       description: input.description?.trim() ?? "",
       address: input.address?.trim() ?? "",
