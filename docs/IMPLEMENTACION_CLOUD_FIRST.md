@@ -152,3 +152,14 @@ Se ampliaron los permisos para respetar la separación de funciones:
 - Las reglas impiden editar una versión aprobada y bloquean la eliminación física de fórmulas y sus versiones.
 
 El administrador debe asignar los nuevos roles a las personas correspondientes. Los roles se crean como presets al inicializar el acceso del administrador.
+
+
+### Alcance de acceso por bodega
+
+Se incorporó un alcance explícito en cada asignación de usuario:
+- `warehouseIds`: bodegas autorizadas para esa persona.
+- `allWarehouses`: acceso a todas las bodegas, que debe asignar expresamente un administrador.
+
+La administración de usuarios permite seleccionar bodegas activas y muestra su sede/área. Las consultas de existencias, movimientos y órdenes ahora exigen una bodega concreta; Firestore valida el alcance tanto al leer como al escribir. Los traslados requieren permiso sobre las dos bodegas. Las unidades de tipo bodega solo son visibles para usuarios autorizados, salvo administración general.
+
+Los usuarios nuevos quedan sin bodegas asignadas hasta que el administrador defina su alcance. Los administradores conservan acceso global. Este primer control se resuelve por bodega explícita; falta automatizar la expansión de permisos por sede/área y completar pruebas con usuarios de distintos alcances.
