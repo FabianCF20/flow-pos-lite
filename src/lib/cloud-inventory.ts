@@ -49,6 +49,7 @@ export interface InventoryWarehouse extends CloudRecord {
   siteId?: string;
   areaId?: string;
   active: boolean;
+  inventoryUsed?: boolean;
 }
 
 function requireOnlineUser() {
@@ -270,8 +271,22 @@ export async function postInventoryMovement(input: {
       deleted: false,
     };
 
+    const totalOnHand = Number(product.totalOnHand ?? 0) + quantityDelta;
+    if (totalOnHand < 0) throw new Error("El saldo global del producto no puede quedar negativo.");
+
     transaction.set(balanceRef, balanceData);
     transaction.set(movementRef, movementData);
+    transaction.update(productRef, {
+      totalOnHand,
+      inventoryRevision: Number(product.inventoryRevision ?? 0) + 1,
+      stockUpdatedAt: now,
+    });
+    if (warehouseSnapshot.data().inventoryUsed !== true) {
+      transaction.update(warehouseRef, {
+        inventoryUsed: true,
+        inventoryRevision: Number(warehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+      });
+    }
     return movementId;
   });
 }
@@ -422,6 +437,18 @@ export async function transferInventory(input: {
 
     transaction.set(sourceBalanceRef, makeBalance(sourceBalanceRef.id, sourceBalanceSnapshot, input.sourceWarehouseId, sourceAfter));
     transaction.set(targetBalanceRef, makeBalance(targetBalanceRef.id, targetBalanceSnapshot, input.targetWarehouseId, targetAfter));
+    if (sourceWarehouseSnapshot.data().inventoryUsed !== true) {
+      transaction.update(sourceWarehouseRef, {
+        inventoryUsed: true,
+        inventoryRevision: Number(sourceWarehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+      });
+    }
+    if (targetWarehouseSnapshot.data().inventoryUsed !== true) {
+      transaction.update(targetWarehouseRef, {
+        inventoryUsed: true,
+        inventoryRevision: Number(targetWarehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+      });
+    }
     transaction.set(transferRef, {
       id: transferId,
       companyId: CLOUD_COMPANY_ID,
