@@ -136,7 +136,7 @@ export interface CashMovement {
   userId: number;
 }
 
-export type UserRole = "admin" | "cashier";
+export type UserRole = string;
 export interface User {
   id?: number;
   name: string;
