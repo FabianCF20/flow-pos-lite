@@ -123,7 +123,7 @@ service cloud.firestore {
           && assignment().roleId == roleId);
       allow list: if isAdmin();
       allow create: if isAdmin()
-        || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'accountant', 'viewer']);
+        || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'production_manager', 'production_operator', 'accountant', 'viewer']);
       allow update, delete: if isAdmin();
     }
 
