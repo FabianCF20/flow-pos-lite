@@ -51,7 +51,9 @@ export function landingPath(session: AccessSession | null) {
   if (session?.assignment.roleId === "admin" && canAccess(session, "dashboard")) return "/";
   if (session?.assignment.roleId === "cashier" && canAccess(session, "pos")) return "/pos";
   if (canAccess(session, "products") && canAccess(session, "categories")) return "/catalog";
-  return MODULES.find((module) => canAccess(session, module.id))?.path ?? "/more";
+  return MODULES.find((module) =>
+    module.id !== "products" && module.id !== "categories" && canAccess(session, module.id)
+  )?.path ?? "/more";
 }
 export function validPermissions(value: Permissions) {
   return Object.entries(value).every(([key, level]) => MODULES.some(m => m.id === key) && ["none", "read", "write"].includes(level));
