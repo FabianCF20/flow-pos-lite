@@ -82,6 +82,10 @@ service cloud.firestore {
         : collectionName == 'attachments' ? 'settings'
         : collectionName == 'settings' ? 'settings'
         : collectionName == 'organizationUnits' ? 'settings'
+        : collectionName == 'categoryCodeIndexes' ? 'categories'
+        : collectionName == 'productCodeIndexes' ? 'products'
+        : collectionName == 'productSkuIndexes' ? 'products'
+        : collectionName == 'productBarcodeIndexes' ? 'products'
         : 'none';
     }
 
