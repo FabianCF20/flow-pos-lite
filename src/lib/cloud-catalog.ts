@@ -226,6 +226,8 @@ export async function createCloudProduct(input: ProductInput): Promise<string> {
       id,
       ...data,
       inventoryUsed: false,
+      inventoryRevision: 0,
+      lastInventoryMovementId: null,
     });
     transaction.update(recordRef("categories", data.categoryId), {
       activeProductCount: Number(categorySnapshot.data().activeProductCount ?? 0) + 1,
