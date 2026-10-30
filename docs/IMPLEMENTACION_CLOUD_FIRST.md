@@ -98,3 +98,24 @@ Se añadió el acceso desde el menú de módulos y la navegación lateral.
 - La pantalla usa el permiso general de Ajustes como autorización temporal. Debe crearse un permiso organizacional específico y ampliar el modelo de asignación de usuarios a áreas/sedes/bodegas.
 - La autenticación actual todavía mantiene un perfil auxiliar en Dexie. No retirar Dexie hasta reemplazar ese consumidor y los demás que sigan activos.
 - No se ha desplegado `firestore.rules` ni se han ejecutado pruebas automatizadas o compilación en este entorno.
+
+
+### Catálogo cloud-first y control de inventario
+
+Se añadieron dos repositorios de dominio:
+
+- `src/lib/cloud-catalog.ts`: categorías y productos con UUID, auditoría, revisiones para concurrencia y códigos/SKU/códigos de barras únicos mediante documentos índice escritos en transacciones.
+- `src/lib/cloud-inventory.ts`: saldos por producto y bodega, consulta de movimientos y registro atómico de entradas, salidas y ajustes. Cada movimiento conserva saldo anterior y posterior, motivo, responsable y referencia opcional.
+
+Reglas de integridad añadidas:
+- Los productos deben referenciar una categoría activa.
+- No se puede desactivar una categoría que tenga productos activos; la verificación se ejecuta dentro de la transacción.
+- No se permite registrar dos productos con el mismo código, SKU o código de barras.
+- El movimiento y la actualización del saldo se confirman en una sola transacción.
+- No se permiten existencias negativas.
+- El historial de `inventoryMovements` es de solo creación: no se puede modificar ni borrar desde el cliente.
+- La consulta de unidades organizacionales tipo bodega admite lectura para usuarios con permiso de Inventario; su administración sigue protegida por Ajustes.
+
+**Importante:** estas capas de datos todavía no sustituyen las pantallas actuales. Productos, categorías, POS, producción e inventario siguen teniendo consumidores Dexie y no deben mezclarse con estos repositorios hasta migrar sus flujos relacionados. No se ha desplegado Firestore Rules ni se han ejecutado compilación, emulador o pruebas de integración.
+
+**Pendientes técnicos:** añadir paginación para catálogos grandes, completar transferencias entre bodegas, conectar adjuntos/fotos a Firebase Storage, aplicar alcance por sede/área/bodega en las reglas y realizar pruebas concurrentes de índices y saldos.
