@@ -150,7 +150,7 @@ service cloud.firestore {
     // La empresa se mantiene aislada por ruta. El módulo se resuelve en el servidor
     // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
-      allow get, list: if collection in ['inventoryBalances', 'inventoryMovements']
+      allow get, list: if company == 'default' && (collection in ['inventoryBalances', 'inventoryMovements']
           ? canReadWarehouse(resource.data.warehouseId)
           : collection == 'inventoryTransfers'
             ? canReadWarehouse(resource.data.sourceWarehouseId)
@@ -164,9 +164,9 @@ service cloud.firestore {
                     && hasWarehouseScope(resource.data.id))
                 : canRead(moduleForCollection(collection))
                   || (collection in ['productionFormulas', 'productionFormulaVersions']
-                    && canRead('production'));
+                    && canRead('production')));
 
-      allow create: if collection == 'inventoryBalances'
+      allow create: if company == 'default' && (collection == 'inventoryBalances'
           ? canWriteWarehouse(request.resource.data.warehouseId)
           : collection == 'inventoryMovements'
             ? canWriteWarehouse(request.resource.data.warehouseId)
@@ -177,9 +177,9 @@ service cloud.firestore {
                 ? canWrite('production') && hasWarehouseScope(request.resource.data.warehouseId)
                 : collection in ['productionFormulas', 'productionFormulaVersions', 'productionFormulaCodeIndexes']
                   ? canWrite('production_formulas')
-                  : canWrite(moduleForCollection(collection));
+                  : canWrite(moduleForCollection(collection)));
 
-      allow update: if collection == 'inventoryBalances'
+      allow update: if company == 'default' && (collection == 'inventoryBalances'
           ? canWriteWarehouse(resource.data.warehouseId)
             && request.resource.data.warehouseId == resource.data.warehouseId
             && request.resource.data.productId == resource.data.productId
@@ -201,9 +201,9 @@ service cloud.firestore {
                 ? canWrite('production_formulas')
                 : collection in ['inventoryMovements', 'inventoryTransfers', 'productionFormulaCodeIndexes']
                   ? false
-                  : canWrite(moduleForCollection(collection));
+                  : canWrite(moduleForCollection(collection)));
 
-      allow delete: if !(collection in [
+      allow delete: if company == 'default' && !(collection in [
           'inventoryBalances',
           'inventoryMovements',
           'inventoryTransfers',
