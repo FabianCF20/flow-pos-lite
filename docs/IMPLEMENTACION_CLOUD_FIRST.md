@@ -77,7 +77,7 @@ Cada registro usa UUID global, auditoría de creación/modificación y control d
 
 La colección `organizationUnits` quedó vinculada al permiso de configuración en las reglas de Firestore.
 
-**Alcance de este avance:** está creada la capa de datos cloud-first y su autorización. Todavía no hay pantalla de administración conectada a esta capa ni pruebas de compilación/integración ejecutadas. La validación de códigos únicos se realiza actualmente en la capa de aplicación; debe reforzarse con una operación atómica antes de uso concurrente en producción.
+**Alcance de este avance:** está creada la capa de datos cloud-first y su autorización. Todavía no hay pantalla de administración conectada a esta capa ni pruebas de compilación/integración ejecutadas. Los códigos de unidades organizacionales y la existencia de una empresa principal se protegen con índices y transacciones atómicas.
 
 
 ### Pantalla de estructura organizacional
@@ -94,7 +94,7 @@ Se añadió el acceso desde el menú de módulos y la navegación lateral.
 
 ### Limitaciones pendientes antes de producción
 
-- La unicidad de códigos y de empresa principal se valida en la capa de aplicación, pero todavía no está protegida por un índice transaccional; dos administradores concurrentes podrían intentar registrar el mismo código.
+- La unicidad de códigos y de empresa principal se protege mediante `organizationUnitCodeIndexes` y transacciones de Firestore.
 - La pantalla usa el permiso general de Ajustes como autorización temporal. Debe crearse un permiso organizacional específico y ampliar el modelo de asignación de usuarios a áreas/sedes/bodegas.
 - La autenticación actual todavía mantiene un perfil auxiliar en Dexie. No retirar Dexie hasta reemplazar ese consumidor y los demás que sigan activos.
 - No se ha desplegado `firestore.rules` ni se han ejecutado pruebas automatizadas o compilación en este entorno.
