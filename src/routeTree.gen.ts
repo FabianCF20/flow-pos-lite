@@ -17,6 +17,7 @@ import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MoreRouteImport } from './routes/more'
+import { Route as OrganizationRouteImport } from './routes/organization'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProductionRouteImport } from './routes/production'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -67,6 +68,11 @@ const LoginRoute = LoginRouteImport.update({
 const MoreRoute = MoreRouteImport.update({
   id: '/more',
   path: '/more',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationRoute = OrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PosRoute = PosRouteImport.update({
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/organization': typeof OrganizationRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -155,6 +162,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/organization': typeof OrganizationRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -200,6 +208,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/login'
     | '/more'
+    | '/organization'
     | '/pos'
     | '/production'
     | '/products'
@@ -264,6 +273,7 @@ export interface RootRouteChildren {
   InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
   MoreRoute: typeof MoreRoute
+  OrganizationRoute: typeof OrganizationRoute
   PosRoute: typeof PosRoute
   ProductionRoute: typeof ProductionRoute
   ProductsRoute: typeof ProductsRoute
@@ -333,6 +343,13 @@ declare module '@tanstack/react-router' {
       path: '/more'
       fullPath: '/more'
       preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organization': {
+      id: '/organization'
+      path: '/organization'
+      fullPath: '/organization'
+      preLoaderRoute: typeof OrganizationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pos': {
@@ -424,6 +441,7 @@ const rootRouteChildren: RootRouteChildren = {
   InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
   MoreRoute: MoreRoute,
+  OrganizationRoute: OrganizationRoute,
   PosRoute: PosRoute,
   ProductionRoute: ProductionRoute,
   ProductsRoute: ProductsRoute,
