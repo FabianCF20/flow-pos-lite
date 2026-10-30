@@ -58,6 +58,21 @@ service cloud.firestore {
         || (roleExists() && permissionLevel(moduleName) == 'write');
     }
 
+    function hasWarehouseScope(warehouseId) {
+      return isAdmin()
+        || (hasActiveAssignment()
+          && (assignment().get('allWarehouses', false) == true
+            || assignment().get('warehouseIds', []).hasAny([warehouseId])));
+    }
+
+    function canReadWarehouse(warehouseId) {
+      return canRead('inventory') && hasWarehouseScope(warehouseId);
+    }
+
+    function canWriteWarehouse(warehouseId) {
+      return canWrite('inventory') && hasWarehouseScope(warehouseId);
+    }
+
     function moduleForCollection(collectionName) {
       return collectionName == 'products' ? 'products'
         : collectionName == 'categories' ? 'categories'
@@ -135,34 +150,70 @@ service cloud.firestore {
     // La empresa se mantiene aislada por ruta. El módulo se resuelve en el servidor
     // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
-      allow get, list: if canRead(moduleForCollection(collection))
-        || (collection == 'organizationUnits' && canRead('inventory'))
-        || (collection in ['productionFormulas', 'productionFormulaVersions'] && canRead('production'));
-      allow create: if collection in ['productionFormulas', 'productionFormulaVersions', 'productionFormulaCodeIndexes']
-        ? canWrite('production_formulas')
-        : canWrite(moduleForCollection(collection));
-      allow update: if collection != 'inventoryMovements'
-        && collection != 'inventoryTransfers'
-        && (collection == 'productionFormulaVersions'
-          ? canWrite('production_approval')
-            && resource.data.status == 'draft'
-            && request.resource.data.status == 'approved'
-            && request.resource.data.approvedBy == request.auth.uid
-            && request.resource.data.revision == resource.data.revision + 1
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'status', 'approvedBy', 'approvedAt', 'updatedAt', 'updatedBy', 'revision'
-            ])
-          : collection == 'productionFormulas'
-            ? canWrite('production_formulas')
-            : collection == 'productionFormulaCodeIndexes'
-              ? false
-              : canWrite(moduleForCollection(collection)));
-      allow delete: if collection != 'inventoryMovements'
-        && collection != 'inventoryTransfers'
-        && collection != 'productionFormulaVersions'
-        && collection != 'productionFormulas'
-        && collection != 'productionFormulaCodeIndexes'
-        && isAdmin();
+      allow get, list: if collection in ['inventoryBalances', 'inventoryMovements']
+          ? canReadWarehouse(resource.data.warehouseId)
+          : collection == 'inventoryTransfers'
+            ? canReadWarehouse(resource.data.sourceWarehouseId)
+              && hasWarehouseScope(resource.data.targetWarehouseId)
+            : collection == 'productionOrders'
+              ? canRead('production') && hasWarehouseScope(resource.data.warehouseId)
+              : collection == 'organizationUnits'
+                ? canRead('settings')
+                  || (resource.data.type == 'warehouse'
+                    && (canRead('inventory') || canRead('production'))
+                    && hasWarehouseScope(resource.data.id))
+                : canRead(moduleForCollection(collection))
+                  || (collection in ['productionFormulas', 'productionFormulaVersions']
+                    && canRead('production'));
+
+      allow create: if collection == 'inventoryBalances'
+          ? canWriteWarehouse(request.resource.data.warehouseId)
+          : collection == 'inventoryMovements'
+            ? canWriteWarehouse(request.resource.data.warehouseId)
+            : collection == 'inventoryTransfers'
+              ? canWriteWarehouse(request.resource.data.sourceWarehouseId)
+                && hasWarehouseScope(request.resource.data.targetWarehouseId)
+              : collection == 'productionOrders'
+                ? canWrite('production') && hasWarehouseScope(request.resource.data.warehouseId)
+                : collection in ['productionFormulas', 'productionFormulaVersions', 'productionFormulaCodeIndexes']
+                  ? canWrite('production_formulas')
+                  : canWrite(moduleForCollection(collection));
+
+      allow update: if collection == 'inventoryBalances'
+          ? canWriteWarehouse(resource.data.warehouseId)
+            && request.resource.data.warehouseId == resource.data.warehouseId
+            && request.resource.data.productId == resource.data.productId
+            && request.resource.data.lotCode == resource.data.lotCode
+          : collection == 'productionOrders'
+            ? canWrite('production')
+              && hasWarehouseScope(resource.data.warehouseId)
+              && request.resource.data.warehouseId == resource.data.warehouseId
+            : collection == 'productionFormulaVersions'
+              ? canWrite('production_approval')
+                && resource.data.status == 'draft'
+                && request.resource.data.status == 'approved'
+                && request.resource.data.approvedBy == request.auth.uid
+                && request.resource.data.revision == resource.data.revision + 1
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                  'status', 'approvedBy', 'approvedAt', 'updatedAt', 'updatedBy', 'revision'
+                ])
+              : collection == 'productionFormulas'
+                ? canWrite('production_formulas')
+                : collection in ['inventoryMovements', 'inventoryTransfers', 'productionFormulaCodeIndexes']
+                  ? false
+                  : canWrite(moduleForCollection(collection));
+
+      allow delete: if !(collection in [
+          'inventoryBalances',
+          'inventoryMovements',
+          'inventoryTransfers',
+          'productionOrders',
+          'productionFormulaVersions',
+          'productionFormulas',
+          'productionFormulaCodeIndexes',
+          'organizationUnits',
+          'organizationUnitCodeIndexes'
+        ]) && isAdmin();
     }
   }
 }
