@@ -1,7 +1,6 @@
 import {
   collection,
   doc,
-  getDocFromServer,
   getDocsFromServer,
   query,
   runTransaction,
@@ -87,12 +86,6 @@ function auditFields(userId: string, now: number) {
   };
 }
 
-async function assertCategoryExists(categoryId: string) {
-  const snapshot = await getDocFromServer(recordRef("categories", categoryId));
-  if (!snapshot.exists() || snapshot.data().deleted === true || snapshot.data().active === false) {
-    throw new Error("La categoría seleccionada no existe o está inactiva.");
-  }
-}
 
 export async function listCloudCategories(): Promise<CloudCategory[]> {
   currentUser();
