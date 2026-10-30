@@ -135,6 +135,7 @@ Se añadió `src/lib/cloud-production.ts` como base del módulo de producción l
 - Crear una modificación genera una nueva versión; no sobrescribe las versiones anteriores.
 - Las versiones se crean en borrador y solo la versión más reciente puede aprobarse.
 - Firestore restringe las versiones a una transición de borrador a aprobada; una versión aprobada no se puede modificar ni borrar desde el cliente.
-- Las órdenes guardan una copia de la fórmula y de las cantidades calculadas, junto con la versión aprobada utilizada.
+- Las órdenes guardan una copia de la fórmula, la versión aprobada, los productos, unidades, costos estándar y cantidades calculadas.
+- La creación de órdenes usa clave de idempotencia para evitar duplicados cuando se reintenta una petición.
 
 **Alcance actual:** están implementadas las operaciones de creación de fórmulas, creación de versiones, aprobación y creación de órdenes en borrador. Todavía falta la pantalla de producción y el cierre transaccional de la orden que consuma lotes de materias primas y registre el lote del producto terminado. No se debe usar aún como flujo productivo completo.
