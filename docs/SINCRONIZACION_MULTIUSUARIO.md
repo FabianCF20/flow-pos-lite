@@ -2,13 +2,13 @@
 
 ## Estado
 
-Diseño técnico aprobado para orientar la implementación. **No significa que la sincronización completa ya esté implementada.** La sincronización actual continúa limitada a productos, clientes y proveedores.
+Arquitectura objetivo: **cloud-first y centralizada**. Diseño pendiente de implementación y pruebas. La sincronización actual del código continúa limitada a productos, clientes y proveedores; el sistema todavía no opera de forma centralizada.
 
 ## 1. Objetivo
 
 Todos los equipos autorizados deben consultar y modificar información compartida de la misma empresa. Los cambios deben propagarse en tiempo real o con la menor latencia posible, con persistencia central, control de concurrencia, permisos por área y trazabilidad.
 
-Firestore será el backend compartido durante esta fase, manteniendo Dexie/IndexedDB como caché local y soporte de lectura local. La caché local no será la autoridad para operaciones críticas.
+Firestore será la única fuente oficial de datos operativos. La aplicación web no debe crear ni confirmar operaciones de negocio en una base IndexedDB local. Dexie/IndexedDB se retirará del flujo operativo; durante la migración solo podrá utilizarse un importador temporal para rescatar datos existentes. No se habilitará persistencia offline de escrituras. Las pantallas podrán mantener estado temporal en memoria, pero toda lectura y escritura oficial deberá pasar por Firestore o por servicios de backend confiables.
 
 ## 2. Tablas y entidades que requieren sincronización
 
@@ -57,7 +57,7 @@ Las operaciones no deben depender de que el cliente envíe una copia completa de
 ## 5. Lecturas en tiempo real y recuperación
 
 - Escuchar cambios de documentos/consultas por empresa y permisos.
-- Mantener caché local para pantallas y continuidad de lectura.
+- No mantener una base local de negocio. Usar únicamente estado temporal de interfaz y caché controlada que no permita confirmar operaciones offline.
 - Registrar estado de sincronización, último éxito y errores recuperables.
 - Recuperar cambios tras reconexión sin depender únicamente de cursores de milisegundos.
 - Usar paginación y cursores estables; manejar eliminaciones mediante tombstones.
@@ -96,7 +96,7 @@ Los metadatos y relaciones pueden sincronizarse en Firestore; los binarios deben
 
 1. Definir empresa/tenant, áreas, almacenes, roles y permisos de servidor.
 2. Diseñar UUID, referencias globales y migración de datos locales existentes.
-3. Implementar capa de repositorios remotos y caché Dexie; separar lecturas de escrituras críticas.
+3. Implementar repositorios cloud-first: Firestore/backend como fuente oficial, sin repositorio Dexie operativo; separar lecturas de escrituras críticas.
 4. Implementar primero catálogos y maestros.
 5. Implementar inventario mediante libro de movimientos inmutables.
 6. Implementar compras/recepciones, producción/consumos, ventas/despachos, caja y contabilidad con operaciones idempotentes.
@@ -114,13 +114,13 @@ Los metadatos y relaciones pueden sincronizarse en Firestore; los binarios deben
 - No se sobrescriben movimientos históricos por conflictos de sincronización.
 - Los usuarios no pueden leer ni modificar áreas fuera de su alcance.
 - Las operaciones críticas se mantienen consistentes bajo concurrencia.
-- La aplicación informa claramente si una operación quedó pendiente, confirmada o fallida en el servidor.
+- La aplicación informa claramente si una operación fue confirmada por el servidor o falló; no presenta como guardada una operación solo almacenada en el navegador.
 - Las pruebas de restauración y reconciliación son satisfactorias.
 
 ## 11. Riesgos actuales que deben corregirse
 
 La implementación existente:
-- sincroniza solo productos, clientes y proveedores;
+- mantiene una base Dexie local y sincroniza solo productos, clientes y proveedores;
 - genera IDs remotos basados en dispositivo e ID local;
 - utiliza `updatedAt` y una política de “última escritura gana”;
 - guarda cursores en `localStorage`;
@@ -128,3 +128,18 @@ La implementación existente:
 - usa reglas Firestore demasiado amplias para un ERP por áreas.
 
 Por estos motivos, no es seguro afirmar que el sistema es multiusuario ni que basta con añadir más tablas a la lista actual.
+
+
+## 12. Decisión cloud-first
+
+El objetivo del proyecto cambia de sincronización de bases locales a operación centralizada:
+
+- Firestore/backend es la única fuente oficial de verdad para todos los módulos.
+- No se crean ventas, compras, movimientos, cierres, órdenes ni asientos como operaciones locales pendientes de sincronización.
+- No se habilita escritura offline ni una cola local de operaciones críticas.
+- La interfaz requiere conexión para consultar y guardar operaciones. Si se pierde la conexión, debe bloquear las acciones que escriben y mostrar un mensaje claro.
+- Los datos temporales de formularios pueden permanecer en memoria mientras la pantalla esté abierta, pero no se consideran registros guardados.
+- Los datos ya existentes en IndexedDB se rescatarán mediante una migración/importación controlada, con conciliación, antes de retirar Dexie.
+- El código puede seguir ejecutándose en un servidor de desarrollo local durante programación; eso no significa que los datos operativos se guarden localmente.
+
+La eliminación de Dexie será progresiva: primero se migrarán servicios y pantallas a repositorios remotos, después se migrarán los datos históricos y finalmente se retirarán las dependencias, hooks y tablas locales. No se debe borrar la base local antes de verificar la migración y respaldar los datos existentes.
