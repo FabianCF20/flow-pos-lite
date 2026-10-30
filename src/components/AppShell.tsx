@@ -56,7 +56,8 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/accounting", label: "Contabilidad", icon: Landmark },
       { to: "/cash", label: "Caja", icon: Wallet },
       { to: "/reports", label: "Reportes", icon: BarChart3 },
-      { to: "/organization", label: "Estructura organizacional", icon: Building2 },\n      { to: "/settings", label: "Ajustes", icon: Settings },
+      { to: "/organization", label: "Estructura organizacional", icon: Building2 },
+      { to: "/settings", label: "Ajustes", icon: Settings },
     ],
   },
 ];
@@ -88,7 +89,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/accounting": "Contabilidad",
   "/cash": "Caja",
   "/reports": "Reportes",
-  "/settings": "Ajustes",\n  "/organization": "Estructura organizacional",
+  "/settings": "Ajustes",
+  "/organization": "Estructura organizacional",
   "/more": "Módulos",
 };
 
