@@ -308,7 +308,7 @@ export async function updateCloudProduct(
     allRefs.forEach((item, index) => {
       const current = snapshots[index];
       const isNextIndex = nextIndexes.some((next) => next.collectionName === item.collectionName && next.key === item.key);
-      if (isNextIndex) transaction.set(indexRef(item.collectionName, item.key), { recordId: id, createdAt: current.data()?.createdAt ?? Date.now() });
+      if (isNextIndex && !current.exists()) transaction.set(indexRef(item.collectionName, item.key), { recordId: id, createdAt: Date.now() });
     });
 
     transaction.update(reference, {
