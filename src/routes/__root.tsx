@@ -79,16 +79,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: "ERP Importaciones — Offline" },
-      { name: "description", content: "ERP offline para empresas importadoras: compras, inventario, ventas, cartera y contabilidad." },
+      {
+        name: "description",
+        content:
+          "ERP offline para empresas importadoras: compras, inventario, ventas, cartera y contabilidad.",
+      },
       { name: "theme-color", content: "#0d3b2e" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
       { name: "apple-mobile-web-app-title", content: "ERP" },
       { property: "og:title", content: "ERP Importaciones — Offline" },
-      { property: "og:description", content: "ERP offline para empresas importadoras: compras, inventario, ventas, cartera y contabilidad." },
+      {
+        property: "og:description",
+        content:
+          "ERP offline para empresas importadoras: compras, inventario, ventas, cartera y contabilidad.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },

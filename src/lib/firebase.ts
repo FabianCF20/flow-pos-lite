@@ -18,6 +18,7 @@ export const ADMIN_EMAIL = "sneyder.c.f@gmail.com";
 
 let app: FirebaseApp | null = null;
 let authInstance: Auth | null = null;
+let persistenceReady: Promise<void> | null = null;
 let dbInstance: Firestore | null = null;
 
 function getApp(): FirebaseApp {
@@ -29,9 +30,14 @@ function getApp(): FirebaseApp {
 export function fbAuth(): Auth {
   if (!authInstance) {
     authInstance = getAuth(getApp());
-    setPersistence(authInstance, browserLocalPersistence).catch(() => {});
+    persistenceReady = setPersistence(authInstance, browserLocalPersistence);
   }
   return authInstance;
+}
+
+export async function initializeAuthPersistence(): Promise<void> {
+  fbAuth();
+  await persistenceReady;
 }
 
 /** Firestore (base de datos en la nube). */
@@ -59,7 +65,12 @@ export function authErrorMessage(code: string): string {
     case "auth/too-many-requests":
       return "Demasiados intentos. Espera unos minutos";
     case "auth/network-request-failed":
+    case "unavailable":
       return "Sin conexión a internet";
+    case "permission-denied":
+      return "Firebase bloqueó la lectura de tu acceso. Publica las reglas de Firestore actualizadas y verifica userAccess/accessRoles.";
+    case "auth/unsupported-persistence-type":
+      return "El navegador no permite mantener la sesión. Prueba en una ventana normal, no privada.";
     case "auth/operation-not-allowed":
       return "Activa el método de acceso en la consola de Firebase";
     case "auth/email-already-in-use":

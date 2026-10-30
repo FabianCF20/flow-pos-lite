@@ -40,13 +40,18 @@ function LoginPage() {
     e.preventDefault();
     if (busy) return;
     setBusy(true);
-    const res = await signIn(email, password);
-    setBusy(false);
-    if (res.ok) {
-      toast.success("Bienvenido");
-    } else {
-      toast.error(res.error ?? "No se pudo iniciar sesión");
-      setPassword("");
+    try {
+      const res = await signIn(email, password);
+      if (res.ok) {
+        toast.success("Bienvenido");
+      } else {
+        toast.error(res.error ?? "No se pudo iniciar sesión");
+        setPassword("");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo iniciar sesión");
+    } finally {
+      setBusy(false);
     }
   }
 

@@ -8,18 +8,54 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isAdmin() {
+    function isBootstrapAdmin() {
       return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+        && request.auth.token.email == 'sneyder.c.f@gmail.com';
     }
 
-    // Perfiles: cada usuario lee el suyo y lo crea en su primer ingreso.
-    // Solo un administrador puede ver la lista, cambiar roles o desactivar cuentas.
+    function hasActiveAssignment() {
+      return signedIn()
+        && request.auth.token.email is string
+        && exists(/databases/$(database)/documents/userAccess/$(request.auth.token.email))
+        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.uid == request.auth.uid
+        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.active == true;
+    }
+
+    function isAdmin() {
+      return hasActiveAssignment()
+        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.roleId == 'admin';
+    }
+
+    // Perfiles: el usuario lee el suyo; el administrador gestiona el directorio.
     match /users/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
-      allow create: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow update, delete: if isAdmin();
+    }
+
+    // Solo el administrador configurado puede crear el acceso inicial.
+    match /userAccess/{email} {
+      allow get: if signedIn()
+        && ((request.auth.token.email is string && request.auth.token.email == email) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        || (isBootstrapAdmin()
+          && request.auth.token.email == email
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.roleId == 'admin'
+          && request.resource.data.active == true);
+      allow update, delete: if isAdmin();
+    }
+
+    match /accessRoles/{roleId} {
+      allow get: if isAdmin()
+        || isBootstrapAdmin()
+        || (hasActiveAssignment()
+          && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.roleId == roleId);
+      allow list: if isAdmin();
+      allow create: if isAdmin()
+        || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'accountant', 'viewer']);
       allow update, delete: if isAdmin();
     }
 

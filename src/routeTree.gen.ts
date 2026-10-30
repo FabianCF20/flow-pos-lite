@@ -16,7 +16,6 @@ import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
-import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProductionRouteImport } from './routes/production'
@@ -28,9 +27,6 @@ import { Route as ReturnsRouteImport } from './routes/returns'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SuppliersRouteImport } from './routes/suppliers'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as ApiPublicFactusRouteImport } from './routes/api/public/factus'
 
 const IndexRoute = IndexRouteImport.update({
@@ -66,11 +62,6 @@ const InventoryRoute = InventoryRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MoreRoute = MoreRouteImport.update({
@@ -128,24 +119,6 @@ const SuppliersRoute = SuppliersRouteImport.update({
   path: '/suppliers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicFactusRoute = ApiPublicFactusRouteImport.update({
   id: '/api/public/factus',
   path: '/api/public/factus',
@@ -160,7 +133,6 @@ export interface FileRoutesByFullPath {
   '/customers': typeof CustomersRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
-  '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
@@ -172,9 +144,6 @@ export interface FileRoutesByFullPath {
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/factus': typeof ApiPublicFactusRoute
 }
 export interface FileRoutesByTo {
@@ -185,7 +154,6 @@ export interface FileRoutesByTo {
   '/customers': typeof CustomersRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
-  '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
@@ -197,9 +165,6 @@ export interface FileRoutesByTo {
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/factus': typeof ApiPublicFactusRoute
 }
 export interface FileRoutesById {
@@ -211,7 +176,6 @@ export interface FileRoutesById {
   '/customers': typeof CustomersRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
-  '/mcp': typeof McpRoute
   '/more': typeof MoreRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
@@ -223,9 +187,6 @@ export interface FileRoutesById {
   '/sales': typeof SalesRoute
   '/settings': typeof SettingsRoute
   '/suppliers': typeof SuppliersRoute
-  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
-  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/api/public/factus': typeof ApiPublicFactusRoute
 }
 export interface FileRouteTypes {
@@ -238,7 +199,6 @@ export interface FileRouteTypes {
     | '/customers'
     | '/inventory'
     | '/login'
-    | '/mcp'
     | '/more'
     | '/pos'
     | '/production'
@@ -250,9 +210,6 @@ export interface FileRouteTypes {
     | '/sales'
     | '/settings'
     | '/suppliers'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
-    | '/.mcp/invoke-tool/$tool'
     | '/api/public/factus'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -263,7 +220,6 @@ export interface FileRouteTypes {
     | '/customers'
     | '/inventory'
     | '/login'
-    | '/mcp'
     | '/more'
     | '/pos'
     | '/production'
@@ -275,9 +231,6 @@ export interface FileRouteTypes {
     | '/sales'
     | '/settings'
     | '/suppliers'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
-    | '/.mcp/invoke-tool/$tool'
     | '/api/public/factus'
   id:
     | '__root__'
@@ -288,7 +241,6 @@ export interface FileRouteTypes {
     | '/customers'
     | '/inventory'
     | '/login'
-    | '/mcp'
     | '/more'
     | '/pos'
     | '/production'
@@ -300,9 +252,6 @@ export interface FileRouteTypes {
     | '/sales'
     | '/settings'
     | '/suppliers'
-    | '/.mcp/list-tools'
-    | '/.well-known/oauth-protected-resource'
-    | '/.mcp/invoke-tool/$tool'
     | '/api/public/factus'
   fileRoutesById: FileRoutesById
 }
@@ -314,7 +263,6 @@ export interface RootRouteChildren {
   CustomersRoute: typeof CustomersRoute
   InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
-  McpRoute: typeof McpRoute
   MoreRoute: typeof MoreRoute
   PosRoute: typeof PosRoute
   ProductionRoute: typeof ProductionRoute
@@ -326,9 +274,6 @@ export interface RootRouteChildren {
   SalesRoute: typeof SalesRoute
   SettingsRoute: typeof SettingsRoute
   SuppliersRoute: typeof SuppliersRoute
-  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
-  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicFactusRoute: typeof ApiPublicFactusRoute
 }
 
@@ -381,13 +326,6 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/more': {
@@ -467,27 +405,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuppliersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/factus': {
       id: '/api/public/factus'
       path: '/api/public/factus'
@@ -506,7 +423,6 @@ const rootRouteChildren: RootRouteChildren = {
   CustomersRoute: CustomersRoute,
   InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
-  McpRoute: McpRoute,
   MoreRoute: MoreRoute,
   PosRoute: PosRoute,
   ProductionRoute: ProductionRoute,
@@ -518,10 +434,6 @@ const rootRouteChildren: RootRouteChildren = {
   SalesRoute: SalesRoute,
   SettingsRoute: SettingsRoute,
   SuppliersRoute: SuppliersRoute,
-  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
-  Char91DotwellKnownChar93OauthProtectedResourceRoute:
-    Char91DotwellKnownChar93OauthProtectedResourceRoute,
-  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicFactusRoute: ApiPublicFactusRoute,
 }
 export const routeTree = rootRouteImport

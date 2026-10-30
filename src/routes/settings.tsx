@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
 import { db, getSettings, type AppSettings } from "@/lib/db";
-import { listDirectory, inviteUser, updateDirectoryUser, removeDirectoryUser, type DirectoryUser } from "@/lib/users";
+import { createDirectoryUser, listDirectory, updateDirectoryUser, type DirectoryUser } from "@/lib/users";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/AppShell";
 import { exportBackup, importBackup, downloadBlob } from "@/lib/backup";
@@ -208,6 +208,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState(false);
   const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [role, setRole] = useState<"admin"|"cashier">("cashier");
+  const [password, setPassword] = useState("");
 
   async function reload() {
     try { setList(await listDirectory()); setError(null); }
@@ -218,9 +219,9 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
 
   async function invite() {
     try {
-      await inviteUser(email, name, role);
-      toast.success("Invitación creada. El usuario define su contraseña al entrar");
-      setEmail(""); setName(""); setShow(false); reload();
+      await createDirectoryUser({ email, name, password, roleId: role, overrides: {} });
+      toast.success("Usuario creado");
+      setEmail(""); setName(""); setPassword(""); setShow(false); reload();
     } catch (e: any) { toast.error(e?.message ?? "No se pudo invitar"); }
   }
   async function toggle(u: DirectoryUser) {
@@ -228,13 +229,13 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
     catch { toast.error("No se pudo actualizar"); }
   }
   async function changeRole(u: DirectoryUser, r: "admin"|"cashier") {
-    try { await updateDirectoryUser(u, { role: r }); reload(); toast.success("Rol actualizado"); }
+    try { await updateDirectoryUser(u, { roleId: r }); reload(); toast.success("Rol actualizado"); }
     catch { toast.error("No se pudo actualizar"); }
   }
   async function remove(u: DirectoryUser) {
     if (u.email === currentEmail) { toast.error("No puedes quitar tu propia cuenta"); return; }
     if (!confirm(`¿Quitar el acceso de ${u.name}?`)) return;
-    try { await removeDirectoryUser(u); reload(); toast.success("Acceso retirado"); }
+    try { await updateDirectoryUser(u, { active: false }); reload(); toast.success("Acceso retirado"); }
     catch (e: any) { toast.error(e?.message ?? "No se pudo quitar"); }
   }
 
@@ -258,7 +259,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
             </div>
           </div>
           <select
-            value={u.role}
+            value={u.roleId}
             onChange={(e) => changeRole(u, e.target.value as any)}
             className="h-9 px-2 rounded-lg bg-card border border-border text-xs"
           >
@@ -277,12 +278,13 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
         <div className="rounded-lg border border-border p-3 space-y-2">
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
+          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mínimo 6 caracteres)" type="password" autoComplete="new-password" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <select value={role} onChange={(e) => setRole(e.target.value as any)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
             <option value="cashier">Cajero</option>
             <option value="admin">Administrador</option>
           </select>
           <p className="text-[11px] text-muted-foreground">
-            El usuario entra con este correo y crea su contraseña en el primer ingreso; luego confirma el enlace enviado a su correo.
+            Se creará la cuenta con este correo y la contraseña inicial. El usuario podrá cambiarla después.
           </p>
           <div className="flex gap-2">
             <button onClick={() => setShow(false)} className="flex-1 h-10 rounded-lg border border-border text-sm">Cancelar</button>

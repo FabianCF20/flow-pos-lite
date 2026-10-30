@@ -5,12 +5,19 @@ test("development never caches the module graph", () => {
   expect(allowAppServiceWorker(false, "localhost", false, "")).toBe(false);
 });
 test("built previews never register the app worker", () => {
-  expect(allowAppServiceWorker(true, "id-preview--c47e78cf-6cf3-49bb-8cec-f0bb84102bf4.lovable.app", false, "")).toBe(false);
+  expect(
+    allowAppServiceWorker(
+      true,
+      "id-preview--c47e78cf-6cf3-49bb-8cec-f0bb84102bf4.example.com",
+      false,
+      "",
+    ),
+  ).toBe(false);
 });
 test("published app retains offline registration", () => {
-  expect(allowAppServiceWorker(true, "flow-pos-lite.lovable.app", false, "")).toBe(true);
+  expect(allowAppServiceWorker(true, "app.example.com", false, "")).toBe(true);
 });
 test("embedded previews and explicit kill switch refuse registration", () => {
-  expect(allowAppServiceWorker(true, "flow-pos-lite.lovable.app", true, "")).toBe(false);
-  expect(allowAppServiceWorker(true, "flow-pos-lite.lovable.app", false, "?sw=off")).toBe(false);
+  expect(allowAppServiceWorker(true, "app.example.com", true, "")).toBe(false);
+  expect(allowAppServiceWorker(true, "app.example.com", false, "?sw=off")).toBe(false);
 });

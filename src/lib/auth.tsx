@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { doc, getDocFromServer, onSnapshot } from "firebase/firestore";
-import { fbAuth, fbDb, authErrorMessage } from "./firebase";
+import { fbAuth, fbDb, authErrorMessage, initializeAuthPersistence } from "./firebase";
 import { db, ensureSeed, type User } from "./db";
 import { fetchAccessSession, setAccessSession } from "./access-session";
 import { canAccess, type AccessSession, type ModuleId } from "./permissions";
@@ -39,7 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (mounted) { setUser(null); setAccess(null); }
       } finally { if (mounted) setLoading(false); }
     }
-    ensureSeed().then(() => {
+    ensureSeed().then(async () => {
+      await initializeAuthPersistence();
       if (!mounted) return;
       stopAuth = onAuthStateChanged(fbAuth(), async fb => {
         stopAccess(); stopRole();
@@ -57,13 +58,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
   async function signIn(email: string, password: string): Promise<Result> {
     try {
+      await initializeAuthPersistence();
       await signInWithEmailAndPassword(fbAuth(), email.trim().toLowerCase(), password);
       const session = await fetchAccessSession();
       if (!session) { await signOut(fbAuth()); return { ok: false, error: "Tu cuenta no tiene acceso asignado o fue desactivada" }; }
       return { ok: true };
     } catch (error) {
       await signOut(fbAuth()).catch(() => {});
-      return { ok: false, error: authErrorMessage((error as {code?: string}).code ?? "") };
+      const code = error && typeof error === "object" && "code" in error && typeof error.code === "string" ? error.code : "";
+      return { ok: false, error: authErrorMessage(code) };
     }
   }
   async function logout() { setAccessSession(null); setAccess(null); setUser(null); await signOut(fbAuth()); }
