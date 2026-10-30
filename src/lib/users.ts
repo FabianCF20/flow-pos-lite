@@ -47,6 +47,7 @@ export async function createDirectoryUser(input: { name: string; email: string; 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !input.name.trim()) throw new Error("Completa nombre y correo válido");
   if (input.password.length < 6) throw new Error("La contraseña debe tener al menos 6 caracteres");
   if (!validPermissions(input.overrides)) throw new Error("Permisos no válidos");
+  if (!(await listRoles()).some((role) => role.id === input.roleId)) throw new Error("Selecciona un rol existente.");
   const app = initializeApp(firebaseConfig, `user-creation-${Date.now()}`);
   const secondary = getAuth(app);
   await setPersistence(secondary, inMemoryPersistence);
@@ -71,6 +72,9 @@ export async function updateDirectoryUser(user: DirectoryUser, patch: { name?: s
   if (!user.uid) throw new Error("Cuenta no registrada");
   if (fbAuth().currentUser?.uid === user.uid && (patch.roleId !== undefined || patch.active !== undefined || patch.overrides !== undefined)) throw new Error("No puedes modificar tu propio acceso");
   if (patch.overrides && !validPermissions(patch.overrides)) throw new Error("Permisos no válidos");
+  if (patch.roleId && !(await listRoles()).some((role) => role.id === patch.roleId)) {
+    throw new Error("El rol seleccionado no existe.");
+  }
   const batch = writeBatch(fbDb());
   if (patch.name !== undefined) batch.update(doc(fbDb(), "users", user.uid), { name: patch.name.trim() });
   batch.set(doc(fbDb(), "userAccess", user.email), { uid: user.uid, email: user.email, roleId: patch.roleId ?? user.roleId, active: patch.active ?? user.active, overrides: patch.overrides ?? user.overrides, updatedAt: serverTimestamp() });
