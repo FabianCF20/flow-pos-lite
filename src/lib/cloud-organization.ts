@@ -1,8 +1,7 @@
-import { collection, doc, query, runTransaction, where } from "firebase/firestore";
+import { collection, doc, query, runTransaction, where, type DocumentData } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import {
   CLOUD_COMPANY_ID,
-  createCloudRecord,
   getCloudRecord,
   listCloudRecords,
   type CloudRecord,
@@ -45,26 +44,9 @@ function normalizeText(value: string, field: string): string {
   return normalized;
 }
 
-async function validateParent(
-  type: OrganizationUnitType,
-  parentId: string | null,
-): Promise<void> {
-  const allowed = ALLOWED_PARENT_TYPES[type];
-  if (allowed.length === 0) {
-    if (parentId) throw new Error("La empresa no puede tener una unidad superior.");
-    const existing = await listCloudRecords<OrganizationUnit>("organizationUnits");
-    if (existing.some((unit) => unit.type === "company" && unit.active)) {
-      throw new Error("Ya existe una empresa principal configurada.");
-    }
-    return;
-  }
-
-  if (!parentId) throw new Error("Debes seleccionar la unidad superior.");
-  const parent = await getCloudRecord<OrganizationUnit>("organizationUnits", parentId);
-  if (!parent || !parent.active) throw new Error("La unidad superior no existe o está inactiva.");
-  if (!allowed.includes(parent.type)) {
-    throw new Error("La jerarquía seleccionada no es válida para este tipo de unidad.");
-  }
+async function stableCodeKey(code: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(code.toLocaleLowerCase("es")));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function listOrganizationUnits(): Promise<OrganizationUnit[]> {
@@ -81,26 +63,73 @@ export async function createOrganizationUnit(input: {
   address?: string;
   timezone?: string;
 }): Promise<string> {
+  const user = fbAuth().currentUser;
+  if (!user) throw new Error("Debes iniciar sesión para crear unidades organizacionales.");
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    throw new Error("No hay conexión. La estructura solo se guarda con confirmación del servidor.");
+  }
+  if (!Object.prototype.hasOwnProperty.call(ALLOWED_PARENT_TYPES, input.type)) {
+    throw new Error("El tipo de unidad organizacional no es válido.");
+  }
+
   const code = normalizeText(input.code, "código").toUpperCase();
   const name = normalizeText(input.name, "nombre");
   const parentId = input.parentId ?? null;
+  const id = crypto.randomUUID();
+  const now = Date.now();
+  const codeKey = await stableCodeKey(code);
+  const unitRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), id);
+  const indexRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnitCodeIndexes"), codeKey);
 
-  await validateParent(input.type, parentId);
-  const existing = await listOrganizationUnits();
-  if (existing.some((unit) => unit.code.toUpperCase() === code)) {
-    throw new Error("Ya existe una unidad organizacional con ese código.");
-  }
+  await runTransaction(fbDb(), async (transaction) => {
+    const indexSnapshot = await transaction.get(indexRef);
+    if (indexSnapshot.exists()) throw new Error("Ya existe una unidad organizacional con ese código.");
 
-  return createCloudRecord("organizationUnits", {
-    code,
-    name,
-    type: input.type,
-    parentId,
-    active: true,
-    description: input.description?.trim() || "",
-    address: input.address?.trim() || "",
-    timezone: input.timezone || "America/Bogota",
+    if (input.type === "company") {
+      if (parentId) throw new Error("La empresa no puede tener una unidad superior.");
+      const companiesQuery = query(
+        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"),
+        where("type", "==", "company"),
+      );
+      const companies = await transaction.get(companiesQuery);
+      if (companies.docs.some((company) => company.data().active === true && company.data().deleted !== true)) {
+        throw new Error("Ya existe una empresa principal configurada.");
+      }
+    } else {
+      const allowedParents = ALLOWED_PARENT_TYPES[input.type];
+      if (!parentId) throw new Error("Debes seleccionar la unidad superior.");
+      const parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), parentId);
+      const parent = await transaction.get(parentRef);
+      if (!parent.exists() || parent.data().active !== true || parent.data().deleted === true) {
+        throw new Error("La unidad superior no existe o está inactiva.");
+      }
+      if (!allowedParents.includes(parent.data().type as OrganizationUnitType)) {
+        throw new Error("La jerarquía seleccionada no es válida para este tipo de unidad.");
+      }
+    }
+
+    const record: DocumentData = {
+      id,
+      companyId: CLOUD_COMPANY_ID,
+      code,
+      name,
+      type: input.type,
+      parentId,
+      active: true,
+      description: input.description?.trim() ?? "",
+      address: input.address?.trim() ?? "",
+      timezone: input.timezone || "America/Bogota",
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user.uid,
+      updatedBy: user.uid,
+      revision: 1,
+      deleted: false,
+    };
+    transaction.set(unitRef, record);
+    transaction.set(indexRef, { unitId: id, code, createdAt: now });
   });
+  return id;
 }
 
 export async function updateOrganizationUnit(
