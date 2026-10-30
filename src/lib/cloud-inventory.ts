@@ -181,8 +181,8 @@ export async function postInventoryMovement(input: {
       throw new Error("El lote ya existe con una fecha de vencimiento diferente.");
     }
     const expiryDate = balanceSnapshot.data()?.expiryDate ?? input.expiryDate;
-    if (input.type === "issue" && expiryDate !== undefined && expiryDate < Date.now()) {
-      throw new Error("No se puede consumir un lote vencido.");
+    if (input.type !== "adjustment" && expiryDate !== undefined && expiryDate < Date.now()) {
+      throw new Error("No se puede recibir ni consumir un lote vencido.");
     }
     const quantityDelta = input.type === "receipt"
       ? input.quantity
