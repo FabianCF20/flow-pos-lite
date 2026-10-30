@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDocFromServer,
   getDocsFromServer,
   query,
   runTransaction,
@@ -9,7 +10,7 @@ import {
 } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
-import { assertAccess } from "./access-session";
+import { assertAccess, getAccessSession } from "./access-session";
 
 export type InventoryMovementType = "receipt" | "issue" | "adjustment" | "transfer_in" | "transfer_out";
 type ManualInventoryMovementType = "receipt" | "issue" | "adjustment";
@@ -45,6 +46,8 @@ export interface InventoryWarehouse extends CloudRecord {
   name: string;
   type: "warehouse";
   parentId: string | null;
+  siteId?: string;
+  areaId?: string;
   active: boolean;
 }
 
@@ -65,6 +68,29 @@ async function balanceDocumentId(productId: string, warehouseId: string, lotCode
   const value = new TextEncoder().encode(`${productId}:${warehouseId}:${lotCode.trim().toUpperCase()}`);
   const digest = await crypto.subtle.digest("SHA-256", value);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+export async function listAccessibleWarehouses(): Promise<InventoryWarehouse[]> {
+  requireOnlineUser();
+  assertAccess("inventory", "read");
+  const assignment = getAccessSession()?.assignment;
+  if (!assignment) throw new Error("No se encontró la asignación de acceso.");
+
+  const base = collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits");
+  if (assignment.roleId === "admin" || assignment.allWarehouses === true) {
+    const snapshot = await getDocsFromServer(query(base, where("type", "==", "warehouse")));
+    return snapshot.docs
+      .filter((item) => item.data().active === true && item.data().deleted !== true)
+      .map((item) => ({ ...item.data(), id: item.id }) as InventoryWarehouse)
+      .sort((a, b) => a.name.localeCompare(b.name, "es"));
+  }
+
+  const ids = assignment.warehouseIds ?? [];
+  const snapshots = await Promise.all(ids.map((id) => getDocFromServer(reference("organizationUnits", id))));
+  return snapshots
+    .filter((item) => item.exists() && item.data().type === "warehouse" && item.data().active === true && item.data().deleted !== true)
+    .map((item) => ({ ...item.data(), id: item.id }) as InventoryWarehouse)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 
 export async function listInventoryBalances(warehouseId: string): Promise<InventoryBalance[]> {
