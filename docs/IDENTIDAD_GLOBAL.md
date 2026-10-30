@@ -17,7 +17,7 @@ Preparar los datos locales de Flow POS Lite para que varias estaciones de trabaj
 
 ## Decisión de diseño
 
-Se conservarán inicialmente los IDs numéricos locales para no romper pantallas, formularios ni servicios existentes. Se añadirá una identidad global UUID independiente del ID local para cada registro que deba compartirse.
+La arquitectura final no conservará IDs numéricos locales como identidad operativa. Cada entidad tendrá un ID global UUID, que también será el ID del documento remoto en Firestore. Los IDs numéricos de Dexie solo se tolerarán temporalmente durante la migración, para no perder ni confundir registros históricos.
 
 - `id`: clave local Dexie; no se transmite como identificador de negocio.
 - `globalId`: UUID estable y único; identifica el mismo registro en todos los dispositivos.
@@ -63,9 +63,23 @@ Los documentos existentes que ya tienen `remoteId` deberán conservar una corres
 - El mismo registro conserva el mismo `globalId` después de sincronizarse.
 - Todas las relaciones de una operación apuntan al registro correcto en ambos dispositivos.
 - La migración conserva los datos existentes y puede repetirse sin duplicar identidades.
-- Los IDs numéricos locales siguen funcionando durante la transición.
+- Las relaciones importadas apuntan al UUID correcto y ningún módulo operativo depende de IDs numéricos locales.
 - Las pruebas cubren registros nuevos, registros antiguos, duplicados, borrados lógicos y conflictos.
 
 ## Fuera de esta etapa
 
-No se amplía todavía `SYNCED_TABLES`, no se modifican las reglas de Firestore y no se cambian los servicios de ventas, inventario, producción o contabilidad. Esas acciones requieren completar primero la migración y las pruebas de relaciones. Esta auditoría describe el estado observado del repositorio y el diseño propuesto; no afirma que la identidad global ya esté implementada.
+No se amplía `SYNCED_TABLES` como estrategia final. Se migrarán los servicios a repositorios cloud-first y después se retirarán Dexie y la sincronización incremental antigua. No se modifican aún las reglas de Firestore ni los servicios funcionales; hacerlo requiere una implementación coordinada y pruebas. Esas acciones requieren completar primero la migración y las pruebas de relaciones. Esta auditoría describe el estado observado del repositorio y el diseño propuesto; no afirma que la identidad global ya esté implementada.
+
+
+## Cambio de arquitectura: sin base local operativa
+
+La decisión del proyecto es dejar de trabajar con datos operativos locales. Firestore será la fuente oficial. Dexie se conservará únicamente durante una etapa de transición para leer y exportar datos históricos, y se retirará cuando todos los módulos utilicen repositorios remotos.
+
+La migración debe:
+1. Hacer respaldo íntegro de cada instalación que contenga datos locales.
+2. Detectar duplicados y conflictos entre equipos antes de importar.
+3. Asignar UUID globales a cada registro y convertir todas sus relaciones.
+4. Importar al backend central con operaciones idempotentes y validaciones.
+5. Conciliar conteos, saldos, consecutivos y relaciones antes de autorizar el cambio.
+6. Cambiar las pantallas a lectura/escritura central; sin conexión no se confirma ninguna operación.
+7. Retirar Dexie y el sincronizador anterior solo después de validar la migración.
