@@ -163,3 +163,15 @@ Se incorporó un alcance explícito en cada asignación de usuario:
 La administración de usuarios permite seleccionar bodegas activas y muestra su sede/área. Las consultas de existencias, movimientos y órdenes ahora exigen una bodega concreta; Firestore valida el alcance tanto al leer como al escribir. Los traslados requieren permiso sobre las dos bodegas. Las unidades de tipo bodega solo son visibles para usuarios autorizados, salvo administración general.
 
 Los usuarios nuevos quedan sin bodegas asignadas hasta que el administrador defina su alcance. Los administradores conservan acceso global. Este primer control se resuelve por bodega explícita; falta automatizar la expansión de permisos por sede/área y completar pruebas con usuarios de distintos alcances.
+
+
+### Pantalla cloud del catálogo maestro
+
+Se creó la ruta `/catalog`:
+- Permite consultar categorías y productos desde Firestore.
+- Usuarios con permisos de escritura pueden crear/editar categorías y productos.
+- Los códigos, SKU y códigos de barras quedan bloqueados al editar para preservar los índices de unicidad.
+- No permite desactivar categorías con productos activos ni productos con existencias.
+- Se incorporó como entrada principal del menú y se filtran las rutas según permisos.
+
+Las rutas antiguas `/products` y `/categories` se mantienen temporalmente solo para administración/compatibilidad con pantallas Dexie. El catálogo cloud aún no alimenta el POS, inventario ni producción antiguos; esa integración debe hacerse como una migración coordinada y no se debe asumir que los productos cloud ya aparecen en el POS.
