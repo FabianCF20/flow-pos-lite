@@ -174,6 +174,9 @@ export async function listCloudProducts(): Promise<CloudProduct[]> {
 }
 
 function validateProduct(input: ProductInput) {
+  if (!["raw_material", "finished_product", "packaging", "supply"].includes(input.productType)) {
+    throw new Error("El tipo de producto no es válido.");
+  }
   const salePrice = input.salePrice ?? 0;
   const standardCost = input.standardCost ?? 0;
   if (!Number.isFinite(salePrice) || salePrice < 0) throw new Error("El precio de venta no puede ser negativo.");
