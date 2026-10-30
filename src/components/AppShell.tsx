@@ -155,12 +155,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const canOpen = (to: string) => {
-    const module = moduleForPath(to);
-    if (module) return can(module, "read");
-    if (to === "/organization") return can("settings", "write");
     if (to === "/catalog") return can("products", "read") && can("categories", "read");
     if (to === "/products" || to === "/categories") return user.role === "admin";
-    return true;
+    if (to === "/organization") return can("settings", "write");
+    const module = moduleForPath(to);
+    return module ? can(module, "read") : true;
   };
   const primaryNav = (user.role === "cashier" ? primaryNavCashier : primaryNavAdmin)
     .filter((item) => canOpen(item.to));
