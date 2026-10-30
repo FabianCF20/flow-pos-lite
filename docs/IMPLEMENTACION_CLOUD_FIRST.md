@@ -73,7 +73,7 @@ Se añadió `src/lib/cloud-organization.ts` con operaciones de servidor para adm
 - Bodegas.
 - Líneas de producción.
 
-Cada registro usa UUID global, auditoría de creación/modificación y control de revisión heredados de `cloud-data.ts`. Las unidades se desactivan en lugar de borrarse físicamente. La jerarquía se valida antes de crear y no se permite desactivar una unidad que tenga unidades hijas activas.
+Cada registro usa UUID global, auditoría de creación/modificación y control de revisión. Sedes, áreas, bodegas y líneas conservan `siteId` y `areaId` cuando aplica para habilitar el futuro alcance de permisos por ubicación. Las unidades se desactivan en lugar de borrarse físicamente. La jerarquía se valida antes de crear y no se permite desactivar una unidad que tenga unidades hijas activas.
 
 La colección `organizationUnits` quedó vinculada al permiso de configuración en las reglas de Firestore.
 
