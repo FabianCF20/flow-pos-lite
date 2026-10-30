@@ -4,7 +4,6 @@ import {
   getDocsFromServer,
   query,
   runTransaction,
-  where,
   type DocumentData,
 } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
@@ -34,7 +33,7 @@ export interface CloudProduct extends CloudRecord {
   standardCost: number;
   trackInventory: boolean;
   active: boolean;
-  totalOnHand: number;
+  inventoryUsed?: boolean;
   imagePath?: string;
 }
 
@@ -226,7 +225,7 @@ export async function createCloudProduct(input: ProductInput): Promise<string> {
       ...auditFields(user.uid, now),
       id,
       ...data,
-      totalOnHand: 0,
+      inventoryUsed: false,
     });
     transaction.update(recordRef("categories", data.categoryId), {
       activeProductCount: Number(categorySnapshot.data().activeProductCount ?? 0) + 1,
@@ -289,8 +288,8 @@ export async function updateCloudProduct(
     const snapshots = await Promise.all(allRefs.map((item) =>
       transaction.get(indexRef(item.collectionName, item.key)),
     ));
-    if (data.active === false && old.active !== false && Number(old.totalOnHand ?? 0) > 0) {
-      throw new Error("No puedes desactivar un producto que todavía tiene existencias.");
+    if (data.active === false && old.active !== false && old.inventoryUsed === true) {
+      throw new Error("No puedes desactivar un producto que ya registra movimientos de inventario. Conserva su trazabilidad.");
     }
 
     const oldCategoryId = String(old.categoryId ?? "");
@@ -354,8 +353,8 @@ export async function deactivateCloudProduct(id: string, expectedRevision: numbe
       throw new Error("El producto cambió en otro equipo. Actualiza antes de guardar.");
     }
     const product = snapshot.data();
-    if (Number(product.totalOnHand ?? 0) > 0) {
-      throw new Error("No puedes desactivar un producto que todavía tiene existencias.");
+    if (product.inventoryUsed === true) {
+      throw new Error("No puedes desactivar un producto que ya registra movimientos de inventario. Conserva su trazabilidad.");
     }
     const categoryRef = recordRef("categories", String(product.categoryId));
     const categorySnapshot = await transaction.get(categoryRef);
