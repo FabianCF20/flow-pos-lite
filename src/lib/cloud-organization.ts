@@ -1,4 +1,4 @@
-import { collection, doc, runTransaction, type DocumentData, type DocumentReference } from "firebase/firestore";
+import { collection, doc, runTransaction, type DocumentData, type DocumentReference, type DocumentSnapshot } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import {
   CLOUD_COMPANY_ID,
@@ -91,7 +91,7 @@ export async function createOrganizationUnit(input: {
     if (indexSnapshot.exists()) throw new Error("Ya existe una unidad organizacional con ese código.");
 
     let parentRef: DocumentReference | null = null;
-    let parentSnapshot: Awaited<ReturnType<typeof transaction.get>> | null = null;
+    let parentSnapshot: DocumentSnapshot | null = null;
     let siteId: string | undefined;
     let areaId: string | undefined;
 
