@@ -9,7 +9,7 @@ import { PageHeader } from "@/components/AppShell";
 import { listOrganizationUnits, type OrganizationUnit } from "@/lib/cloud-organization";
 import { exportBackup, importBackup, downloadBlob } from "@/lib/backup";
 import { isBluetoothSupported, pickPrinter, printText } from "@/lib/printer";
-import { Download, Upload, Printer, Plus, Trash2, LogOut, FileCheck2, ExternalLink } from "lucide-react";
+import { Download, Upload, Printer, Plus, Trash2, LogOut, FileCheck2, ExternalLink, Boxes } from "lucide-react";
 import { toast } from "sonner";
 import { testFactusAuth, isFactusConfigured } from "@/lib/factus";
 import { FactusExtra } from "@/components/FactusExtra";
