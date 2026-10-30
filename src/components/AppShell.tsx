@@ -7,7 +7,7 @@ import { SyncStatus } from "@/components/SyncStatus";
 import { Button } from "@/components/ui/button";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
-  Users, Settings, LogOut, MoreHorizontal, Tag, Truck, ShoppingBag,
+  Users, Settings, LogOut, MoreHorizontal, Truck, ShoppingBag,
   Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory, Building2,
 } from "lucide-react";
 
@@ -84,7 +84,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/suppliers": "Proveedores",
   "/inventory": "Inventario",
   "/production": "Producción",
-  "/products": "Productos",
+  "/products": "Productos (catálogo anterior)",
+  "/catalog": "Catálogo maestro",
   "/categories": "Categorías",
   "/accounting": "Contabilidad",
   "/cash": "Caja",
