@@ -199,9 +199,32 @@ service cloud.firestore {
                 ])
               : collection == 'productionFormulas'
                 ? canWrite('production_formulas')
-                : collection in ['inventoryMovements', 'inventoryTransfers', 'productionFormulaCodeIndexes']
-                  ? false
-                  : canWrite(moduleForCollection(collection)));
+                  && request.resource.data.code == resource.data.code
+                  && request.resource.data.outputProductId == resource.data.outputProductId
+                : collection == 'products'
+                  ? canWrite('products')
+                    && request.resource.data.code == resource.data.code
+                    && request.resource.data.sku == resource.data.sku
+                    && request.resource.data.barcode == resource.data.barcode
+                : collection == 'categories'
+                  ? canWrite('categories') && request.resource.data.code == resource.data.code
+                : collection == 'organizationUnits'
+                  ? canWrite('settings')
+                    && request.resource.data.code == resource.data.code
+                    && request.resource.data.type == resource.data.type
+                    && request.resource.data.parentId == resource.data.parentId
+                : collection in [
+                    'inventoryMovements',
+                    'inventoryTransfers',
+                    'productionFormulaCodeIndexes',
+                    'categoryCodeIndexes',
+                    'productCodeIndexes',
+                    'productSkuIndexes',
+                    'productBarcodeIndexes',
+                    'organizationUnitCodeIndexes'
+                  ]
+                    ? false
+                    : canWrite(moduleForCollection(collection)));
 
       allow delete: if company == 'default' && !(collection in [
           'inventoryBalances',
