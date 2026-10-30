@@ -9,6 +9,7 @@ import {
 } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
+import { assertAccess } from "./access-session";
 
 export type InventoryMovementType = "receipt" | "issue" | "adjustment" | "transfer_in" | "transfer_out";
 type ManualInventoryMovementType = "receipt" | "issue" | "adjustment";
@@ -66,12 +67,12 @@ async function balanceDocumentId(productId: string, warehouseId: string, lotCode
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function listInventoryBalances(warehouseId?: string): Promise<InventoryBalance[]> {
+export async function listInventoryBalances(warehouseId: string): Promise<InventoryBalance[]> {
   requireOnlineUser();
+  assertAccess("inventory", "read");
+  if (!warehouseId.trim()) throw new Error("Selecciona una bodega para consultar existencias.");
   const base = collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryBalances");
-  const snapshot = await getDocsFromServer(
-    warehouseId ? query(base, where("warehouseId", "==", warehouseId)) : query(base),
-  );
+  const snapshot = await getDocsFromServer(query(base, where("warehouseId", "==", warehouseId)));
   return snapshot.docs
     .filter((item) => item.data().deleted !== true)
     .map((item) => ({ ...item.data(), id: item.id }) as InventoryBalance)
@@ -80,6 +81,8 @@ export async function listInventoryBalances(warehouseId?: string): Promise<Inven
 
 export async function listInventoryMovements(warehouseId: string): Promise<InventoryMovement[]> {
   requireOnlineUser();
+  assertAccess("inventory", "read");
+  if (!warehouseId.trim()) throw new Error("Selecciona una bodega para consultar movimientos.");
   const snapshot = await getDocsFromServer(query(
     collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryMovements"),
     where("warehouseId", "==", warehouseId),
@@ -108,6 +111,7 @@ export async function postInventoryMovement(input: {
   idempotencyKey: string;
 }): Promise<string> {
   const user = requireOnlineUser();
+  assertAccess("inventory", "write");
   if (!Number.isFinite(input.quantity)
     || (input.type === "adjustment" ? input.quantity === 0 : input.quantity <= 0)) {
     throw new Error(input.type === "adjustment"
@@ -259,6 +263,7 @@ export async function transferInventory(input: {
   idempotencyKey: string;
 }): Promise<string> {
   const user = requireOnlineUser();
+  assertAccess("inventory", "write");
   if (input.sourceWarehouseId === input.targetWarehouseId) {
     throw new Error("La bodega de origen y destino deben ser diferentes.");
   }
