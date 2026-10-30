@@ -54,3 +54,27 @@ Las reglas ahora:
 **Importante:** los cambios del archivo del repositorio no se aplican automáticamente al proyecto Firebase. Antes de probar las pantallas con estas reglas, deben publicarse en Firebase Console o mediante Firebase CLI. Deben probarse con cuentas reales de cada rol y, preferiblemente, con Firebase Emulator Suite.
 
 La seguridad por rol está implementada a nivel de reglas de Firestore para las colecciones mapeadas. La asignación por área, centro y bodega todavía requiere ampliación antes de habilitar operaciones multiárea de producción.
+
+
+## Inicio de la construcción funcional desde cero
+
+Se confirma que la empresa iniciará la operación sin importar información histórica. Por tanto:
+- No se desarrollarán procesos para rescatar, importar ni conciliar datos antiguos de Dexie.
+- Los módulos nuevos deben crear sus registros directamente en Firestore.
+- Dexie no se considera fuente de datos para la nueva operación y se retirará después de reemplazar sus consumidores en las pantallas existentes.
+- No se borran todavía dependencias ni módulos Dexie mientras existan pantallas que los utilicen.
+
+### Primer dominio cloud-first: estructura organizacional
+
+Se añadió `src/lib/cloud-organization.ts` con operaciones de servidor para administrar unidades organizacionales:
+- Empresa.
+- Sedes o plantas.
+- Áreas.
+- Bodegas.
+- Líneas de producción.
+
+Cada registro usa UUID global, auditoría de creación/modificación y control de revisión heredados de `cloud-data.ts`. Las unidades se desactivan en lugar de borrarse físicamente. La jerarquía se valida antes de crear y no se permite desactivar una unidad que tenga unidades hijas activas.
+
+La colección `organizationUnits` quedó vinculada al permiso de configuración en las reglas de Firestore.
+
+**Alcance de este avance:** está creada la capa de datos cloud-first y su autorización. Todavía no hay pantalla de administración conectada a esta capa ni pruebas de compilación/integración ejecutadas. La validación de códigos únicos se realiza actualmente en la capa de aplicación; debe reforzarse con una operación atómica antes de uso concurrente en producción.
