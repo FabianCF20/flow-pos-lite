@@ -225,7 +225,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
       ]);
       setList(users);
       setRoles(availableRoles);
-      setWarehouseUnits(organizationUnits.filter((unit) => unit.type === "warehouse" && unit.active));
+      setWarehouseUnits(organizationUnits);
       if (availableRoles.length && !availableRoles.some((item) => item.id === role)) {
         setRole(availableRoles[0].id);
       }
@@ -330,7 +330,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
             </label>
             {!allWarehouses && (
               <div className="max-h-72 overflow-y-auto rounded-lg border border-border divide-y divide-border">
-                {warehouseUnits.map((warehouse) => {
+                {warehouseUnits.filter((unit) => unit.type === "warehouse" && unit.active).map((warehouse) => {
                   const site = warehouseUnits.find((unit) => unit.id === warehouse.siteId);
                   const area = warehouseUnits.find((unit) => unit.id === warehouse.areaId);
                   const selected = selectedWarehouseIds.includes(warehouse.id);
@@ -354,7 +354,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
                     </label>
                   );
                 })}
-                {warehouseUnits.length === 0 && <p className="p-4 text-xs text-muted-foreground">Primero crea bodegas en Estructura organizacional.</p>}
+                {!warehouseUnits.some((unit) => unit.type === "warehouse" && unit.active) && <p className="p-4 text-xs text-muted-foreground">Primero crea bodegas en Estructura organizacional.</p>}
               </div>
             )}
             <p className="text-xs text-muted-foreground">Sin bodegas asignadas, el usuario no podrá consultar ni modificar inventario ni operar órdenes en una bodega.</p>
