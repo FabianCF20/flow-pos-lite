@@ -120,6 +120,11 @@ export async function updateOrganizationUnit(
       if (children.length) {
         throw new Error("No puedes desactivar esta unidad mientras tenga unidades hijas activas.");
       }
+    } else if (current.parentId) {
+      const parent = await getCloudRecord<OrganizationUnit>("organizationUnits", current.parentId);
+      if (!parent || !parent.active) {
+        throw new Error("No puedes activar una unidad cuya unidad superior esté inactiva.");
+      }
     }
     safePatch.active = patch.active;
   }
