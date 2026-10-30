@@ -123,3 +123,18 @@ Reglas de integridad añadidas:
 **Importante:** estas capas de datos todavía no sustituyen las pantallas actuales. Productos, categorías, POS, producción e inventario siguen teniendo consumidores Dexie y no deben mezclarse con estos repositorios hasta migrar sus flujos relacionados. No se ha desplegado Firestore Rules ni se han ejecutado compilación, emulador o pruebas de integración.
 
 **Pendientes técnicos:** añadir paginación para catálogos grandes, probar movimientos por lote y transferencias entre bodegas, conectar adjuntos/fotos a Firebase Storage, aplicar alcance por sede/área/bodega en las reglas y realizar pruebas concurrentes de índices y saldos.
+
+
+### Fórmulas versionadas y órdenes de producción
+
+Se añadió `src/lib/cloud-production.ts` como base del módulo de producción láctea:
+
+- Fórmulas separadas por leche líquida y leche en polvo.
+- Cada fórmula define producto terminado, rendimiento, unidad e ingredientes/materiales de empaque.
+- Los materiales deben existir como productos activos y usar su unidad base.
+- Crear una modificación genera una nueva versión; no sobrescribe las versiones anteriores.
+- Las versiones se crean en borrador y solo la versión más reciente puede aprobarse.
+- Firestore restringe las versiones a una transición de borrador a aprobada; una versión aprobada no se puede modificar ni borrar desde el cliente.
+- Las órdenes guardan una copia de la fórmula y de las cantidades calculadas, junto con la versión aprobada utilizada.
+
+**Alcance actual:** están implementadas las operaciones de creación de fórmulas, creación de versiones, aprobación y creación de órdenes en borrador. Todavía falta la pantalla de producción y el cierre transaccional de la orden que consuma lotes de materias primas y registre el lote del producto terminado. No se debe usar aún como flujo productivo completo.
