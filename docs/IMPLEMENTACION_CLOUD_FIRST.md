@@ -148,6 +148,7 @@ Se ampliaron los permisos para respetar la separación de funciones:
 - `production_operator`: puede consultar fórmulas y crear/gestionar órdenes, pero no crear ni aprobar versiones.
 - La aprobación exige el permiso independiente `production_approval`; la creación de fórmulas exige `production_formulas`.
 - La administración de usuarios ahora carga los roles disponibles desde Firestore, en lugar de limitarse a administrador y cajero.
+- La sesión conserva el rol real asignado y la navegación/las rutas se filtran por permisos efectivos; la autorización final continúa en Firestore Rules.
 - Las reglas impiden editar una versión aprobada y bloquean la eliminación física de fórmulas y sus versiones.
 
 El administrador debe asignar los nuevos roles a las personas correspondientes. Los roles se crean como presets al inicializar el acceso del administrador.
