@@ -1,4 +1,4 @@
-import { collection, doc, query, runTransaction, where, type DocumentData } from "firebase/firestore";
+import { collection, doc, runTransaction, type DocumentData, type DocumentReference } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import {
   CLOUD_COMPANY_ID,
@@ -27,6 +27,8 @@ export interface OrganizationUnit extends CloudRecord {
   siteId?: string;
   areaId?: string;
   active: boolean;
+  activeChildrenCount: number;
+  inventoryUsed?: boolean;
   description?: string;
   address?: string;
   timezone: string;
@@ -82,32 +84,30 @@ export async function createOrganizationUnit(input: {
   const codeKey = await stableCodeKey(code);
   const unitRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), id);
   const indexRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnitCodeIndexes"), codeKey);
+  const companySingletonRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationCompanySingleton"), "root");
 
   await runTransaction(fbDb(), async (transaction) => {
     const indexSnapshot = await transaction.get(indexRef);
     if (indexSnapshot.exists()) throw new Error("Ya existe una unidad organizacional con ese código.");
+
+    let parentRef: DocumentReference | null = null;
+    let parentSnapshot: Awaited<ReturnType<typeof transaction.get>> | null = null;
     let siteId: string | undefined;
     let areaId: string | undefined;
 
     if (input.type === "company") {
       if (parentId) throw new Error("La empresa no puede tener una unidad superior.");
-      const companiesQuery = query(
-        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"),
-        where("type", "==", "company"),
-      );
-      const companies = await transaction.get(companiesQuery);
-      if (companies.docs.some((company) => company.data().active === true && company.data().deleted !== true)) {
-        throw new Error("Ya existe una empresa principal configurada.");
-      }
+      const singleton = await transaction.get(companySingletonRef);
+      if (singleton.exists()) throw new Error("Ya existe una empresa principal configurada.");
     } else {
       const allowedParents = ALLOWED_PARENT_TYPES[input.type];
       if (!parentId) throw new Error("Debes seleccionar la unidad superior.");
-      const parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), parentId);
-      const parent = await transaction.get(parentRef);
-      if (!parent.exists() || parent.data().active !== true || parent.data().deleted === true) {
+      parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), parentId);
+      parentSnapshot = await transaction.get(parentRef);
+      if (!parentSnapshot.exists() || parentSnapshot.data().active !== true || parentSnapshot.data().deleted === true) {
         throw new Error("La unidad superior no existe o está inactiva.");
       }
-      const parentType = parent.data().type as OrganizationUnitType;
+      const parentType = parentSnapshot.data().type as OrganizationUnitType;
       if (!allowedParents.includes(parentType)) {
         throw new Error("La jerarquía seleccionada no es válida para este tipo de unidad.");
       }
@@ -117,12 +117,12 @@ export async function createOrganizationUnit(input: {
         if (parentType === "site") siteId = parentId;
         if (parentType === "area") {
           areaId = parentId;
-          siteId = String(parent.data().siteId ?? parent.data().parentId ?? "");
+          siteId = String(parentSnapshot.data().siteId ?? parentSnapshot.data().parentId ?? "");
         }
       }
       if (input.type === "production_line") {
         areaId = parentId;
-        siteId = String(parent.data().siteId ?? parent.data().parentId ?? "");
+        siteId = String(parentSnapshot.data().siteId ?? parentSnapshot.data().parentId ?? "");
       }
     }
 
@@ -136,6 +136,8 @@ export async function createOrganizationUnit(input: {
       ...(siteId ? { siteId } : {}),
       ...(areaId ? { areaId } : {}),
       active: true,
+      activeChildrenCount: 0,
+      inventoryUsed: false,
       description: input.description?.trim() ?? "",
       address: input.address?.trim() ?? "",
       timezone: input.timezone || "America/Bogota",
@@ -146,8 +148,19 @@ export async function createOrganizationUnit(input: {
       revision: 1,
       deleted: false,
     };
+
     transaction.set(unitRef, record);
     transaction.set(indexRef, { unitId: id, code, createdAt: now });
+    if (input.type === "company") {
+      transaction.set(companySingletonRef, { unitId: id, code, createdAt: now });
+    } else if (parentRef && parentSnapshot) {
+      transaction.update(parentRef, {
+        activeChildrenCount: Number(parentSnapshot.data().activeChildrenCount ?? 0) + 1,
+        updatedAt: now,
+        updatedBy: user.uid,
+        revision: Number(parentSnapshot.data().revision ?? 1) + 1,
+      });
+    }
   });
   return id;
 }
@@ -177,32 +190,41 @@ export async function updateOrganizationUnit(
     }
     const current = { ...snapshot.data(), id: snapshot.id } as OrganizationUnit;
     const currentRevision = Number(current.revision ?? 1);
-    if (patch.active === false) {
-      const childrenQuery = query(
-        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"),
-        where("parentId", "==", id),
-      );
-      const children = await transaction.get(childrenQuery);
-      if (children.docs.some((child) => child.data().active === true && child.data().deleted !== true)) {
+    let parentRef: DocumentReference | null = null;
+    let parentSnapshot: Awaited<ReturnType<typeof transaction.get>> | null = null;
+
+    if (patch.active === false && current.active === true) {
+      if (Number(current.activeChildrenCount ?? 0) > 0) {
         throw new Error("No puedes desactivar esta unidad mientras tenga unidades hijas activas.");
       }
-
-      if (current.type === "warehouse") {
-        const balancesQuery = query(
-          collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryBalances"),
-          where("warehouseId", "==", id),
-        );
-        const balances = await transaction.get(balancesQuery);
-        if (balances.docs.some((balance) => Number(balance.data().quantity ?? 0) > 0)) {
-          throw new Error("No puedes desactivar una bodega que todavía tiene existencias.");
-        }
+      if (current.type === "warehouse" && current.inventoryUsed === true) {
+        throw new Error("No puedes desactivar una bodega que ya registra movimientos de inventario.");
       }
-    } else if (patch.active === true && current.parentId) {
-      const parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), current.parentId);
-      const parent = await transaction.get(parentRef);
-      if (!parent.exists() || parent.data().active !== true || parent.data().deleted === true) {
+      if (current.parentId) {
+        parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), current.parentId);
+        parentSnapshot = await transaction.get(parentRef);
+        if (!parentSnapshot.exists()) throw new Error("No se encontró la unidad superior para actualizar su jerarquía.");
+        const count = Number(parentSnapshot.data().activeChildrenCount ?? 0);
+        if (count <= 0) throw new Error("El contador de unidades hijas no es válido.");
+        transaction.update(parentRef, {
+          activeChildrenCount: count - 1,
+          updatedAt: Date.now(),
+          updatedBy: user.uid,
+          revision: Number(parentSnapshot.data().revision ?? 1) + 1,
+        });
+      }
+    } else if (patch.active === true && current.active === false && current.parentId) {
+      parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), current.parentId);
+      parentSnapshot = await transaction.get(parentRef);
+      if (!parentSnapshot.exists() || parentSnapshot.data().active !== true || parentSnapshot.data().deleted === true) {
         throw new Error("No puedes activar una unidad cuya unidad superior esté inactiva.");
       }
+      transaction.update(parentRef, {
+        activeChildrenCount: Number(parentSnapshot.data().activeChildrenCount ?? 0) + 1,
+        updatedAt: Date.now(),
+        updatedBy: user.uid,
+        revision: Number(parentSnapshot.data().revision ?? 1) + 1,
+      });
     }
 
     transaction.update(reference, {
