@@ -1,7 +1,10 @@
 import {
   collection,
   doc,
+  getDocsFromServer,
+  query,
   runTransaction,
+  where,
   type DocumentData,
   type Transaction,
 } from "firebase/firestore";
@@ -204,6 +207,39 @@ async function validateFormulaProducts(
       standardCost: Number(byId.get(material.productId)?.data().standardCost ?? 0),
     })),
   };
+}
+
+export async function listProductionFormulas(): Promise<ProductionFormula[]> {
+  requireProductionUser();
+  const snapshot = await getDocsFromServer(query(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "productionFormulas")));
+  return snapshot.docs
+    .filter((item) => item.data().deleted !== true)
+    .map((item) => ({ ...item.data(), id: item.id }) as ProductionFormula)
+    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+}
+
+export async function listProductionFormulaVersions(formulaId: string): Promise<ProductionFormulaVersion[]> {
+  requireProductionUser();
+  const snapshot = await getDocsFromServer(query(
+    collection(fbDb(), "erp", CLOUD_COMPANY_ID, "productionFormulaVersions"),
+    where("formulaId", "==", formulaId),
+  ));
+  return snapshot.docs
+    .filter((item) => item.data().deleted !== true)
+    .map((item) => ({ ...item.data(), id: item.id }) as ProductionFormulaVersion)
+    .sort((a, b) => b.version - a.version);
+}
+
+export async function listCloudProductionOrders(warehouseId?: string): Promise<CloudProductionOrder[]> {
+  requireProductionUser();
+  const base = collection(fbDb(), "erp", CLOUD_COMPANY_ID, "productionOrders");
+  const snapshot = await getDocsFromServer(
+    warehouseId ? query(base, where("warehouseId", "==", warehouseId)) : query(base),
+  );
+  return snapshot.docs
+    .filter((item) => item.data().deleted !== true)
+    .map((item) => ({ ...item.data(), id: item.id }) as CloudProductionOrder)
+    .sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function createProductionFormula(input: {
