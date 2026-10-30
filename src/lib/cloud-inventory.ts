@@ -273,17 +273,15 @@ export async function postInventoryMovement(input: {
       deleted: false,
     };
 
-    const totalOnHand = Number(product.totalOnHand ?? 0) + quantityDelta;
-    if (totalOnHand < 0) throw new Error("El saldo global del producto no puede quedar negativo.");
-
     transaction.set(balanceRef, balanceData);
     transaction.set(movementRef, movementData);
-    transaction.update(productRef, {
-      totalOnHand,
-      inventoryRevision: Number(product.inventoryRevision ?? 0) + 1,
-      stockUpdatedAt: now,
-      lastInventoryMovementId: movementId,
-    });
+    if (product.inventoryUsed !== true) {
+      transaction.update(productRef, {
+        inventoryUsed: true,
+        inventoryRevision: Number(product.inventoryRevision ?? 0) + 1,
+        lastInventoryMovementId: movementId,
+      });
+    }
     if (warehouseSnapshot.data().inventoryUsed !== true) {
       transaction.update(warehouseRef, {
         inventoryUsed: true,
@@ -443,6 +441,13 @@ export async function transferInventory(input: {
 
     transaction.set(sourceBalanceRef, makeBalance(sourceBalanceRef.id, sourceBalanceSnapshot, input.sourceWarehouseId, sourceAfter, outMovementId));
     transaction.set(targetBalanceRef, makeBalance(targetBalanceRef.id, targetBalanceSnapshot, input.targetWarehouseId, targetAfter, inMovementId));
+    if (productSnapshot.data().inventoryUsed !== true) {
+      transaction.update(productRef, {
+        inventoryUsed: true,
+        inventoryRevision: Number(productSnapshot.data().inventoryRevision ?? 0) + 1,
+        lastInventoryMovementId: outMovementId,
+      });
+    }
     if (sourceWarehouseSnapshot.data().inventoryUsed !== true) {
       transaction.update(sourceWarehouseRef, {
         inventoryUsed: true,
