@@ -11,6 +11,7 @@ import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
 
 export type InventoryMovementType = "receipt" | "issue" | "adjustment" | "transfer_in" | "transfer_out";
+type ManualInventoryMovementType = "receipt" | "issue" | "adjustment";
 
 export interface InventoryBalance extends CloudRecord {
   productId: string;
@@ -92,7 +93,7 @@ export async function listInventoryMovements(warehouseId: string): Promise<Inven
 export async function postInventoryMovement(input: {
   productId: string;
   warehouseId: string;
-  type: InventoryMovementType;
+  type: ManualInventoryMovementType;
   quantity: number;
   unitCost?: number;
   reason: string;
