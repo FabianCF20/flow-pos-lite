@@ -10,7 +10,7 @@ import {
 import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
 
-export type InventoryMovementType = "receipt" | "issue" | "adjustment";
+export type InventoryMovementType = "receipt" | "issue" | "adjustment" | "transfer_in" | "transfer_out";
 
 export interface InventoryBalance extends CloudRecord {
   productId: string;
@@ -208,5 +208,177 @@ export async function postInventoryMovement(input: {
     transaction.set(balanceRef, balanceData);
     transaction.set(movementRef, movementData);
     return movementId;
+  });
+}
+
+
+/** Traslada existencias entre dos bodegas en una única transacción. */
+export async function transferInventory(input: {
+  productId: string;
+  sourceWarehouseId: string;
+  targetWarehouseId: string;
+  quantity: number;
+  reason: string;
+  idempotencyKey: string;
+}): Promise<string> {
+  const user = requireOnlineUser();
+  if (input.sourceWarehouseId === input.targetWarehouseId) {
+    throw new Error("La bodega de origen y destino deben ser diferentes.");
+  }
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) {
+    throw new Error("La cantidad a trasladar debe ser mayor que cero.");
+  }
+  if (!input.reason.trim()) throw new Error("Debes indicar el motivo del traslado.");
+  if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
+    throw new Error("Debes enviar una clave única de operación de hasta 128 caracteres.");
+  }
+
+  const transferId = await balanceDocumentId(input.idempotencyKey, "inventoryTransfer");
+  const outMovementId = await balanceDocumentId(transferId, "transferOut");
+  const inMovementId = await balanceDocumentId(transferId, "transferIn");
+  const productRef = reference("products", input.productId);
+  const sourceWarehouseRef = reference("organizationUnits", input.sourceWarehouseId);
+  const targetWarehouseRef = reference("organizationUnits", input.targetWarehouseId);
+  const sourceBalanceRef = reference("inventoryBalances", await balanceDocumentId(input.productId, input.sourceWarehouseId));
+  const targetBalanceRef = reference("inventoryBalances", await balanceDocumentId(input.productId, input.targetWarehouseId));
+  const transferRef = reference("inventoryTransfers", transferId);
+  const outMovementRef = reference("inventoryMovements", outMovementId);
+  const inMovementRef = reference("inventoryMovements", inMovementId);
+  const now = Date.now();
+
+  return runTransaction(fbDb(), async (transaction) => {
+    const [
+      productSnapshot,
+      sourceWarehouseSnapshot,
+      targetWarehouseSnapshot,
+      sourceBalanceSnapshot,
+      targetBalanceSnapshot,
+      transferSnapshot,
+      outMovementSnapshot,
+      inMovementSnapshot,
+    ] = await Promise.all([
+      transaction.get(productRef),
+      transaction.get(sourceWarehouseRef),
+      transaction.get(targetWarehouseRef),
+      transaction.get(sourceBalanceRef),
+      transaction.get(targetBalanceRef),
+      transaction.get(transferRef),
+      transaction.get(outMovementRef),
+      transaction.get(inMovementRef),
+    ]);
+
+    if (transferSnapshot.exists()) {
+      const existing = transferSnapshot.data();
+      const sameTransfer = existing.productId === input.productId
+        && existing.sourceWarehouseId === input.sourceWarehouseId
+        && existing.targetWarehouseId === input.targetWarehouseId
+        && existing.quantity === input.quantity
+        && existing.reason === input.reason.trim();
+      if (!sameTransfer) throw new Error("La clave de operación ya fue utilizada para otro traslado.");
+      return transferId;
+    }
+    if (outMovementSnapshot.exists() || inMovementSnapshot.exists()) {
+      throw new Error("Se detectó un historial de traslado incompleto. Solicita revisión administrativa.");
+    }
+
+    if (!productSnapshot.exists() || productSnapshot.data().deleted === true || productSnapshot.data().active === false) {
+      throw new Error("El producto no existe o está inactivo.");
+    }
+    if (productSnapshot.data().trackInventory === false) {
+      throw new Error("Este producto no tiene habilitado el control de inventario.");
+    }
+    for (const warehouse of [sourceWarehouseSnapshot, targetWarehouseSnapshot]) {
+      if (!warehouse.exists()
+        || warehouse.data().deleted === true
+        || warehouse.data().active === false
+        || warehouse.data().type !== "warehouse") {
+        throw new Error("Las bodegas de origen y destino deben estar activas y ser de tipo bodega.");
+      }
+    }
+
+    const product = productSnapshot.data();
+    const sourceBefore = Number(sourceBalanceSnapshot.data()?.quantity ?? 0);
+    const targetBefore = Number(targetBalanceSnapshot.data()?.quantity ?? 0);
+    if (sourceBefore < input.quantity) {
+      throw new Error(`Existencia insuficiente en origen. Disponible: ${sourceBefore} ${String(product.baseUnit ?? "u")}.`);
+    }
+    const sourceAfter = sourceBefore - input.quantity;
+    const targetAfter = targetBefore + input.quantity;
+    const baseUnit = String(product.baseUnit ?? "u");
+
+    const makeBalance = (
+      balanceSnapshot: typeof sourceBalanceSnapshot,
+      warehouseId: string,
+      quantity: number,
+    ): DocumentData => ({
+      id: balanceSnapshot.exists() ? balanceSnapshot.id : "",
+      companyId: CLOUD_COMPANY_ID,
+      productId: input.productId,
+      warehouseId,
+      quantity,
+      baseUnit,
+      createdAt: balanceSnapshot.exists() ? balanceSnapshot.data().createdAt : now,
+      updatedAt: now,
+      createdBy: balanceSnapshot.exists() ? balanceSnapshot.data().createdBy : user.uid,
+      updatedBy: user.uid,
+      revision: Number(balanceSnapshot.data()?.revision ?? 0) + 1,
+      deleted: false,
+    });
+
+    transaction.set(sourceBalanceRef, makeBalance(sourceBalanceSnapshot, input.sourceWarehouseId, sourceAfter));
+    transaction.set(targetBalanceRef, makeBalance(targetBalanceSnapshot, input.targetWarehouseId, targetAfter));
+    transaction.set(transferRef, {
+      id: transferId,
+      companyId: CLOUD_COMPANY_ID,
+      productId: input.productId,
+      sourceWarehouseId: input.sourceWarehouseId,
+      targetWarehouseId: input.targetWarehouseId,
+      quantity: input.quantity,
+      baseUnit,
+      reason: input.reason.trim(),
+      outMovementId,
+      inMovementId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user.uid,
+      updatedBy: user.uid,
+      revision: 1,
+      deleted: false,
+    });
+
+    const movementBase = {
+      companyId: CLOUD_COMPANY_ID,
+      productId: input.productId,
+      quantityDelta: 0,
+      baseUnit,
+      reason: input.reason.trim(),
+      referenceType: "transfer",
+      referenceId: transferId,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user.uid,
+      updatedBy: user.uid,
+      revision: 1,
+      deleted: false,
+    };
+    transaction.set(outMovementRef, {
+      ...movementBase,
+      id: outMovementId,
+      warehouseId: input.sourceWarehouseId,
+      type: "transfer_out",
+      quantityDelta: -input.quantity,
+      balanceBefore: sourceBefore,
+      balanceAfter: sourceAfter,
+    });
+    transaction.set(inMovementRef, {
+      ...movementBase,
+      id: inMovementId,
+      warehouseId: input.targetWarehouseId,
+      type: "transfer_in",
+      quantityDelta: input.quantity,
+      balanceBefore: targetBefore,
+      balanceAfter: targetAfter,
+    });
+    return transferId;
   });
 }
