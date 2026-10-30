@@ -138,6 +138,8 @@ export async function createOrganizationUnit(input: {
       active: true,
       activeChildrenCount: 0,
       inventoryUsed: false,
+      inventoryRevision: 0,
+      lastInventoryMovementId: null,
       description: input.description?.trim() ?? "",
       address: input.address?.trim() ?? "",
       timezone: input.timezone || "America/Bogota",
