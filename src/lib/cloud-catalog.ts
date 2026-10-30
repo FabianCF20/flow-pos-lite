@@ -261,6 +261,11 @@ export async function updateCloudProduct(
     }
 
     const old = snapshot.data();
+    if (String(old.code ?? "") !== data.code
+      || String(old.sku ?? "") !== data.sku
+      || String(old.barcode ?? "") !== data.barcode) {
+      throw new Error("El código, SKU y código de barras no se pueden cambiar después de crear el producto. Crea otro producto si necesitas identificadores distintos.");
+    }
     const oldIndexRefs = await readProductIndexRefs(validateProduct({
       code: String(old.code ?? ""),
       name: String(old.name ?? ""),
@@ -303,7 +308,6 @@ export async function updateCloudProduct(
     allRefs.forEach((item, index) => {
       const current = snapshots[index];
       const isNextIndex = nextIndexes.some((next) => next.collectionName === item.collectionName && next.key === item.key);
-      if (!isNextIndex && current.exists() && current.data().recordId === id) transaction.delete(indexRef(item.collectionName, item.key));
       if (isNextIndex) transaction.set(indexRef(item.collectionName, item.key), { recordId: id, createdAt: current.data()?.createdAt ?? Date.now() });
     });
 
