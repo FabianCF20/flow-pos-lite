@@ -244,7 +244,7 @@ function CloudCatalogPage() {
       {productForm && (
         <ProductEditor
           value={productForm === "new" ? null : productForm}
-          categories={categories.filter((category) => category.active)}
+          categories={categories.filter((category) => category.active || (productForm !== "new" && productForm !== null && category.id === productForm.categoryId))}
           onClose={() => setProductForm(null)}
           onSave={saveProduct}
         />
@@ -338,7 +338,7 @@ function ProductEditor({ value, categories, onClose, onSave }: {
           <Field label="Tipo"><select value={productType} onChange={(event) => setProductType(event.target.value as DairyProductType)} className="control">{PRODUCT_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}</select></Field>
         </div>
         <Field label="Nombre"><input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} className="control" /></Field>
-        <Field label="Categoría"><select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="control">{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Field>
+        <Field label="Categoría"><select required value={categoryId} onChange={(event) => setCategoryId(event.target.value)} className="control">{categories.map((category) => <option key={category.id} value={category.id}>{category.name}{category.active ? "" : " (inactiva)"}</option>)}</select></Field>
         <Field label="Descripción"><textarea rows={2} value={description} onChange={(event) => setDescription(event.target.value)} className="control" /></Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="SKU (inmutable)"><input disabled={!!value} value={sku} onChange={(event) => setSku(event.target.value)} className="control" /></Field>
