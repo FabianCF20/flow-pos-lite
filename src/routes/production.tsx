@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { listCloudProducts, type CloudProduct, type DairyProductType } from "@/lib/cloud-catalog";
+import { listCloudProducts, type CloudProduct } from "@/lib/cloud-catalog";
 import {
   approveProductionFormulaVersion,
   createCloudProductionOrder,
@@ -19,7 +19,7 @@ import {
 } from "@/lib/cloud-production";
 import { listAccessibleWarehouses, type InventoryWarehouse } from "@/lib/cloud-inventory";
 import { toast } from "sonner";
-import { Factory, Plus, RefreshCw, CheckCircle2, Clock3, X, Save, ClipboardList, FlaskConical } from "lucide-react";
+import { Plus, RefreshCw, CheckCircle2, X, Save, ClipboardList, FlaskConical } from "lucide-react";
 
 export const Route = createFileRoute("/production")({
   head: () => ({ meta: [{ title: "Producción láctea — ERP" }] }),
@@ -100,9 +100,6 @@ function ProductionPage() {
 
   const selectedFormula = formulas.find((formula) => formula.id === selectedFormulaId) ?? null;
   const finishedProducts = products.filter((product) => product.active && product.productType === "finished_product");
-  const availableMaterials = products.filter((product) => product.active && product.trackInventory
-    && ["raw_material", "finished_product", "packaging"].includes(product.productType));
-
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Verificando permisos…</div>;
   if (!canRead) return <div className="p-6 text-sm text-destructive">No tienes permiso para consultar producción.</div>;
 
@@ -332,13 +329,13 @@ function FormulaEditor({ value, products, currentVersion, onClose, onSave }: {
           <Field label="Código"><input required maxLength={40} value={code} onChange={(event) => setCode(event.target.value)} className="control" /></Field>
           <Field label="Nombre"><input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} className="control" /></Field>
           <Field label="Área"><select value={area} onChange={(event) => setArea(event.target.value as ProductionArea)} className="control"><option value="liquid_milk">Leche líquida</option><option value="powder_milk">Leche en polvo</option></select></Field>
-          <Field label="Producto terminado"><select required value={outputProductId} onChange={(event) => setOutputProductId(event.target.value)} className="control"><option value="">Selecciona…</option>{products.filter((product) => product.active && product.productType === "finished_product").map((product) => <option key={product.id} value={product.id}>{product.name} · {product.baseUnit}</option>)}</select></Field>
+          <Field label="Producto terminado"><select required value={outputProductId} onChange={(event) => setOutputProductId(event.target.value)} className="control"><option value="">Selecciona…</option>{products.filter((product) => product.active && product.trackInventory && product.productType === "finished_product").map((product) => <option key={product.id} value={product.id}>{product.name} · {product.baseUnit}</option>)}</select></Field>
         </>}
         <Field label="Rendimiento de la fórmula"><input required type="number" min="0.0001" step="0.0001" value={outputQuantity} onChange={(event) => setOutputQuantity(event.target.value)} className="control" /></Field>
         <div className="flex items-center justify-between"><span className="text-xs text-muted-foreground">Materiales e ingredientes</span><button type="button" onClick={addMaterial} className="text-xs text-primary inline-flex items-center gap-1"><Plus className="h-3.5 w-3.5" /> Agregar</button></div>
         {materials.map((material, index) => (
           <div key={index} className="grid grid-cols-[minmax(0,1fr)_100px_110px_32px] gap-2 items-end">
-            <Field label="Producto"><select required value={material.productId} onChange={(event) => updateMaterial(index, { productId: event.target.value })} className="control">{allowedProducts(material.materialType).map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></Field>
+            <Field label="Producto"><select required value={material.productId} onChange={(event) => updateMaterial(index, { productId: event.target.value })} className="control"><option value="">Selecciona producto…</option>{allowedProducts(material.materialType).map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></Field>
             <Field label="Tipo"><select value={material.materialType} onChange={(event) => updateMaterial(index, { materialType: event.target.value as MaterialDraft["materialType"], productId: "" })} className="control"><option value="ingredient">Ingrediente</option><option value="packaging">Empaque</option></select></Field>
             <Field label="Cantidad"><input required type="number" min="0.0001" step="0.0001" value={material.quantity} onChange={(event) => updateMaterial(index, { quantity: event.target.value })} className="control" /></Field>
             <button type="button" onClick={() => removeMaterial(index)} className="h-10 rounded-lg bg-muted text-muted-foreground"><X className="h-4 w-4 mx-auto" /></button>
@@ -367,6 +364,8 @@ function OrderEditor({ formulas, warehouses, onClose, onSave }: {
 
   useEffect(() => {
     if (!formulaId) { setVersions([]); setVersionId(""); return; }
+    setVersionId("");
+    setVersions([]);
     listProductionFormulaVersions(formulaId).then((items) => {
       const approved = items.filter((item) => item.status === "approved");
       setVersions(approved);
