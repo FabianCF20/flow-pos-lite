@@ -108,6 +108,7 @@ function ProductionPage() {
     outputQuantity: number; outputUnit: string; materials: FormulaMaterial[];
   }) {
     try {
+      let targetFormulaId: string;
       if (formulaEditor && formulaEditor !== "new") {
         const currentVersion = versions[0];
         if (!currentVersion) throw new Error("No se encontró la versión actual de la fórmula.");
@@ -119,15 +120,16 @@ function ProductionPage() {
           materials: input.materials,
           changeReason: "Nueva versión de fórmula",
         });
+        targetFormulaId = formulaEditor.id;
         toast.success(`Nueva versión creada: ${versionId.slice(0, 8)}`);
       } else {
-        const formulaId = await createProductionFormula(input);
-        setSelectedFormulaId(formulaId);
+        targetFormulaId = await createProductionFormula(input);
         toast.success("Fórmula creada en borrador");
       }
+      setSelectedFormulaId(targetFormulaId);
       setFormulaEditor(null);
       await reloadBase();
-      await reloadVersions();
+      setVersions(await listProductionFormulaVersions(targetFormulaId));
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo guardar la fórmula");
     }
