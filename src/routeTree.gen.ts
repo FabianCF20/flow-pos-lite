@@ -164,6 +164,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/cash': typeof CashRoute
+  '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
   '/inventory': typeof InventoryRoute
@@ -187,6 +188,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/cash': typeof CashRoute
+  '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
   '/inventory': typeof InventoryRoute
@@ -234,6 +236,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounting'
     | '/cash'
+    | '/catalog'
     | '/categories'
     | '/customers'
     | '/inventory'
@@ -256,6 +259,7 @@ export interface FileRouteTypes {
     | '/'
     | '/accounting'
     | '/cash'
+    | '/catalog'
     | '/categories'
     | '/customers'
     | '/inventory'
