@@ -389,6 +389,11 @@ export async function transferInventory(input: {
     }
 
     const product = productSnapshot.data();
+    const sourceWarehouse = sourceWarehouseSnapshot.data();
+    const targetWarehouse = targetWarehouseSnapshot.data();
+    if (!sourceWarehouse || !targetWarehouse) {
+      throw new Error("No se pudieron leer las bodegas del traslado.");
+    }
     const sourceBefore = Number(sourceBalanceSnapshot.data()?.quantity ?? 0);
     const targetBefore = Number(targetBalanceSnapshot.data()?.quantity ?? 0);
     const expiryDate = sourceBalanceSnapshot.data()?.expiryDate ?? input.expiryDate;
@@ -448,17 +453,17 @@ export async function transferInventory(input: {
         lastInventoryMovementId: outMovementId,
       });
     }
-    if (sourceWarehouseSnapshot.data().inventoryUsed !== true) {
+    if (sourceWarehouse.inventoryUsed !== true) {
       transaction.update(sourceWarehouseRef, {
         inventoryUsed: true,
-        inventoryRevision: Number(sourceWarehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+        inventoryRevision: Number(sourceWarehouse.inventoryRevision ?? 0) + 1,
         lastInventoryMovementId: outMovementId,
       });
     }
-    if (targetWarehouseSnapshot.data().inventoryUsed !== true) {
+    if (targetWarehouse.inventoryUsed !== true) {
       transaction.update(targetWarehouseRef, {
         inventoryUsed: true,
-        inventoryRevision: Number(targetWarehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+        inventoryRevision: Number(targetWarehouse.inventoryRevision ?? 0) + 1,
         lastInventoryMovementId: inMovementId,
       });
     }
