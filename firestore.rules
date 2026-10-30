@@ -81,6 +81,7 @@ service cloud.firestore {
         : collectionName == 'measures' ? 'production'
         : collectionName == 'attachments' ? 'settings'
         : collectionName == 'settings' ? 'settings'
+        : collectionName == 'organizationUnits' ? 'settings'
         : 'none';
     }
 
