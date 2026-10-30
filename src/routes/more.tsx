@@ -2,7 +2,7 @@ import { pageHead } from "@/lib/page-head";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
-import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory } from "lucide-react";
+import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory, Building2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/more")({ head: () => pageHead("Módulos", "Módulos de operación, producción y finanzas."), component: MorePage });
@@ -22,7 +22,7 @@ function MorePage() {
     { to: "/products", icon: Package, label: "Productos" },
     { to: "/customers", icon: Users, label: "Clientes" },
     { to: "/reports", icon: BarChart3, label: "Reportes" },
-    { to: "/settings", icon: Settings, label: "Ajustes" },
+    { to: "/organization", icon: Building2, label: "Estructura organizacional" },\n    { to: "/settings", icon: Settings, label: "Ajustes" },
   ] as const;
   const items = user?.role === "cashier"
     ? allItems.filter((i) => i.to === "/sales")
