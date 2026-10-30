@@ -175,3 +175,15 @@ Se creó la ruta `/catalog`:
 - Se incorporó como entrada principal del menú y se filtran las rutas según permisos.
 
 Las rutas antiguas `/products` y `/categories` se mantienen temporalmente solo para administración/compatibilidad con pantallas Dexie. El catálogo cloud aún no alimenta el POS, inventario ni producción antiguos; esa integración debe hacerse como una migración coordinada y no se debe asumir que los productos cloud ya aparecen en el POS.
+
+
+### Pantalla cloud de producción
+
+Se sustituyó la pantalla de producción anterior por una interfaz conectada a los repositorios cloud:
+- Consulta fórmulas y versiones desde Firestore.
+- El jefe de producción puede crear fórmulas y nuevas versiones.
+- La aprobación solo está disponible para el permiso independiente de aprobación.
+- Supervisores/operarios con permiso de producción pueden crear órdenes usando una versión aprobada y una bodega de su alcance.
+- Las órdenes conservan el snapshot de fórmula, materiales, cantidades y costos estándar.
+
+La pantalla muestra expresamente que las órdenes aún quedan en borrador. Falta el cierre transaccional de producción: selección FEFO de lotes de materias primas, consumo de existencias, generación del lote de producto terminado, costos reales y trazabilidad de lote a lote. No se debe marcar una orden como ejecutada hasta implementar ese proceso.
