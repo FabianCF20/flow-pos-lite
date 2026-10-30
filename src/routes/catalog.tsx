@@ -66,13 +66,23 @@ function CloudCatalogPage() {
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Verificando permisos…</div>;
   if (!canRead) return <div className="p-6 text-sm text-destructive">No tienes permiso para consultar el catálogo.</div>;
 
-  async function saveCategory(input: { code: string; name: string; description: string; color: string }) {
+  async function saveCategory(input: { code: string; name: string; description: string; color: string; active: boolean }) {
     try {
       if (categoryForm && categoryForm !== "new") {
-        await updateCloudCategory(categoryForm.id, input, categoryForm.revision);
+        await updateCloudCategory(categoryForm.id, {
+          name: input.name,
+          description: input.description,
+          color: input.color,
+          active: input.active,
+        }, categoryForm.revision);
         toast.success("Categoría actualizada en Firestore");
       } else {
-        await createCloudCategory(input);
+        await createCloudCategory({
+          code: input.code,
+          name: input.name,
+          description: input.description,
+          color: input.color,
+        });
         toast.success("Categoría creada en Firestore");
       }
       setCategoryForm(null);
@@ -247,7 +257,7 @@ function EmptyState({ text }: { text: string }) {
 function CategoryEditor({ value, onClose, onSave }: {
   value: CloudCategory | null;
   onClose: () => void;
-  onSave: (input: { code: string; name: string; description: string; color: string }) => Promise<void>;
+  onSave: (input: { code: string; name: string; description: string; color: string; active: boolean }) => Promise<void>;
 }) {
   const [code, setCode] = useState(value?.code ?? "");
   const [name, setName] = useState(value?.name ?? "");
@@ -260,10 +270,7 @@ function CategoryEditor({ value, onClose, onSave }: {
     event.preventDefault();
     setSaving(true);
     try {
-      await onSave({ code, name, description, color });
-      if (value && active !== value.active) {
-        await updateCloudCategory(value.id, { active }, value.revision + 1);
-      }
+      await onSave({ code, name, description, color, active });
     } finally {
       setSaving(false);
     }
