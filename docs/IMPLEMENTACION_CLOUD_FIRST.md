@@ -139,3 +139,15 @@ Se añadió `src/lib/cloud-production.ts` como base del módulo de producción l
 - La creación de órdenes usa clave de idempotencia para evitar duplicados cuando se reintenta una petición.
 
 **Alcance actual:** están implementadas las operaciones de creación de fórmulas, creación de versiones, aprobación y creación de órdenes en borrador. Todavía falta la pantalla de producción y el cierre transaccional de la orden que consuma lotes de materias primas y registre el lote del producto terminado. No se debe usar aún como flujo productivo completo.
+
+
+### Separación de permisos de producción
+
+Se ampliaron los permisos para respetar la separación de funciones:
+- `production_manager`: puede crear versiones de fórmulas y aprobarlas, además de operar producción.
+- `production_operator`: puede consultar fórmulas y crear/gestionar órdenes, pero no crear ni aprobar versiones.
+- La aprobación exige el permiso independiente `production_approval`; la creación de fórmulas exige `production_formulas`.
+- La administración de usuarios ahora carga los roles disponibles desde Firestore, en lugar de limitarse a administrador y cajero.
+- Las reglas impiden editar una versión aprobada y bloquean la eliminación física de fórmulas y sus versiones.
+
+El administrador debe asignar los nuevos roles a las personas correspondientes. Los roles se crean como presets al inicializar el acceso del administrador.
