@@ -32,6 +32,7 @@ type MaterialDraft = { productId: string; quantity: string; materialType: "ingre
 function ProductionPage() {
   const { can, loading } = useAuth();
   const canRead = can("production", "read");
+  const canReadInventory = can("inventory", "read");
   const canWriteProduction = can("production", "write");
   const canWriteFormulas = can("production_formulas", "write");
   const canApprove = can("production_approval", "write");
@@ -50,11 +51,11 @@ function ProductionPage() {
   const reloadBase = useCallback(async () => {
     setBusy(true);
     try {
-      const [nextFormulas, nextProducts, nextWarehouses] = await Promise.all([
+      const [nextFormulas, nextProducts] = await Promise.all([
         listProductionFormulas(),
         listCloudProducts(),
-        listAccessibleWarehouses(),
       ]);
+      const nextWarehouses = canReadInventory ? await listAccessibleWarehouses() : [];
       setFormulas(nextFormulas);
       setProducts(nextProducts);
       setWarehouses(nextWarehouses);
@@ -65,7 +66,7 @@ function ProductionPage() {
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [canReadInventory]);
 
   const reloadVersions = useCallback(async () => {
     if (!selectedFormulaId) {
