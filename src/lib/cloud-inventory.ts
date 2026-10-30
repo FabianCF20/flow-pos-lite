@@ -18,11 +18,15 @@ export interface InventoryBalance extends CloudRecord {
   warehouseId: string;
   quantity: number;
   baseUnit: string;
+  lotCode: string;
+  expiryDate?: number;
 }
 
 export interface InventoryMovement extends CloudRecord {
   productId: string;
   warehouseId: string;
+  lotCode: string;
+  expiryDate?: number;
   type: InventoryMovementType;
   quantityDelta: number;
   balanceBefore: number;
@@ -56,8 +60,8 @@ function reference(collectionName: string, id: string) {
   return doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, collectionName), id);
 }
 
-async function balanceDocumentId(productId: string, warehouseId: string) {
-  const value = new TextEncoder().encode(`${productId}:${warehouseId}`);
+async function balanceDocumentId(productId: string, warehouseId: string, lotCode = "NO_LOT") {
+  const value = new TextEncoder().encode(`${productId}:${warehouseId}:${lotCode.trim().toUpperCase()}`);
   const digest = await crypto.subtle.digest("SHA-256", value);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -93,6 +97,8 @@ export async function listInventoryMovements(warehouseId: string): Promise<Inven
 export async function postInventoryMovement(input: {
   productId: string;
   warehouseId: string;
+  lotCode: string;
+  expiryDate?: number;
   type: ManualInventoryMovementType;
   quantity: number;
   unitCost?: number;
@@ -108,13 +114,18 @@ export async function postInventoryMovement(input: {
       : "La cantidad debe ser mayor que cero.");
   }
   if (!input.reason.trim()) throw new Error("Debes indicar el motivo del movimiento.");
+  if (!input.lotCode.trim()) throw new Error("Debes indicar el lote del producto.");
+  if (input.expiryDate !== undefined && (!Number.isFinite(input.expiryDate) || input.expiryDate <= 0)) {
+    throw new Error("La fecha de vencimiento no es válida.");
+  }
   if (input.unitCost !== undefined && (!Number.isFinite(input.unitCost) || input.unitCost < 0)) {
     throw new Error("El costo unitario no puede ser negativo.");
   }
 
   const productRef = reference("products", input.productId);
   const warehouseRef = reference("organizationUnits", input.warehouseId);
-  const balanceId = await balanceDocumentId(input.productId, input.warehouseId);
+  const lotCode = input.lotCode.trim().toUpperCase();
+  const balanceId = await balanceDocumentId(input.productId, input.warehouseId, lotCode);
   const balanceRef = reference("inventoryBalances", balanceId);
   if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
     throw new Error("Debes enviar una clave única de operación de hasta 128 caracteres.");
@@ -140,6 +151,7 @@ export async function postInventoryMovement(input: {
         && existing.warehouseId === input.warehouseId
         && existing.type === input.type
         && existing.quantityDelta === requestedDelta
+        && existing.lotCode === lotCode
         && existing.reason === input.reason.trim();
       if (!sameOperation) throw new Error("La clave de operación ya fue utilizada para otro movimiento.");
       return movementId;
@@ -160,6 +172,15 @@ export async function postInventoryMovement(input: {
 
     const product = productSnapshot.data();
     const balance = balanceSnapshot.exists() ? Number(balanceSnapshot.data().quantity ?? 0) : 0;
+    if (balanceSnapshot.exists() && input.expiryDate !== undefined
+      && balanceSnapshot.data().expiryDate !== undefined
+      && balanceSnapshot.data().expiryDate !== input.expiryDate) {
+      throw new Error("El lote ya existe con una fecha de vencimiento diferente.");
+    }
+    const expiryDate = balanceSnapshot.data()?.expiryDate ?? input.expiryDate;
+    if (input.type === "issue" && expiryDate !== undefined && expiryDate < Date.now()) {
+      throw new Error("No se puede consumir un lote vencido.");
+    }
     const quantityDelta = input.type === "receipt"
       ? input.quantity
       : input.type === "issue" ? -input.quantity : input.quantity;
@@ -176,6 +197,8 @@ export async function postInventoryMovement(input: {
       warehouseId: input.warehouseId,
       quantity: nextBalance,
       baseUnit: String(product.baseUnit ?? "u"),
+      lotCode,
+      expiryDate: expiryDate ?? null,
       createdAt: balanceSnapshot.exists() ? balanceSnapshot.data().createdAt : now,
       updatedAt: now,
       createdBy: balanceSnapshot.exists() ? balanceSnapshot.data().createdBy : user.uid,
@@ -189,6 +212,8 @@ export async function postInventoryMovement(input: {
       companyId: CLOUD_COMPANY_ID,
       productId: input.productId,
       warehouseId: input.warehouseId,
+      lotCode,
+      expiryDate: expiryDate ?? null,
       type: input.type,
       quantityDelta,
       balanceBefore: balance,
@@ -219,6 +244,8 @@ export async function transferInventory(input: {
   sourceWarehouseId: string;
   targetWarehouseId: string;
   quantity: number;
+  lotCode: string;
+  expiryDate?: number;
   reason: string;
   idempotencyKey: string;
 }): Promise<string> {
@@ -230,6 +257,7 @@ export async function transferInventory(input: {
     throw new Error("La cantidad a trasladar debe ser mayor que cero.");
   }
   if (!input.reason.trim()) throw new Error("Debes indicar el motivo del traslado.");
+  if (!input.lotCode.trim()) throw new Error("Debes indicar el lote que se va a trasladar.");
   if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
     throw new Error("Debes enviar una clave única de operación de hasta 128 caracteres.");
   }
@@ -240,8 +268,9 @@ export async function transferInventory(input: {
   const productRef = reference("products", input.productId);
   const sourceWarehouseRef = reference("organizationUnits", input.sourceWarehouseId);
   const targetWarehouseRef = reference("organizationUnits", input.targetWarehouseId);
-  const sourceBalanceRef = reference("inventoryBalances", await balanceDocumentId(input.productId, input.sourceWarehouseId));
-  const targetBalanceRef = reference("inventoryBalances", await balanceDocumentId(input.productId, input.targetWarehouseId));
+  const lotCode = input.lotCode.trim().toUpperCase();
+  const sourceBalanceRef = reference("inventoryBalances", await balanceDocumentId(input.productId, input.sourceWarehouseId, lotCode));
+  const targetBalanceRef = reference("inventoryBalances", await balanceDocumentId(input.productId, input.targetWarehouseId, lotCode));
   const transferRef = reference("inventoryTransfers", transferId);
   const outMovementRef = reference("inventoryMovements", outMovementId);
   const inMovementRef = reference("inventoryMovements", inMovementId);
@@ -274,6 +303,7 @@ export async function transferInventory(input: {
         && existing.sourceWarehouseId === input.sourceWarehouseId
         && existing.targetWarehouseId === input.targetWarehouseId
         && existing.quantity === input.quantity
+        && existing.lotCode === lotCode
         && existing.reason === input.reason.trim();
       if (!sameTransfer) throw new Error("La clave de operación ya fue utilizada para otro traslado.");
       return transferId;
@@ -300,6 +330,19 @@ export async function transferInventory(input: {
     const product = productSnapshot.data();
     const sourceBefore = Number(sourceBalanceSnapshot.data()?.quantity ?? 0);
     const targetBefore = Number(targetBalanceSnapshot.data()?.quantity ?? 0);
+    const expiryDate = sourceBalanceSnapshot.data()?.expiryDate ?? input.expiryDate;
+    if (input.expiryDate !== undefined && sourceBalanceSnapshot.data()?.expiryDate !== undefined
+      && sourceBalanceSnapshot.data()?.expiryDate !== input.expiryDate) {
+      throw new Error("La fecha de vencimiento del lote no coincide con la bodega de origen.");
+    }
+    if (sourceBalanceSnapshot.data()?.expiryDate !== undefined
+      && sourceBalanceSnapshot.data()?.expiryDate < Date.now()) {
+      throw new Error("No se puede trasladar un lote vencido.");
+    }
+    if (targetBalanceSnapshot.exists() && targetBalanceSnapshot.data().expiryDate !== undefined
+      && targetBalanceSnapshot.data().expiryDate !== expiryDate) {
+      throw new Error("El lote ya existe en destino con una fecha de vencimiento diferente.");
+    }
     if (sourceBefore < input.quantity) {
       throw new Error(`Existencia insuficiente en origen. Disponible: ${sourceBefore} ${String(product.baseUnit ?? "u")}.`);
     }
@@ -319,6 +362,8 @@ export async function transferInventory(input: {
       warehouseId,
       quantity,
       baseUnit,
+      lotCode,
+      expiryDate: expiryDate ?? null,
       createdAt: balanceSnapshot.exists() ? balanceSnapshot.data().createdAt : now,
       updatedAt: now,
       createdBy: balanceSnapshot.exists() ? balanceSnapshot.data().createdBy : user.uid,
@@ -337,6 +382,8 @@ export async function transferInventory(input: {
       targetWarehouseId: input.targetWarehouseId,
       quantity: input.quantity,
       baseUnit,
+      lotCode,
+      expiryDate: expiryDate ?? null,
       reason: input.reason.trim(),
       outMovementId,
       inMovementId,
@@ -353,6 +400,8 @@ export async function transferInventory(input: {
       productId: input.productId,
       quantityDelta: 0,
       baseUnit,
+      lotCode,
+      expiryDate: expiryDate ?? null,
       reason: input.reason.trim(),
       referenceType: "transfer",
       referenceId: transferId,
