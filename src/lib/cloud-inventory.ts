@@ -187,7 +187,7 @@ export async function postInventoryMovement(input: {
     };
 
     transaction.set(balanceRef, balanceData);
-    transaction.create(movementRef, movementData);
+    transaction.set(movementRef, movementData);
     return movementId;
   });
 }
