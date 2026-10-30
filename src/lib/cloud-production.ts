@@ -3,6 +3,7 @@ import {
   doc,
   runTransaction,
   type DocumentData,
+  type Transaction,
 } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
@@ -143,7 +144,7 @@ function audit(userId: string, now: number) {
 }
 
 async function validateFormulaProducts(
-  transaction: Parameters<Parameters<typeof runTransaction>[1]>[0],
+  transaction: Transaction,
   input: ReturnType<typeof validateFormulaInput>,
 ) {
   const productIds = [input.outputProductId, ...input.materials.map((item) => item.productId)];
@@ -162,6 +163,9 @@ async function validateFormulaProducts(
     const snapshot = byId.get(material.productId);
     if (!snapshot?.exists() || snapshot.data().deleted === true || snapshot.data().active === false) {
       throw new Error("Todos los ingredientes y materiales deben estar activos.");
+    }
+    if (snapshot.data().trackInventory === false) {
+      throw new Error("Todos los ingredientes y materiales deben tener control de inventario.");
     }
     const productType = snapshot.data().productType;
     if (material.materialType === "ingredient" && !["raw_material", "finished_product"].includes(String(productType))) {
@@ -356,7 +360,7 @@ export async function createCloudProductionOrder(input: {
   await runTransaction(fbDb(), async (transaction) => {
     const formulaRef = ref("productionFormulas", input.formulaId);
     const versionRef = ref("productionFormulaVersions", input.formulaVersionId);
-    const warehouseRef = ref("organizationUnitS", input.warehouseId);
+    const warehouseRef = ref("organizationUnits", input.warehouseId);
     const [formulaSnapshot, versionSnapshot, warehouseSnapshot] = await Promise.all([
       transaction.get(formulaRef),
       transaction.get(versionRef),
