@@ -110,6 +110,7 @@ Se añadieron dos repositorios de dominio:
 Reglas de integridad añadidas:
 - Los productos deben referenciar una categoría activa.
 - No se puede desactivar una categoría que tenga productos activos; la verificación se ejecuta dentro de la transacción.
+- No se puede desactivar un producto con existencias ni una bodega con saldos positivos. La validación se hace dentro de la transacción para evitar carreras con movimientos simultáneos.
 - No se permite registrar dos productos con el mismo código, SKU o código de barras.
 - El movimiento y la actualización del saldo se confirman en una sola transacción.
 - No se permiten existencias negativas.
