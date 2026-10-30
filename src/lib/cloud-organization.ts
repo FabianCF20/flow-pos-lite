@@ -92,6 +92,7 @@ export async function createOrganizationUnit(input: {
 
     let parentRef: DocumentReference | null = null;
     let parentSnapshot: DocumentSnapshot | null = null;
+    let parentData: DocumentData | null = null;
     let siteId: string | undefined;
     let areaId: string | undefined;
 
@@ -104,10 +105,11 @@ export async function createOrganizationUnit(input: {
       if (!parentId) throw new Error("Debes seleccionar la unidad superior.");
       parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), parentId);
       parentSnapshot = await transaction.get(parentRef);
-      if (!parentSnapshot.exists() || parentSnapshot.data().active !== true || parentSnapshot.data().deleted === true) {
+      parentData = parentSnapshot.data() ?? null;
+      if (!parentSnapshot.exists() || !parentData || parentData.active !== true || parentData.deleted === true) {
         throw new Error("La unidad superior no existe o está inactiva.");
       }
-      const parentType = parentSnapshot.data().type as OrganizationUnitType;
+      const parentType = parentData.type as OrganizationUnitType;
       if (!allowedParents.includes(parentType)) {
         throw new Error("La jerarquía seleccionada no es válida para este tipo de unidad.");
       }
@@ -117,7 +119,7 @@ export async function createOrganizationUnit(input: {
         if (parentType === "site") siteId = parentId;
         if (parentType === "area") {
           areaId = parentId;
-          siteId = String(parentSnapshot.data().siteId ?? parentSnapshot.data().parentId ?? "");
+          siteId = String(parentData.siteId ?? parentData.parentId ?? "");
         }
       }
       if (input.type === "production_line") {
@@ -155,12 +157,12 @@ export async function createOrganizationUnit(input: {
     transaction.set(indexRef, { unitId: id, code, createdAt: now });
     if (input.type === "company") {
       transaction.set(companySingletonRef, { unitId: id, code, createdAt: now });
-    } else if (parentRef && parentSnapshot) {
+    } else if (parentRef && parentData) {
       transaction.update(parentRef, {
-        activeChildrenCount: Number(parentSnapshot.data().activeChildrenCount ?? 0) + 1,
+        activeChildrenCount: Number(parentData.activeChildrenCount ?? 0) + 1,
         updatedAt: now,
         updatedBy: user.uid,
-        revision: Number(parentSnapshot.data().revision ?? 1) + 1,
+        revision: Number(parentData.revision ?? 1) + 1,
       });
     }
   });
@@ -187,13 +189,15 @@ export async function updateOrganizationUnit(
   const reference = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), id);
   await runTransaction(fbDb(), async (transaction) => {
     const snapshot = await transaction.get(reference);
-    if (!snapshot.exists() || snapshot.data().deleted === true) {
+    const currentData = snapshot.data();
+    if (!snapshot.exists() || !currentData || currentData.deleted === true) {
       throw new Error("La unidad organizacional no existe.");
     }
-    const current = { ...snapshot.data(), id: snapshot.id } as OrganizationUnit;
+    const current = { ...currentData, id: snapshot.id } as OrganizationUnit;
     const currentRevision = Number(current.revision ?? 1);
     let parentRef: DocumentReference | null = null;
     let parentSnapshot: DocumentSnapshot | null = null;
+    let parentData: DocumentData | null = null;
 
     if (patch.active === false && current.active === true) {
       if (Number(current.activeChildrenCount ?? 0) > 0) {
@@ -205,27 +209,29 @@ export async function updateOrganizationUnit(
       if (current.parentId) {
         parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), current.parentId);
         parentSnapshot = await transaction.get(parentRef);
-        if (!parentSnapshot.exists()) throw new Error("No se encontró la unidad superior para actualizar su jerarquía.");
-        const count = Number(parentSnapshot.data().activeChildrenCount ?? 0);
+        parentData = parentSnapshot.data() ?? null;
+        if (!parentSnapshot.exists() || !parentData) throw new Error("No se encontró la unidad superior para actualizar su jerarquía.");
+        const count = Number(parentData.activeChildrenCount ?? 0);
         if (count <= 0) throw new Error("El contador de unidades hijas no es válido.");
         transaction.update(parentRef, {
           activeChildrenCount: count - 1,
           updatedAt: Date.now(),
           updatedBy: user.uid,
-          revision: Number(parentSnapshot.data().revision ?? 1) + 1,
+          revision: Number(parentData.revision ?? 1) + 1,
         });
       }
     } else if (patch.active === true && current.active === false && current.parentId) {
       parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), current.parentId);
       parentSnapshot = await transaction.get(parentRef);
-      if (!parentSnapshot.exists() || parentSnapshot.data().active !== true || parentSnapshot.data().deleted === true) {
+      parentData = parentSnapshot.data() ?? null;
+      if (!parentSnapshot.exists() || !parentData || parentData.active !== true || parentData.deleted === true) {
         throw new Error("No puedes activar una unidad cuya unidad superior esté inactiva.");
       }
       transaction.update(parentRef, {
-        activeChildrenCount: Number(parentSnapshot.data().activeChildrenCount ?? 0) + 1,
+        activeChildrenCount: Number(parentData.activeChildrenCount ?? 0) + 1,
         updatedAt: Date.now(),
         updatedBy: user.uid,
-        revision: Number(parentSnapshot.data().revision ?? 1) + 1,
+        revision: Number(parentData.revision ?? 1) + 1,
       });
     }
 
