@@ -212,6 +212,7 @@ async function validateFormulaProducts(
 
 export async function listProductionFormulas(): Promise<ProductionFormula[]> {
   requireProductionUser();
+  assertAccess("production", "read");
   const snapshot = await getDocsFromServer(query(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "productionFormulas")));
   return snapshot.docs
     .filter((item) => item.data().deleted !== true)
@@ -221,6 +222,7 @@ export async function listProductionFormulas(): Promise<ProductionFormula[]> {
 
 export async function listProductionFormulaVersions(formulaId: string): Promise<ProductionFormulaVersion[]> {
   requireProductionUser();
+  assertAccess("production", "read");
   const snapshot = await getDocsFromServer(query(
     collection(fbDb(), "erp", CLOUD_COMPANY_ID, "productionFormulaVersions"),
     where("formulaId", "==", formulaId),
@@ -231,12 +233,12 @@ export async function listProductionFormulaVersions(formulaId: string): Promise<
     .sort((a, b) => b.version - a.version);
 }
 
-export async function listCloudProductionOrders(warehouseId?: string): Promise<CloudProductionOrder[]> {
+export async function listCloudProductionOrders(warehouseId: string): Promise<CloudProductionOrder[]> {
   requireProductionUser();
+  assertAccess("production", "read");
+  if (!warehouseId.trim()) throw new Error("Selecciona una bodega para consultar órdenes.");
   const base = collection(fbDb(), "erp", CLOUD_COMPANY_ID, "productionOrders");
-  const snapshot = await getDocsFromServer(
-    warehouseId ? query(base, where("warehouseId", "==", warehouseId)) : query(base),
-  );
+  const snapshot = await getDocsFromServer(query(base, where("warehouseId", "==", warehouseId)));
   return snapshot.docs
     .filter((item) => item.data().deleted !== true)
     .map((item) => ({ ...item.data(), id: item.id }) as CloudProductionOrder)
