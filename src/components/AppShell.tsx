@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
   Users, Settings, LogOut, MoreHorizontal, Tag, Truck, ShoppingBag,
-  Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory,
+  Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory, Building2,
 } from "lucide-react";
 
 const primaryNavAdmin = [
@@ -56,7 +56,7 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/accounting", label: "Contabilidad", icon: Landmark },
       { to: "/cash", label: "Caja", icon: Wallet },
       { to: "/reports", label: "Reportes", icon: BarChart3 },
-      { to: "/settings", label: "Ajustes", icon: Settings },
+      { to: "/organization", label: "Estructura organizacional", icon: Building2 },\n      { to: "/settings", label: "Ajustes", icon: Settings },
     ],
   },
 ];
@@ -88,7 +88,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/accounting": "Contabilidad",
   "/cash": "Caja",
   "/reports": "Reportes",
-  "/settings": "Ajustes",
+  "/settings": "Ajustes",\n  "/organization": "Estructura organizacional",
   "/more": "Módulos",
 };
 
