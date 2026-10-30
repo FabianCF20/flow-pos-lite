@@ -2,13 +2,14 @@ import { pageHead } from "@/lib/page-head";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
+import { moduleForPath } from "@/lib/permissions";
 import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Tag, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory, Building2 } from "lucide-react";
 import { useNavigate } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/more")({ head: () => pageHead("Módulos", "Módulos de operación, producción y finanzas."), component: MorePage });
 
 function MorePage() {
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const navigate = useNavigate();
   const allItems = [
     { to: "/sales", icon: Receipt, label: "Ventas" },
@@ -25,9 +26,12 @@ function MorePage() {
     { to: "/organization", icon: Building2, label: "Estructura organizacional" },
     { to: "/settings", icon: Settings, label: "Ajustes" },
   ] as const;
-  const items = user?.role === "cashier"
-    ? allItems.filter((i) => i.to === "/sales")
-    : allItems;
+  const items = allItems.filter((item) => {
+    const module = moduleForPath(item.to);
+    if (module) return can(module, "read");
+    if (item.to === "/organization") return can("settings", "write");
+    return true;
+  });
   return (
     <div>
       <PageHeader title="Más" subtitle={user?.name} />
