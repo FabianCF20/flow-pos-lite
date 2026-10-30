@@ -199,14 +199,22 @@ async function validateFormulaProducts(
       throw new Error(`La unidad de ${String(snapshot.data().name)} debe coincidir con su unidad base.`);
     }
   }
+  const materialSnapshots = input.materials.map((material) => {
+    const snapshot = byId.get(material.productId);
+    if (!snapshot || !snapshot.exists()) {
+      throw new Error("No se encontró uno de los materiales de la fórmula.");
+    }
+    const product = snapshot.data();
+    return {
+      ...material,
+      productName: String(product.name ?? ""),
+      productType: String(product.productType) as DairyProductType,
+      standardCost: Number(product.standardCost ?? 0),
+    };
+  });
   return {
     outputName: String(output.data().name),
-    materials: input.materials.map((material) => ({
-      ...material,
-      productName: String(byId.get(material.productId)?.data().name ?? ""),
-      productType: String(byId.get(material.productId)?.data().productType) as DairyProductType,
-      standardCost: Number(byId.get(material.productId)?.data().standardCost ?? 0),
-    })),
+    materials: materialSnapshots,
   };
 }
 
