@@ -243,12 +243,14 @@ export async function postInventoryMovement(input: {
       createdBy: balanceSnapshot.exists() ? balanceSnapshot.data().createdBy : user.uid,
       updatedBy: user.uid,
       revision: Number(balanceSnapshot.data()?.revision ?? 0) + 1,
+      lastMovementId: movementId,
       deleted: false,
     };
 
     const movementData: DocumentData = {
       id: movementId,
       companyId: CLOUD_COMPANY_ID,
+      balanceId,
       productId: input.productId,
       warehouseId: input.warehouseId,
       lotCode,
@@ -280,11 +282,13 @@ export async function postInventoryMovement(input: {
       totalOnHand,
       inventoryRevision: Number(product.inventoryRevision ?? 0) + 1,
       stockUpdatedAt: now,
+      lastInventoryMovementId: movementId,
     });
     if (warehouseSnapshot.data().inventoryUsed !== true) {
       transaction.update(warehouseRef, {
         inventoryUsed: true,
         inventoryRevision: Number(warehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+        lastInventoryMovementId: movementId,
       });
     }
     return movementId;
@@ -418,6 +422,7 @@ export async function transferInventory(input: {
       balanceSnapshot: typeof sourceBalanceSnapshot,
       warehouseId: string,
       quantity: number,
+      lastMovementId: string,
     ): DocumentData => ({
       id: balanceId,
       companyId: CLOUD_COMPANY_ID,
@@ -432,21 +437,24 @@ export async function transferInventory(input: {
       createdBy: balanceSnapshot.exists() ? balanceSnapshot.data().createdBy : user.uid,
       updatedBy: user.uid,
       revision: Number(balanceSnapshot.data()?.revision ?? 0) + 1,
+      lastMovementId,
       deleted: false,
     });
 
-    transaction.set(sourceBalanceRef, makeBalance(sourceBalanceRef.id, sourceBalanceSnapshot, input.sourceWarehouseId, sourceAfter));
-    transaction.set(targetBalanceRef, makeBalance(targetBalanceRef.id, targetBalanceSnapshot, input.targetWarehouseId, targetAfter));
+    transaction.set(sourceBalanceRef, makeBalance(sourceBalanceRef.id, sourceBalanceSnapshot, input.sourceWarehouseId, sourceAfter, outMovementId));
+    transaction.set(targetBalanceRef, makeBalance(targetBalanceRef.id, targetBalanceSnapshot, input.targetWarehouseId, targetAfter, inMovementId));
     if (sourceWarehouseSnapshot.data().inventoryUsed !== true) {
       transaction.update(sourceWarehouseRef, {
         inventoryUsed: true,
         inventoryRevision: Number(sourceWarehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+        lastInventoryMovementId: outMovementId,
       });
     }
     if (targetWarehouseSnapshot.data().inventoryUsed !== true) {
       transaction.update(targetWarehouseRef, {
         inventoryUsed: true,
         inventoryRevision: Number(targetWarehouseSnapshot.data().inventoryRevision ?? 0) + 1,
+        lastInventoryMovementId: inMovementId,
       });
     }
     transaction.set(transferRef, {
@@ -491,6 +499,7 @@ export async function transferInventory(input: {
     transaction.set(outMovementRef, {
       ...movementBase,
       id: outMovementId,
+      balanceId: sourceBalanceRef.id,
       warehouseId: input.sourceWarehouseId,
       type: "transfer_out",
       quantityDelta: -input.quantity,
@@ -500,6 +509,7 @@ export async function transferInventory(input: {
     transaction.set(inMovementRef, {
       ...movementBase,
       id: inMovementId,
+      balanceId: targetBalanceRef.id,
       warehouseId: input.targetWarehouseId,
       type: "transfer_in",
       quantityDelta: input.quantity,
