@@ -105,6 +105,7 @@ export async function postInventoryMovement(input: {
   reason: string;
   referenceType?: string;
   referenceId?: string;
+  idempotencyKey: string;
 }): Promise<string> {
   const user = requireOnlineUser();
   if (!Number.isFinite(input.quantity)
@@ -152,6 +153,8 @@ export async function postInventoryMovement(input: {
         && existing.type === input.type
         && existing.quantityDelta === requestedDelta
         && existing.lotCode === lotCode
+        && existing.expiryDate === (input.expiryDate ?? existing.expiryDate ?? null)
+        && existing.unitCost === (input.unitCost ?? null)
         && existing.reason === input.reason.trim();
       if (!sameOperation) throw new Error("La clave de operación ya fue utilizada para otro movimiento.");
       return movementId;
@@ -223,6 +226,7 @@ export async function postInventoryMovement(input: {
       reason: input.reason.trim(),
       referenceType: input.referenceType ?? null,
       referenceId: input.referenceId ?? null,
+      idempotencyKey: input.idempotencyKey,
       createdAt: now,
       updatedAt: now,
       createdBy: user.uid,
@@ -260,6 +264,9 @@ export async function transferInventory(input: {
   if (!input.lotCode.trim()) throw new Error("Debes indicar el lote que se va a trasladar.");
   if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
     throw new Error("Debes enviar una clave única de operación de hasta 128 caracteres.");
+  }
+  if (input.expiryDate !== undefined && (!Number.isFinite(input.expiryDate) || input.expiryDate <= 0)) {
+    throw new Error("La fecha de vencimiento no es válida.");
   }
 
   const transferId = await balanceDocumentId(input.idempotencyKey, "inventoryTransfer");
@@ -405,6 +412,7 @@ export async function transferInventory(input: {
       reason: input.reason.trim(),
       referenceType: "transfer",
       referenceId: transferId,
+      idempotencyKey: input.idempotencyKey,
       createdAt: now,
       updatedAt: now,
       createdBy: user.uid,
