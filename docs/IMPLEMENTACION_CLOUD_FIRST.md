@@ -116,8 +116,9 @@ Reglas de integridad añadidas:
 - El historial de `inventoryMovements` es de solo creación: no se puede modificar ni borrar desde el cliente.
 - Cada movimiento exige una clave de idempotencia para que un reintento no duplique entradas o salidas.
 - Los traslados entre bodegas actualizan ambos saldos y generan los dos movimientos vinculados en una sola transacción; también son idempotentes.
+- Los saldos se separan por producto, bodega y lote. Las entradas, salidas, ajustes y traslados conservan el código de lote y la fecha de vencimiento; no se permite consumir ni trasladar un lote vencido.
 - La consulta de unidades organizacionales tipo bodega admite lectura para usuarios con permiso de Inventario; su administración sigue protegida por Ajustes.
 
 **Importante:** estas capas de datos todavía no sustituyen las pantallas actuales. Productos, categorías, POS, producción e inventario siguen teniendo consumidores Dexie y no deben mezclarse con estos repositorios hasta migrar sus flujos relacionados. No se ha desplegado Firestore Rules ni se han ejecutado compilación, emulador o pruebas de integración.
 
-**Pendientes técnicos:** añadir paginación para catálogos grandes, probar transferencias entre bodegas, conectar adjuntos/fotos a Firebase Storage, aplicar alcance por sede/área/bodega en las reglas y realizar pruebas concurrentes de índices y saldos.
+**Pendientes técnicos:** añadir paginación para catálogos grandes, probar movimientos por lote y transferencias entre bodegas, conectar adjuntos/fotos a Firebase Storage, aplicar alcance por sede/área/bodega en las reglas y realizar pruebas concurrentes de índices y saldos.
