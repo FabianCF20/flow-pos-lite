@@ -30,7 +30,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const snap = await getDocFromServer(doc(fbDb(), "users", fb.uid));
         const name = String(snap.data()?.name ?? fb.displayName ?? fb.email);
         const old = await db.users.where("uid").equals(fb.uid).first();
-        const profile = { name, email: fb.email.toLowerCase(), uid: fb.uid, role: session.assignment.roleId === "admin" ? "admin" as const : "cashier" as const, active: true, pin: "", createdAt: old?.createdAt ?? Date.now() };
+        const profile = { name, email: fb.email.toLowerCase(), uid: fb.uid, role: session.assignment.roleId, active: true, pin: "", createdAt: old?.createdAt ?? Date.now() };
         const id = old?.id ?? await db.users.add(profile);
         await db.users.update(id, profile);
         if (mounted) { setUser({ ...profile, id }); setAccess(session); }
