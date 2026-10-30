@@ -124,5 +124,6 @@ export async function updateOrganizationUnit(
     safePatch.active = patch.active;
   }
 
+  if (Object.keys(safePatch).length === 0) return;
   await updateCloudRecord("organizationUnits", id, safePatch, current.revision);
 }
