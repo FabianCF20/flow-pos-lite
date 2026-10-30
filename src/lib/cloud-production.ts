@@ -35,6 +35,7 @@ export interface ProductionFormula extends CloudRecord {
   name: string;
   area: ProductionArea;
   outputProductId: string;
+  outputProductName?: string;
   description: string;
   currentVersion: number;
   active: boolean;
