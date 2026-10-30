@@ -78,6 +78,9 @@ service cloud.firestore {
         : collectionName == 'cashMovements' ? 'cash'
         : collectionName == 'productionRecipes' ? 'production'
         : collectionName == 'productionOrders' ? 'production'
+        : collectionName == 'productionFormulas' ? 'production'
+        : collectionName == 'productionFormulaVersions' ? 'production'
+        : collectionName == 'productionFormulaCodeIndexes' ? 'production'
         : collectionName == 'measures' ? 'production'
         : collectionName == 'attachments' ? 'settings'
         : collectionName == 'settings' ? 'settings'
@@ -134,9 +137,22 @@ service cloud.firestore {
       allow get, list: if canRead(moduleForCollection(collection))
         || (collection == 'organizationUnits' && canRead('inventory'));
       allow create: if canWrite(moduleForCollection(collection));
-      allow update: if collection != 'inventoryMovements' && collection != 'inventoryTransfers'
-        && canWrite(moduleForCollection(collection));
-      allow delete: if collection != 'inventoryMovements' && collection != 'inventoryTransfers' && isAdmin();
+      allow update: if collection != 'inventoryMovements'
+        && collection != 'inventoryTransfers'
+        && (collection == 'productionFormulaVersions'
+          ? canWrite('production')
+            && resource.data.status == 'draft'
+            && request.resource.data.status == 'approved'
+            && request.resource.data.approvedBy == request.auth.uid
+            && request.resource.data.revision == resource.data.revision + 1
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'status', 'approvedBy', 'approvedAt', 'updatedAt', 'updatedBy', 'revision'
+            ])
+          : canWrite(moduleForCollection(collection)));
+      allow delete: if collection != 'inventoryMovements'
+        && collection != 'inventoryTransfers'
+        && collection != 'productionFormulaVersions'
+        && isAdmin();
     }
   }
 }
