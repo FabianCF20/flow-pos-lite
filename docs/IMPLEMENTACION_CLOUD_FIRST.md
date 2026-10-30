@@ -38,3 +38,19 @@ No se debe retirar Dexie ni desactivar el sincronizador antiguo hasta migrar los
 - No habilitar escrituras offline.
 - No cambiar reglas de seguridad a una versión más permisiva.
 - Cada módulo debe migrarse y probarse antes de pasar al siguiente.
+
+
+## Segundo cambio: autorización por rol en Firestore
+
+Se actualizaron las reglas de `firestore.rules` para que las colecciones de `erp/{company}/{collection}` ya no permitan lectura y escritura a cualquier usuario autenticado.
+
+Las reglas ahora:
+- Exigen una asignación activa en `userAccess` vinculada al UID autenticado.
+- Consultan el rol y sus permisos almacenados en `accessRoles`.
+- Aplican permisos de lectura y escritura según el módulo al que pertenece cada colección.
+- Reservan la eliminación física al administrador; las bajas normales deben ser lógicas.
+- Mantienen el flujo de bootstrap del administrador inicial.
+
+**Importante:** los cambios del archivo del repositorio no se aplican automáticamente al proyecto Firebase. Antes de probar las pantallas con estas reglas, deben publicarse en Firebase Console o mediante Firebase CLI. Deben probarse con cuentas reales de cada rol y, preferiblemente, con Firebase Emulator Suite.
+
+La seguridad por rol está implementada a nivel de reglas de Firestore para las colecciones mapeadas. La asignación por área, centro y bodega todavía requiere ampliación antes de habilitar operaciones multiárea de producción.
