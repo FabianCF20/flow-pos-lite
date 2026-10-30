@@ -5,6 +5,7 @@ import {
   query,
   runTransaction,
   type DocumentData,
+  type DocumentSnapshot,
 } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
