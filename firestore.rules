@@ -1,6 +1,5 @@
 rules_version = '2';
 
-// Reglas de seguridad del ERP: publícalas en Firebase Console → Firestore → Reglas.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -13,20 +12,78 @@ service cloud.firestore {
         && request.auth.token.email == 'sneyder.c.f@gmail.com';
     }
 
+    function assignmentPath() {
+      return /databases/$(database)/documents/userAccess/$(request.auth.token.email);
+    }
+
     function hasActiveAssignment() {
       return signedIn()
         && request.auth.token.email is string
-        && exists(/databases/$(database)/documents/userAccess/$(request.auth.token.email))
-        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.uid == request.auth.uid
-        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.active == true;
+        && exists(assignmentPath())
+        && get(assignmentPath()).data.uid == request.auth.uid
+        && get(assignmentPath()).data.active == true;
+    }
+
+    function assignment() {
+      return get(assignmentPath()).data;
     }
 
     function isAdmin() {
-      return hasActiveAssignment()
-        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.roleId == 'admin';
+      return hasActiveAssignment() && assignment().roleId == 'admin';
     }
 
-    // Perfiles: el usuario lee el suyo; el administrador gestiona el directorio.
+    function rolePath() {
+      return /databases/$(database)/documents/accessRoles/$(assignment().roleId);
+    }
+
+    function roleExists() {
+      return hasActiveAssignment() && exists(rolePath());
+    }
+
+    function permissionLevel(moduleName) {
+      let overrides = assignment().get('overrides', {});
+      let rolePermissions = get(rolePath()).data.permissions;
+      return overrides.keys().hasAny([moduleName])
+        ? overrides[moduleName]
+        : rolePermissions.get(moduleName, 'none');
+    }
+
+    function canRead(moduleName) {
+      return isAdmin()
+        || (roleExists() && permissionLevel(moduleName) in ['read', 'write']);
+    }
+
+    function canWrite(moduleName) {
+      return isAdmin()
+        || (roleExists() && permissionLevel(moduleName) == 'write');
+    }
+
+    function moduleForCollection(collectionName) {
+      return collectionName == 'products' ? 'products'
+        : collectionName == 'categories' ? 'categories'
+        : collectionName == 'customers' ? 'customers'
+        : collectionName == 'suppliers' ? 'suppliers'
+        : collectionName == 'sales' ? 'sales'
+        : collectionName == 'saleReturns' ? 'returns'
+        : collectionName == 'debitNotes' ? 'returns'
+        : collectionName == 'warehouses' ? 'inventory'
+        : collectionName == 'stockMoves' ? 'inventory'
+        : collectionName == 'purchases' ? 'purchases'
+        : collectionName == 'supplierPayments' ? 'purchases'
+        : collectionName == 'receivables' ? 'receivables'
+        : collectionName == 'arPayments' ? 'receivables'
+        : collectionName == 'accounts' ? 'accounting'
+        : collectionName == 'journalEntries' ? 'accounting'
+        : collectionName == 'cashSessions' ? 'cash'
+        : collectionName == 'cashMovements' ? 'cash'
+        : collectionName == 'productionRecipes' ? 'production'
+        : collectionName == 'productionOrders' ? 'production'
+        : collectionName == 'measures' ? 'production'
+        : collectionName == 'attachments' ? 'settings'
+        : collectionName == 'settings' ? 'settings'
+        : 'none';
+    }
+
     match /users/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
@@ -34,7 +91,6 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Solo el administrador configurado puede crear el acceso inicial.
     match /userAccess/{email} {
       allow get: if signedIn()
         && ((request.auth.token.email is string && request.auth.token.email == email) || isAdmin());
@@ -52,25 +108,23 @@ service cloud.firestore {
       allow get: if isAdmin()
         || isBootstrapAdmin()
         || (hasActiveAssignment()
-          && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.roleId == roleId);
+          && assignment().roleId == roleId);
       allow list: if isAdmin();
       allow create: if isAdmin()
         || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'accountant', 'viewer']);
       allow update, delete: if isAdmin();
     }
 
-    // Invitaciones: el usuario invitado puede leer la suya al registrarse.
     match /invites/{email} {
       allow get: if signedIn();
       allow list, create, update, delete: if isAdmin();
     }
 
-    // Datos del ERP sincronizados desde los dispositivos (productos, clientes, proveedores).
-    // Cualquier usuario autenticado del ERP puede leerlos y escribirlos; solo un
-    // administrador puede borrar documentos definitivamente (las bajas normales
-    // se marcan con deleted = true para que se propaguen a los demás dispositivos).
+    // La empresa se mantiene aislada por ruta. El módulo se resuelve en el servidor
+    // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
-      allow read, create, update: if signedIn();
+      allow get, list: if canRead(moduleForCollection(collection));
+      allow create, update: if canWrite(moduleForCollection(collection));
       allow delete: if isAdmin();
     }
   }
