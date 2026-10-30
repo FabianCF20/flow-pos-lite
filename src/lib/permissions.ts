@@ -22,7 +22,14 @@ export type ModuleId = typeof MODULES[number]["id"];
 export type AccessLevel = "none" | "read" | "write";
 export type Permissions = Partial<Record<ModuleId, AccessLevel>>;
 export interface AccessRole { id: string; name: string; permissions: Permissions; }
-export interface AccessAssignment { email: string; roleId: string; active: boolean; overrides?: Permissions; }
+export interface AccessAssignment {
+  email: string;
+  roleId: string;
+  active: boolean;
+  overrides?: Permissions;
+  warehouseIds?: string[];
+  allWarehouses?: boolean;
+}
 export interface AccessSession { assignment: AccessAssignment; role: AccessRole; }
 const grants = (read: ModuleId[], write: ModuleId[]): Permissions => Object.fromEntries([...read.map(m => [m, "read"]), ...write.map(m => [m, "write"])]);
 export const PRESET_ROLES: AccessRole[] = [
