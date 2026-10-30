@@ -280,6 +280,16 @@ export async function updateCloudProduct(
     const snapshots = await Promise.all(allRefs.map((item) =>
       transaction.get(indexRef(item.collectionName, item.key)),
     ));
+    if (data.active === false && old.active !== false) {
+      const balancesQuery = query(
+        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryBalances"),
+        where("productId", "==", id),
+      );
+      const balances = await transaction.get(balancesQuery);
+      if (balances.docs.some((balance) => Number(balance.data().quantity ?? 0) > 0)) {
+        throw new Error("No puedes desactivar un producto que todavía tiene existencias.");
+      }
+    }
 
     for (let i = 0; i < allRefs.length; i++) {
       const current = snapshots[i];
@@ -314,6 +324,14 @@ export async function deactivateCloudProduct(id: string, expectedRevision: numbe
     if (!snapshot.exists() || snapshot.data().deleted === true) throw new Error("El producto ya no existe.");
     if (Number(snapshot.data().revision ?? 1) !== expectedRevision) {
       throw new Error("El producto cambió en otro equipo. Actualiza antes de guardar.");
+    }
+    const balancesQuery = query(
+      collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryBalances"),
+      where("productId", "==", id),
+    );
+    const balances = await transaction.get(balancesQuery);
+    if (balances.docs.some((balance) => Number(balance.data().quantity ?? 0) > 0)) {
+      throw new Error("No puedes desactivar un producto que todavía tiene existencias.");
     }
     transaction.update(reference, {
       active: false,
