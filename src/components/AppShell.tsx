@@ -14,7 +14,7 @@ import {
 const primaryNavAdmin = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
   { to: "/pos", label: "Vender", icon: ShoppingCart },
-  { to: "/products", label: "Productos", icon: Package },
+  { to: "/catalog", label: "Catálogo", icon: Package },
   { to: "/cash", label: "Caja", icon: Wallet },
   { to: "/more", label: "Más", icon: MoreHorizontal },
 ] as const;
@@ -47,8 +47,7 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/suppliers", label: "Proveedores", icon: Truck },
       { to: "/inventory", label: "Inventario", icon: Boxes },
       { to: "/production", label: "Producción", icon: Factory },
-      { to: "/products", label: "Productos", icon: Package },
-      { to: "/categories", label: "Categorías", icon: Tag },
+      { to: "/catalog", label: "Catálogo maestro", icon: Package },
     ],
   },
   {
@@ -122,11 +121,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || !user || location.pathname === "/login") return;
     const module = moduleForPath(location.pathname);
-    const allowed = module
-      ? can(module, "read")
-      : location.pathname === "/organization"
-        ? can("settings", "write")
-        : true;
+    const allowed = location.pathname === "/catalog"
+      ? can("products", "read") && can("categories", "read")
+      : location.pathname === "/products" || location.pathname === "/categories"
+        ? user.role === "admin"
+        : module
+          ? can(module, "read")
+          : location.pathname === "/organization"
+            ? can("settings", "write")
+            : true;
     if (!allowed) navigate({ to: landingPath(access) as any, replace: true });
   }, [loading, user, location.pathname, navigate, can, access]);
 
@@ -155,6 +158,8 @@ export function AppShell({ children }: { children: ReactNode }) {
     const module = moduleForPath(to);
     if (module) return can(module, "read");
     if (to === "/organization") return can("settings", "write");
+    if (to === "/catalog") return can("products", "read") && can("categories", "read");
+    if (to === "/products" || to === "/categories") return user.role === "admin";
     return true;
   };
   const primaryNav = (user.role === "cashier" ? primaryNavCashier : primaryNavAdmin)
