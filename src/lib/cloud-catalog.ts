@@ -18,6 +18,7 @@ export interface CloudCategory extends CloudRecord {
   description: string;
   color: string;
   active: boolean;
+  activeProductCount: number;
 }
 
 export interface CloudProduct extends CloudRecord {
@@ -33,6 +34,7 @@ export interface CloudProduct extends CloudRecord {
   standardCost: number;
   trackInventory: boolean;
   active: boolean;
+  totalOnHand: number;
   imagePath?: string;
 }
 
@@ -111,6 +113,7 @@ export async function createCloudCategory(input: CategoryInput): Promise<string>
     description: input.description?.trim() ?? "",
     color: input.color ?? "#64748b",
     active: true,
+    activeProductCount: 0,
   };
 
   await runTransaction(fbDb(), async (transaction) => {
@@ -144,15 +147,9 @@ export async function updateCloudCategory(
       throw new Error("La categoría cambió en otro equipo. Actualiza antes de guardar.");
     }
 
-    if (patch.active === false) {
-      const productQuery = query(
-        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "products"),
-        where("categoryId", "==", id),
-      );
-      const products = await transaction.get(productQuery);
-      if (products.docs.some((product) => product.data().active === true && product.data().deleted !== true)) {
-        throw new Error("No puedes desactivar una categoría que tiene productos activos.");
-      }
+    if (patch.active === false && snapshot.data().active === true
+      && Number(snapshot.data().activeProductCount ?? 0) > 0) {
+      throw new Error("No puedes desactivar una categoría que tiene productos activos.");
     }
 
     transaction.update(reference, {
@@ -229,6 +226,13 @@ export async function createCloudProduct(input: ProductInput): Promise<string> {
       ...auditFields(user.uid, now),
       id,
       ...data,
+      totalOnHand: 0,
+    });
+    transaction.update(recordRef("categories", data.categoryId), {
+      activeProductCount: Number(categorySnapshot.data().activeProductCount ?? 0) + 1,
+      updatedAt: now,
+      updatedBy: user.uid,
+      revision: Number(categorySnapshot.data().revision ?? 1) + 1,
     });
     indexes.forEach((index) => transaction.set(indexRef(index.collectionName, index.key), {
       recordId: id,
@@ -285,15 +289,17 @@ export async function updateCloudProduct(
     const snapshots = await Promise.all(allRefs.map((item) =>
       transaction.get(indexRef(item.collectionName, item.key)),
     ));
-    if (data.active === false && old.active !== false) {
-      const balancesQuery = query(
-        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryBalances"),
-        where("productId", "==", id),
-      );
-      const balances = await transaction.get(balancesQuery);
-      if (balances.docs.some((balance) => Number(balance.data().quantity ?? 0) > 0)) {
-        throw new Error("No puedes desactivar un producto que todavía tiene existencias.");
-      }
+    if (data.active === false && old.active !== false && Number(old.totalOnHand ?? 0) > 0) {
+      throw new Error("No puedes desactivar un producto que todavía tiene existencias.");
+    }
+
+    const oldCategoryId = String(old.categoryId ?? "");
+    const categoryChanged = oldCategoryId !== data.categoryId;
+    const activeChanged = (old.active !== false) !== data.active;
+    let oldCategorySnapshot = categorySnapshot;
+    if (categoryChanged) {
+      oldCategorySnapshot = await transaction.get(recordRef("categories", oldCategoryId));
+      if (!oldCategorySnapshot.exists()) throw new Error("La categoría anterior del producto ya no existe.");
     }
 
     for (let i = 0; i < allRefs.length; i++) {
@@ -311,6 +317,24 @@ export async function updateCloudProduct(
       if (isNextIndex && !current.exists()) transaction.set(indexRef(item.collectionName, item.key), { recordId: id, createdAt: Date.now() });
     });
 
+    if (old.active !== false && (categoryChanged || activeChanged)) {
+      const count = Number(oldCategorySnapshot.data().activeProductCount ?? 0);
+      if (count <= 0) throw new Error("El contador de productos activos de la categoría no es válido.");
+      transaction.update(recordRef("categories", oldCategoryId), {
+        activeProductCount: count - 1,
+        updatedAt: Date.now(),
+        updatedBy: user.uid,
+        revision: Number(oldCategorySnapshot.data().revision ?? 1) + 1,
+      });
+    }
+    if (data.active && (categoryChanged || activeChanged)) {
+      transaction.update(recordRef("categories", data.categoryId), {
+        activeProductCount: Number(categorySnapshot.data().activeProductCount ?? 0) + 1,
+        updatedAt: Date.now(),
+        updatedBy: user.uid,
+        revision: Number(categorySnapshot.data().revision ?? 1) + 1,
+      });
+    }
     transaction.update(reference, {
       ...data,
       updatedAt: Date.now(),
@@ -329,14 +353,21 @@ export async function deactivateCloudProduct(id: string, expectedRevision: numbe
     if (Number(snapshot.data().revision ?? 1) !== expectedRevision) {
       throw new Error("El producto cambió en otro equipo. Actualiza antes de guardar.");
     }
-    const balancesQuery = query(
-      collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryBalances"),
-      where("productId", "==", id),
-    );
-    const balances = await transaction.get(balancesQuery);
-    if (balances.docs.some((balance) => Number(balance.data().quantity ?? 0) > 0)) {
+    const product = snapshot.data();
+    if (Number(product.totalOnHand ?? 0) > 0) {
       throw new Error("No puedes desactivar un producto que todavía tiene existencias.");
     }
+    const categoryRef = recordRef("categories", String(product.categoryId));
+    const categorySnapshot = await transaction.get(categoryRef);
+    if (!categorySnapshot.exists()) throw new Error("La categoría del producto ya no existe.");
+    const activeProductCount = Number(categorySnapshot.data().activeProductCount ?? 0);
+    if (activeProductCount <= 0) throw new Error("El contador de productos activos de la categoría no es válido.");
+    transaction.update(categoryRef, {
+      activeProductCount: activeProductCount - 1,
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+      revision: Number(categorySnapshot.data().revision ?? 1) + 1,
+    });
     transaction.update(reference, {
       active: false,
       updatedAt: Date.now(),
