@@ -253,6 +253,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/login'
     | '/more'
+    | '/organization'
     | '/pos'
     | '/production'
     | '/products'
