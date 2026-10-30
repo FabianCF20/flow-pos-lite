@@ -134,7 +134,7 @@ service cloud.firestore {
       allow get, list: if canRead(moduleForCollection(collection))
         || (collection == 'organizationUnits' && canRead('inventory'));
       allow create: if canWrite(moduleForCollection(collection));
-      allow update: if collection != 'inventoryMovements'
+      allow update: if collection != 'inventoryMovements' && collection != 'inventoryTransfers'
         && canWrite(moduleForCollection(collection));
       allow delete: if collection != 'inventoryMovements' && isAdmin();
     }
