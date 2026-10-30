@@ -21,6 +21,7 @@ Esta carpeta reúne la documentación funcional y técnica de Flow POS Lite.
 | [Despliegue](./DESPLIEGUE.md) | Instalación, compilación y publicación |
 | [Mantenimiento](./MANTENIMIENTO.md) | Pruebas, copias de seguridad y mantenimiento |
 | [Manual de usuario](./MANUAL_USUARIO.md) | Guía de uso para el personal del negocio |
+| [Requisitos de operación láctea](./REQUISITOS_OPERACION_LACTEA.md) | Alcance, áreas, fórmulas, compras, inventarios, ventas y despachos |
 
 ## Estado
 
