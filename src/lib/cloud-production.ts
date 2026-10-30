@@ -10,6 +10,7 @@ import {
 } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
+import { assertAccess } from "./access-session";
 import type { DairyProductType } from "./cloud-catalog";
 
 export type ProductionArea = "liquid_milk" | "powder_milk";
@@ -253,6 +254,7 @@ export async function createProductionFormula(input: {
   materials: FormulaMaterial[];
 }): Promise<string> {
   const user = requireProductionUser();
+  assertAccess("production_formulas", "write");
   const data = validateFormulaInput(input);
   const code = requiredText(input.code, "código", 40).toUpperCase();
   const formulaId = crypto.randomUUID();
@@ -310,6 +312,7 @@ export async function createProductionFormulaVersion(input: {
   changeReason: string;
 }): Promise<string> {
   const user = requireProductionUser();
+  assertAccess("production_formulas", "write");
   const data = validateFormulaInput({
     name: "Versión",
     area: "liquid_milk",
@@ -368,6 +371,7 @@ export async function approveProductionFormulaVersion(input: {
   expectedRevision: number;
 }): Promise<void> {
   const user = requireProductionUser();
+  assertAccess("production_approval", "write");
   const formulaRef = ref("productionFormulas", input.formulaId);
   const versionRef = ref("productionFormulaVersions", input.versionId);
   await runTransaction(fbDb(), async (transaction) => {
@@ -409,6 +413,7 @@ export async function createCloudProductionOrder(input: {
   idempotencyKey: string;
 }): Promise<string> {
   const user = requireProductionUser();
+  assertAccess("production", "write");
   if (!Number.isFinite(input.targetQuantity) || input.targetQuantity <= 0) {
     throw new Error("La cantidad a producir debe ser mayor que cero.");
   }
