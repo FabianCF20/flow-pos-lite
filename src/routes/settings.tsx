@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
 import { db, getSettings, type AppSettings } from "@/lib/db";
-import { createDirectoryUser, listDirectory, updateDirectoryUser, type DirectoryUser } from "@/lib/users";
+import { createDirectoryUser, listDirectory, listRoles, updateDirectoryUser, type DirectoryUser } from "@/lib/users";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/AppShell";
 import { exportBackup, importBackup, downloadBlob } from "@/lib/backup";
@@ -204,14 +204,23 @@ function SettingsPage() {
 
 function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: boolean }) {
   const [list, setList] = useState<DirectoryUser[]>([]);
+  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState(false);
-  const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [role, setRole] = useState<"admin"|"cashier">("cashier");
+  const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [role, setRole] = useState("production_operator");
   const [password, setPassword] = useState("");
 
   async function reload() {
-    try { setList(await listDirectory()); setError(null); }
+    try {
+      const [users, availableRoles] = await Promise.all([listDirectory(), listRoles()]);
+      setList(users);
+      setRoles(availableRoles);
+      if (availableRoles.length && !availableRoles.some((item) => item.id === role)) {
+        setRole(availableRoles[0].id);
+      }
+      setError(null);
+    }
     catch { setError("No se pudo cargar la lista (revisa la conexión o los permisos)"); }
     finally { setLoading(false); }
   }
@@ -228,7 +237,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
     try { await updateDirectoryUser(u, { active: !u.active }); reload(); toast.success(u.active ? "Desactivado" : "Activado"); }
     catch { toast.error("No se pudo actualizar"); }
   }
-  async function changeRole(u: DirectoryUser, r: "admin"|"cashier") {
+  async function changeRole(u: DirectoryUser, r: string) {
     try { await updateDirectoryUser(u, { roleId: r }); reload(); toast.success("Rol actualizado"); }
     catch { toast.error("No se pudo actualizar"); }
   }
@@ -260,11 +269,10 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
           </div>
           <select
             value={u.roleId}
-            onChange={(e) => changeRole(u, e.target.value as any)}
+            onChange={(e) => changeRole(u, e.target.value)}
             className="h-9 px-2 rounded-lg bg-card border border-border text-xs"
           >
-            <option value="cashier">Cajero</option>
-            <option value="admin">Administrador</option>
+            {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
           <button onClick={() => toggle(u)} className="text-xs text-muted-foreground hover:text-foreground underline">
             {u.active ? "Desactivar" : "Activar"}
@@ -279,9 +287,8 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mínimo 6 caracteres)" type="password" autoComplete="new-password" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <select value={role} onChange={(e) => setRole(e.target.value as any)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
-            <option value="cashier">Cajero</option>
-            <option value="admin">Administrador</option>
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
+            {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
           <p className="text-[11px] text-muted-foreground">
             Se creará la cuenta con este correo y la contraseña inicial. El usuario podrá cambiarla después.
