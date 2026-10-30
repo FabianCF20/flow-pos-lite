@@ -73,6 +73,39 @@ service cloud.firestore {
       return canWrite('inventory') && hasWarehouseScope(warehouseId);
     }
 
+    function validProductInventoryMarker() {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastInventoryMovementId);
+      let movement = getAfter(movementPath);
+      return canWrite('inventory')
+        && resource.data.inventoryUsed != true
+        && request.resource.data.inventoryUsed == true
+        && request.resource.data.inventoryRevision == resource.data.inventoryRevision + 1
+        && existsAfter(movementPath)
+        && movement.data.productId == resource.data.id
+        && movement.data.type in ['receipt', 'issue', 'adjustment', 'transfer_out', 'transfer_in']
+        && hasWarehouseScope(movement.data.warehouseId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'inventoryUsed', 'inventoryRevision', 'lastInventoryMovementId'
+        ]);
+    }
+
+    function validWarehouseInventoryMarker() {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastInventoryMovementId);
+      let movement = getAfter(movementPath);
+      return canWrite('inventory')
+        && resource.data.type == 'warehouse'
+        && resource.data.inventoryUsed != true
+        && request.resource.data.inventoryUsed == true
+        && request.resource.data.inventoryRevision == resource.data.inventoryRevision + 1
+        && existsAfter(movementPath)
+        && movement.data.warehouseId == resource.data.id
+        && movement.data.type in ['receipt', 'issue', 'adjustment', 'transfer_out', 'transfer_in']
+        && hasWarehouseScope(resource.data.id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'inventoryUsed', 'inventoryRevision', 'lastInventoryMovementId'
+        ]);
+    }
+
     function moduleForCollection(collectionName) {
       return collectionName == 'products' ? 'products'
         : collectionName == 'categories' ? 'categories'
@@ -101,6 +134,7 @@ service cloud.firestore {
         : collectionName == 'settings' ? 'settings'
         : collectionName == 'organizationUnits' ? 'settings'
         : collectionName == 'organizationUnitCodeIndexes' ? 'settings'
+        : collectionName == 'organizationCompanySingleton' ? 'settings'
         : collectionName == 'categoryCodeIndexes' ? 'categories'
         : collectionName == 'productCodeIndexes' ? 'products'
         : collectionName == 'productSkuIndexes' ? 'products'
@@ -202,17 +236,33 @@ service cloud.firestore {
                   && request.resource.data.code == resource.data.code
                   && request.resource.data.outputProductId == resource.data.outputProductId
                 : collection == 'products'
-                  ? canWrite('products')
+                  ? (canWrite('products')
                     && request.resource.data.code == resource.data.code
                     && request.resource.data.sku == resource.data.sku
                     && request.resource.data.barcode == resource.data.barcode
+                    && request.resource.data.inventoryUsed == resource.data.inventoryUsed
+                    && request.resource.data.inventoryRevision == resource.data.inventoryRevision
+                    && request.resource.data.lastInventoryMovementId == resource.data.lastInventoryMovementId)
+                    || validProductInventoryMarker()
                 : collection == 'categories'
-                  ? canWrite('categories') && request.resource.data.code == resource.data.code
+                  ? (canWrite('categories')
+                    && request.resource.data.code == resource.data.code
+                    && request.resource.data.activeProductCount == resource.data.activeProductCount)
+                    || (canWrite('products')
+                      && (request.resource.data.activeProductCount == resource.data.activeProductCount + 1
+                        || request.resource.data.activeProductCount == resource.data.activeProductCount - 1)
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'activeProductCount', 'updatedAt', 'updatedBy', 'revision'
+                      ]))
                 : collection == 'organizationUnits'
-                  ? canWrite('settings')
+                  ? (canWrite('settings')
                     && request.resource.data.code == resource.data.code
                     && request.resource.data.type == resource.data.type
                     && request.resource.data.parentId == resource.data.parentId
+                    && request.resource.data.inventoryUsed == resource.data.inventoryUsed
+                    && request.resource.data.inventoryRevision == resource.data.inventoryRevision
+                    && request.resource.data.lastInventoryMovementId == resource.data.lastInventoryMovementId)
+                    || validWarehouseInventoryMarker()
                 : collection in [
                     'inventoryMovements',
                     'inventoryTransfers',
@@ -221,7 +271,8 @@ service cloud.firestore {
                     'productCodeIndexes',
                     'productSkuIndexes',
                     'productBarcodeIndexes',
-                    'organizationUnitCodeIndexes'
+                    'organizationUnitCodeIndexes',
+                    'organizationCompanySingleton'
                   ]
                     ? false
                     : canWrite(moduleForCollection(collection)));
@@ -241,7 +292,8 @@ service cloud.firestore {
           'productionFormulas',
           'productionFormulaCodeIndexes',
           'organizationUnits',
-          'organizationUnitCodeIndexes'
+          'organizationUnitCodeIndexes',
+          'organizationCompanySingleton'
         ]) && isAdmin();
     }
   }
