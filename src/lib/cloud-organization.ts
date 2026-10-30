@@ -1,8 +1,10 @@
+import { collection, doc, query, runTransaction, where } from "firebase/firestore";
+import { fbAuth, fbDb } from "./firebase";
 import {
+  CLOUD_COMPANY_ID,
   createCloudRecord,
   getCloudRecord,
   listCloudRecords,
-  updateCloudRecord,
   type CloudRecord,
 } from "./cloud-data";
 
@@ -105,30 +107,60 @@ export async function updateOrganizationUnit(
   id: string,
   patch: Partial<Pick<OrganizationUnit, "name" | "description" | "address" | "active">>,
 ): Promise<void> {
-  const current = await getCloudRecord<OrganizationUnit>("organizationUnits", id);
-  if (!current) throw new Error("La unidad organizacional no existe.");
+  const user = fbAuth().currentUser;
+  if (!user) throw new Error("Debes iniciar sesión para modificar la estructura organizacional.");
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    throw new Error("No hay conexión. La estructura solo se modifica con confirmación del servidor.");
+  }
 
   const safePatch: Record<string, unknown> = {};
   if (patch.name !== undefined) safePatch.name = normalizeText(patch.name, "nombre");
   if (patch.description !== undefined) safePatch.description = patch.description.trim();
   if (patch.address !== undefined) safePatch.address = patch.address.trim();
-  if (patch.active !== undefined) {
-    if (!patch.active) {
-      const children = (await listOrganizationUnits()).filter(
-        (unit) => unit.parentId === id && unit.active,
+  if (patch.active !== undefined) safePatch.active = patch.active;
+  if (Object.keys(safePatch).length === 0) return;
+
+  const reference = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), id);
+  await runTransaction(fbDb(), async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    if (!snapshot.exists() || snapshot.data().deleted === true) {
+      throw new Error("La unidad organizacional no existe.");
+    }
+    const current = { ...snapshot.data(), id: snapshot.id } as OrganizationUnit;
+    const currentRevision = Number(current.revision ?? 1);
+    if (patch.active === false) {
+      const childrenQuery = query(
+        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"),
+        where("parentId", "==", id),
       );
-      if (children.length) {
+      const children = await transaction.get(childrenQuery);
+      if (children.docs.some((child) => child.data().active === true && child.data().deleted !== true)) {
         throw new Error("No puedes desactivar esta unidad mientras tenga unidades hijas activas.");
       }
-    } else if (current.parentId) {
-      const parent = await getCloudRecord<OrganizationUnit>("organizationUnits", current.parentId);
-      if (!parent || !parent.active) {
+
+      if (current.type === "warehouse") {
+        const balancesQuery = query(
+          collection(fbDb(), "erp", CLOUD_COMPANY_ID, "inventoryBalances"),
+          where("warehouseId", "==", id),
+        );
+        const balances = await transaction.get(balancesQuery);
+        if (balances.docs.some((balance) => Number(balance.data().quantity ?? 0) > 0)) {
+          throw new Error("No puedes desactivar una bodega que todavía tiene existencias.");
+        }
+      }
+    } else if (patch.active === true && current.parentId) {
+      const parentRef = doc(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits"), current.parentId);
+      const parent = await transaction.get(parentRef);
+      if (!parent.exists() || parent.data().active !== true || parent.data().deleted === true) {
         throw new Error("No puedes activar una unidad cuya unidad superior esté inactiva.");
       }
     }
-    safePatch.active = patch.active;
-  }
 
-  if (Object.keys(safePatch).length === 0) return;
-  await updateCloudRecord("organizationUnits", id, safePatch, current.revision);
+    transaction.update(reference, {
+      ...safePatch,
+      updatedAt: Date.now(),
+      updatedBy: user.uid,
+      revision: currentRevision + 1,
+    });
+  });
 }
