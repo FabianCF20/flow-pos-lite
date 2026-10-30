@@ -22,7 +22,8 @@ function MorePage() {
     { to: "/products", icon: Package, label: "Productos" },
     { to: "/customers", icon: Users, label: "Clientes" },
     { to: "/reports", icon: BarChart3, label: "Reportes" },
-    { to: "/organization", icon: Building2, label: "Estructura organizacional" },\n    { to: "/settings", icon: Settings, label: "Ajustes" },
+    { to: "/organization", icon: Building2, label: "Estructura organizacional" },
+    { to: "/settings", icon: Settings, label: "Ajustes" },
   ] as const;
   const items = user?.role === "cashier"
     ? allItems.filter((i) => i.to === "/sales")
