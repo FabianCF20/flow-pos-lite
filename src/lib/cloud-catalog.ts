@@ -140,17 +140,7 @@ export async function updateCloudCategory(
   if (patch.name !== undefined) safePatch.name = text(patch.name, "nombre");
   if (patch.description !== undefined) safePatch.description = patch.description.trim();
   if (patch.color !== undefined) safePatch.color = patch.color;
-  if (patch.active !== undefined) {
-    if (!patch.active) {
-      const products = await getDocsFromServer(query(
-        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "products"),
-        where("categoryId", "==", id),
-        where("active", "==", true),
-      ));
-      if (!products.empty) throw new Error("No puedes desactivar una categoría que tiene productos activos.");
-    }
-    safePatch.active = patch.active;
-  }
+  if (patch.active !== undefined) safePatch.active = patch.active;
   if (Object.keys(safePatch).length === 0) return;
 
   await runTransaction(fbDb(), async (transaction) => {
@@ -160,6 +150,18 @@ export async function updateCloudCategory(
     if (Number(snapshot.data().revision ?? 1) !== expectedRevision) {
       throw new Error("La categoría cambió en otro equipo. Actualiza antes de guardar.");
     }
+
+    if (patch.active === false) {
+      const productQuery = query(
+        collection(fbDb(), "erp", CLOUD_COMPANY_ID, "products"),
+        where("categoryId", "==", id),
+      );
+      const products = await transaction.get(productQuery);
+      if (products.docs.some((product) => product.data().active === true && product.data().deleted !== true)) {
+        throw new Error("No puedes desactivar una categoría que tiene productos activos.");
+      }
+    }
+
     transaction.update(reference, {
       ...safePatch,
       updatedAt: Date.now(),
@@ -212,12 +214,15 @@ async function readProductIndexRefs(data: ReturnType<typeof validateProduct>) {
 export async function createCloudProduct(input: ProductInput): Promise<string> {
   const user = currentUser();
   const data = validateProduct(input);
-  await assertCategoryExists(data.categoryId);
   const indexes = await readProductIndexRefs(data);
   const id = crypto.randomUUID();
   const now = Date.now();
 
   await runTransaction(fbDb(), async (transaction) => {
+    const categorySnapshot = await transaction.get(recordRef("categories", data.categoryId));
+    if (!categorySnapshot.exists() || categorySnapshot.data().deleted === true || categorySnapshot.data().active === false) {
+      throw new Error("La categoría seleccionada no existe o está inactiva.");
+    }
     const indexSnapshots = await Promise.all(indexes.map((index) =>
       transaction.get(indexRef(index.collectionName, index.key)),
     ));
@@ -244,7 +249,6 @@ export async function updateCloudProduct(
 ): Promise<void> {
   const user = currentUser();
   const data = validateProduct(patch);
-  await assertCategoryExists(data.categoryId);
   const nextIndexes = await readProductIndexRefs(data);
   const reference = recordRef("products", id);
 
@@ -253,6 +257,11 @@ export async function updateCloudProduct(
     if (!snapshot.exists() || snapshot.data().deleted === true) throw new Error("El producto ya no existe.");
     if (Number(snapshot.data().revision ?? 1) !== expectedRevision) {
       throw new Error("El producto cambió en otro equipo. Actualiza antes de guardar.");
+    }
+
+    const categorySnapshot = await transaction.get(recordRef("categories", data.categoryId));
+    if (!categorySnapshot.exists() || categorySnapshot.data().deleted === true || categorySnapshot.data().active === false) {
+      throw new Error("La categoría seleccionada no existe o está inactiva.");
     }
 
     const old = snapshot.data();
