@@ -19,6 +19,8 @@ import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MoreRouteImport } from './routes/more'
 import { Route as OrganizationRouteImport } from './routes/organization'
+import { Route as DispatchRouteImport } from './routes/dispatch'
+import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProductionRouteImport } from './routes/production'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -79,6 +81,16 @@ const MoreRoute = MoreRouteImport.update({
 const OrganizationRoute = OrganizationRouteImport.update({
   id: '/organization',
   path: '/organization',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DispatchRoute = DispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PosRoute = PosRouteImport.update({
@@ -144,10 +156,12 @@ export interface FileRoutesByFullPath {
   '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/dispatch': typeof DispatchRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
   '/organization': typeof OrganizationRoute
+  '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -167,10 +181,12 @@ export interface FileRoutesByTo {
   '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/dispatch': typeof DispatchRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
   '/organization': typeof OrganizationRoute
+  '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -191,10 +207,12 @@ export interface FileRoutesById {
   '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/dispatch': typeof DispatchRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
   '/organization': typeof OrganizationRoute
+  '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -216,10 +234,12 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/categories'
     | '/customers'
+    | '/dispatch'
     | '/inventory'
     | '/login'
     | '/more'
     | '/organization'
+    | '/orders'
     | '/pos'
     | '/production'
     | '/products'
@@ -290,6 +310,8 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MoreRoute: typeof MoreRoute
   OrganizationRoute: typeof OrganizationRoute
+  DispatchRoute: typeof DispatchRoute
+  OrdersRoute: typeof OrdersRoute
   PosRoute: typeof PosRoute
   ProductionRoute: typeof ProductionRoute
   ProductsRoute: typeof ProductsRoute
@@ -373,6 +395,20 @@ declare module '@tanstack/react-router' {
       path: '/organization'
       fullPath: '/organization'
       preLoaderRoute: typeof OrganizationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispatch': {
+      id: '/dispatch'
+      path: '/dispatch'
+      fullPath: '/dispatch'
+      preLoaderRoute: typeof DispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/organization': {
@@ -473,6 +509,8 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MoreRoute: MoreRoute,
   OrganizationRoute: OrganizationRoute,
+  DispatchRoute: DispatchRoute,
+  OrdersRoute: OrdersRoute,
   PosRoute: PosRoute,
   ProductionRoute: ProductionRoute,
   ProductsRoute: ProductsRoute,
