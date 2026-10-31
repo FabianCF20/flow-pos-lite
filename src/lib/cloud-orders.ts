@@ -240,8 +240,8 @@ export async function confirmSalesOrderDispatch(input: {
 
     const orderLines = new Map(order.lines.map((line) => [line.productId, line]));
     const nextLines = order.lines.map((line) => ({ ...line }));
-    const movementData: DocumentData[] = [];
-    const balanceData: DocumentData[] = [];
+    const movementWrites: Array<{ reference: ReturnType<typeof ref>; data: DocumentData }> = [];
+    const balanceWrites: Array<{ reference: ReturnType<typeof ref>; data: DocumentData }> = [];
     const dispatchLines: SalesDispatch["lines"] = [];
 
     for (let index = 0; index < input.lines.length; index++) {
@@ -269,7 +269,7 @@ export async function confirmSalesOrderDispatch(input: {
           throw new Error("La fecha de vencimiento no coincide con el lote registrado.");
         }
         const nextBalance = balance - requestLine.quantity;
-        balanceData.push({
+        balanceWrites.push({ reference: balanceRefs[index], data: {
           id: balanceIds[index], companyId: CLOUD_COMPANY_ID,
           productId: requestLine.productId, warehouseId: input.warehouseId,
           quantity: nextBalance, baseUnit: orderLine.baseUnit, lotCode: lotCodes[index],
@@ -277,8 +277,8 @@ export async function confirmSalesOrderDispatch(input: {
           updatedAt: now, createdBy: balanceSnapshot.data().createdBy,
           updatedBy: user.uid, revision: Number(balanceSnapshot.data().revision ?? 1) + 1,
           lastMovementId: movementIds[index], deleted: false,
-        });
-        movementData.push({
+        } });
+        movementWrites.push({ reference: movementRefs[index], data: {
           id: movementIds[index], companyId: CLOUD_COMPANY_ID,
           balanceId: balanceIds[index], productId: requestLine.productId,
           warehouseId: input.warehouseId, lotCode: lotCodes[index], expiryDate,
@@ -288,7 +288,7 @@ export async function confirmSalesOrderDispatch(input: {
           referenceId: dispatchId, idempotencyKey: input.idempotencyKey,
           createdAt: now, updatedAt: now, createdBy: user.uid, updatedBy: user.uid,
           revision: 1, deleted: false,
-        });
+        } });
       }
       const target = nextLines.find((line) => line.productId === requestLine.productId);
       if (target) target.dispatchedQty += requestLine.quantity;
@@ -312,12 +312,8 @@ export async function confirmSalesOrderDispatch(input: {
       updatedBy: user.uid,
       revision: Number(order.revision ?? 1) + 1,
     });
-    balanceRefs.forEach((balanceRef, index) => {
-      if (balanceData[index]) transaction.set(balanceRef, balanceData[index]);
-    });
-    movementRefs.forEach((movementRef, index) => {
-      if (movementData[index]) transaction.set(movementRef, movementData[index]);
-    });
+    balanceWrites.forEach((write) => transaction.set(write.reference, write.data));
+    movementWrites.forEach((write) => transaction.set(write.reference, write.data));
     transaction.set(dispatchRef, {
       id: dispatchId, companyId: CLOUD_COMPANY_ID,
       orderId: input.orderId, orderCode: order.orderCode,
