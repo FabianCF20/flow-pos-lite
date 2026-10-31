@@ -36,6 +36,7 @@ export interface SalesOrder extends CloudRecord {
   status: SalesOrderStatus;
   dispatchedQtyTotal: number;
   orderedQtyTotal: number;
+  lastDispatchId?: string;
 }
 
 export interface DispatchNotification extends CloudRecord {
@@ -385,7 +386,7 @@ export async function confirmSalesOrderDispatch(input: {
 
 export async function listOrderDispatches(orderId: string): Promise<SalesDispatch[]> {
   userOnline();
-  assertAccess("sales", "read");
+  assertAccess("orders", "read");
   const base = collection(fbDb(), "erp", CLOUD_COMPANY_ID, "salesDispatches");
   const snapshot = await getDocsFromServer(query(base, where("orderId", "==", orderId)));
   return snapshot.docs
