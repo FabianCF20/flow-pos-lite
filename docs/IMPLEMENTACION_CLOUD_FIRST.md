@@ -222,6 +222,8 @@ Se añadieron las rutas `/orders` y `/dispatch` y el servicio `src/lib/cloud-ord
 
 **Pedidos (`salesOrders`)**
 - El equipo de Ventas registra cliente/destinatario, identificación opcional, dirección, observaciones y productos terminados.
+- Al crear el pedido, la misma transacción crea una notificación interna en `dispatchNotifications`; la cola de Despachos muestra cuántos pedidos nuevos requieren preparación.
+- La notificación pasa a `in_progress` con el primer despacho parcial y a `completed` cuando todas las líneas están despachadas.
 - Cada línea conserva una fotografía de código, nombre, unidad, cantidad, precio y total al momento de crear el pedido.
 - El pedido inicia en estado `open`; no reserva ni descuenta existencias.
 - Se impiden productos repetidos en el mismo pedido y se valida que el producto siga activo y clasificado como producto terminado.
@@ -244,6 +246,7 @@ Se añadieron las rutas `/orders` y `/dispatch` y el servicio `src/lib/cloud-ord
 
 **Límites de esta entrega**
 - El POS anterior y la pantalla histórica de ventas siguen dependiendo de Dexie. No se han conectado a estos pedidos ni se han eliminado sus operaciones locales.
+- La notificación es interna dentro de la pantalla de Despachos; todavía no hay notificaciones push, correo ni asignación a un supervisor individual.
 - Este flujo no registra pagos, no abre caja, no emite factura electrónica DIAN y no genera aún un documento PDF de remisión/despacho.
 - El lote se selecciona manualmente; no se implementó FEFO automático.
 - Los pedidos no reservan inventario. La disponibilidad se valida al confirmar cada despacho.
