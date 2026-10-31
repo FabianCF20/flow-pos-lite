@@ -187,3 +187,23 @@ Se sustituyó la pantalla de producción anterior por una interfaz conectada a l
 - Las órdenes conservan el snapshot de fórmula, materiales, cantidades y costos estándar.
 
 La pantalla muestra expresamente que las órdenes aún quedan en borrador. Falta el cierre transaccional de producción: selección FEFO de lotes de materias primas, consumo de existencias, generación del lote de producto terminado, costos reales y trazabilidad de lote a lote. No se debe marcar una orden como ejecutada hasta implementar ese proceso.
+
+
+### Pantalla de inventario conectada a Firestore
+
+La ruta `/inventory` dejó de consultar Dexie y ahora utiliza:
+- Bodegas activas accesibles según la asignación del usuario.
+- Existencias por producto, bodega y lote.
+- Kardex consultado desde los movimientos inmutables.
+- Entradas, salidas y ajustes registrados con una transacción que actualiza el saldo y crea el movimiento.
+- Traslados entre bodegas con salida y entrada vinculadas en una sola transacción e identificador idempotente.
+- Valor estimado calculado con costo estándar del catálogo.
+
+Las bodegas se administran desde Estructura organizacional; ya no se crean desde la pantalla de inventario.
+
+La pantalla requiere lectura de los módulos `inventory` y `products`; para registrar operaciones requiere escritura de inventario. No se ha retirado Dexie del proyecto porque POS, compras y otros módulos todavía lo consumen.
+
+Limitaciones pendientes:
+- No hay todavía asignación automática FEFO ni cierre de producción que consuma materias primas y genere lotes terminados.
+- No hay todavía flujo de recepción de compras conectado a entradas de inventario.
+- Los movimientos manuales deben reservarse para operaciones autorizadas y ajustes justificados; las entradas/salidas operativas deberán originarse en recepción, producción o despacho cuando esos flujos se implementen.
