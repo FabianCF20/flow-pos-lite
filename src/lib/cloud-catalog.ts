@@ -319,23 +319,33 @@ export async function updateCloudProduct(
       if (isNextIndex && !current.exists()) transaction.set(indexRef(item.collectionName, item.key), { recordId: id, createdAt: Date.now() });
     });
 
-    if (old.active !== false && (categoryChanged || activeChanged)) {
-      const count = Number(oldCategorySnapshot.data().activeProductCount ?? 0);
-      if (count <= 0) throw new Error("El contador de productos activos de la categoría no es válido.");
-      transaction.update(recordRef("categories", oldCategoryId), {
-        activeProductCount: count - 1,
-        updatedAt: Date.now(),
-        updatedBy: user.uid,
-        revision: Number(oldCategorySnapshot.data().revision ?? 1) + 1,
-      });
-    }
-    if (data.active && (categoryChanged || activeChanged)) {
-      transaction.update(recordRef("categories", data.categoryId), {
-        activeProductCount: Number(categorySnapshot.data().activeProductCount ?? 0) + 1,
-        updatedAt: Date.now(),
-        updatedBy: user.uid,
-        revision: Number(categorySnapshot.data().revision ?? 1) + 1,
-      });
+    if (categoryChanged || activeChanged) {
+      const oldCategoryData = oldCategorySnapshot.data();
+      const nextCategoryData = categorySnapshot.data();
+      if (!oldCategoryData || !nextCategoryData) {
+        throw new Error("No se pudieron validar los contadores de las categorías.");
+      }
+
+      const categoryDeltas = new Map<string, number>();
+      if (old.active !== false) {
+        categoryDeltas.set(oldCategoryId, (categoryDeltas.get(oldCategoryId) ?? 0) - 1);
+      }
+      if (data.active) {
+        categoryDeltas.set(data.categoryId, (categoryDeltas.get(data.categoryId) ?? 0) + 1);
+      }
+
+      for (const [categoryId, delta] of categoryDeltas) {
+        if (delta === 0) continue;
+        const categoryData = categoryId === oldCategoryId ? oldCategoryData : nextCategoryData;
+        const nextCount = Number(categoryData.activeProductCount ?? 0) + delta;
+        if (nextCount < 0) throw new Error("El contador de productos activos de la categoría no es válido.");
+        transaction.update(recordRef("categories", categoryId), {
+          activeProductCount: nextCount,
+          updatedAt: Date.now(),
+          updatedBy: user.uid,
+          revision: Number(categoryData.revision ?? 1) + 1,
+        });
+      }
     }
     transaction.update(reference, {
       ...data,
