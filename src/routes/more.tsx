@@ -13,6 +13,8 @@ function MorePage() {
   const navigate = useNavigate();
   const allItems = [
     { to: "/sales", icon: Receipt, label: "Ventas" },
+    { to: "/orders", icon: Receipt, label: "Pedidos" },
+    { to: "/dispatch", icon: Truck, label: "Despachos" },
     { to: "/receivables", icon: HandCoins, label: "Cartera" },
     { to: "/purchases", icon: ShoppingBag, label: "Compras" },
     { to: "/suppliers", icon: Truck, label: "Proveedores" },
