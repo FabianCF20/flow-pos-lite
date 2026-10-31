@@ -29,6 +29,7 @@ function OrdersPage() {
   const [quantity, setQuantity] = useState("1");
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [busy, setBusy] = useState(false);
+  const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
 
   const finishedProducts = useMemo(
     () => products.filter((product) => product.active && product.productType === "finished_product"),
@@ -73,6 +74,7 @@ function OrdersPage() {
         deliveryAddress,
         notes,
         lines: lines.map((line) => ({ productId: line.productId, quantity: Number(line.quantity) })),
+        idempotencyKey: submissionKey,
       });
       toast.success("Pedido creado en Firestore. No se descontó inventario.");
       setCustomerName("");
@@ -80,6 +82,7 @@ function OrdersPage() {
       setDeliveryAddress("");
       setNotes("");
       setLines([]);
+      setSubmissionKey(crypto.randomUUID());
       await reload();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo crear el pedido.");
