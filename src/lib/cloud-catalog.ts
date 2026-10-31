@@ -230,12 +230,14 @@ export async function createCloudProduct(input: ProductInput): Promise<string> {
       inventoryRevision: 0,
       lastInventoryMovementId: null,
     });
-    transaction.update(recordRef("categories", data.categoryId), {
-      activeProductCount: Number(categorySnapshot.data().activeProductCount ?? 0) + 1,
-      updatedAt: now,
-      updatedBy: user.uid,
-      revision: Number(categorySnapshot.data().revision ?? 1) + 1,
-    });
+    if (data.active) {
+      transaction.update(recordRef("categories", data.categoryId), {
+        activeProductCount: Number(categorySnapshot.data().activeProductCount ?? 0) + 1,
+        updatedAt: now,
+        updatedBy: user.uid,
+        revision: Number(categorySnapshot.data().revision ?? 1) + 1,
+      });
+    }
     indexes.forEach((index) => transaction.set(indexRef(index.collectionName, index.key), {
       recordId: id,
       createdAt: now,
@@ -366,6 +368,7 @@ export async function deactivateCloudProduct(id: string, expectedRevision: numbe
       throw new Error("El producto cambió en otro equipo. Actualiza antes de guardar.");
     }
     const product = snapshot.data();
+    if (product.active === false) return;
     if (product.inventoryUsed === true) {
       throw new Error("No puedes desactivar un producto que ya registra movimientos de inventario. Conserva su trazabilidad.");
     }
