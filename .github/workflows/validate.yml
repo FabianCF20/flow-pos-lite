@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Install Firestore rules test tools
-        run: npm install --no-save --package-lock=false @firebase/rules-unit-testing firebase-tools
+        run: npm install --no-save --package-lock=false @firebase/rules-unit-testing@5.0.2 firebase-tools
       - name: Firestore security rules tests
         run: npx firebase emulators:exec --only firestore --project demo-flow-pos-lite "node --test tests/firestore.rules.test.mjs"
       - name: TypeScript check
