@@ -12,11 +12,15 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountingRouteImport } from './routes/accounting'
 import { Route as CashRouteImport } from './routes/cash'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MoreRouteImport } from './routes/more'
+import { Route as OrganizationRouteImport } from './routes/organization'
+import { Route as DispatchRouteImport } from './routes/dispatch'
+import { Route as OrdersRouteImport } from './routes/orders'
 import { Route as PosRouteImport } from './routes/pos'
 import { Route as ProductionRouteImport } from './routes/production'
 import { Route as ProductsRouteImport } from './routes/products'
@@ -44,6 +48,11 @@ const CashRoute = CashRouteImport.update({
   path: '/cash',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriesRoute = CategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
@@ -67,6 +76,21 @@ const LoginRoute = LoginRouteImport.update({
 const MoreRoute = MoreRouteImport.update({
   id: '/more',
   path: '/more',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrganizationRoute = OrganizationRouteImport.update({
+  id: '/organization',
+  path: '/organization',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DispatchRoute = DispatchRouteImport.update({
+  id: '/dispatch',
+  path: '/dispatch',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OrdersRoute = OrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PosRoute = PosRouteImport.update({
@@ -129,11 +153,15 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/cash': typeof CashRoute
+  '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/dispatch': typeof DispatchRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/organization': typeof OrganizationRoute
+  '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -150,11 +178,15 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/cash': typeof CashRoute
+  '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/dispatch': typeof DispatchRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/organization': typeof OrganizationRoute
+  '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -172,11 +204,15 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/accounting': typeof AccountingRoute
   '/cash': typeof CashRoute
+  '/catalog': typeof CatalogRoute
   '/categories': typeof CategoriesRoute
   '/customers': typeof CustomersRoute
+  '/dispatch': typeof DispatchRoute
   '/inventory': typeof InventoryRoute
   '/login': typeof LoginRoute
   '/more': typeof MoreRoute
+  '/organization': typeof OrganizationRoute
+  '/orders': typeof OrdersRoute
   '/pos': typeof PosRoute
   '/production': typeof ProductionRoute
   '/products': typeof ProductsRoute
@@ -195,11 +231,15 @@ export interface FileRouteTypes {
     | '/'
     | '/accounting'
     | '/cash'
+    | '/catalog'
     | '/categories'
     | '/customers'
+    | '/dispatch'
     | '/inventory'
     | '/login'
     | '/more'
+    | '/organization'
+    | '/orders'
     | '/pos'
     | '/production'
     | '/products'
@@ -216,11 +256,15 @@ export interface FileRouteTypes {
     | '/'
     | '/accounting'
     | '/cash'
+    | '/catalog'
     | '/categories'
     | '/customers'
+    | '/dispatch'
     | '/inventory'
     | '/login'
     | '/more'
+    | '/organization'
+    | '/orders'
     | '/pos'
     | '/production'
     | '/products'
@@ -237,11 +281,15 @@ export interface FileRouteTypes {
     | '/'
     | '/accounting'
     | '/cash'
+    | '/catalog'
     | '/categories'
     | '/customers'
+    | '/dispatch'
     | '/inventory'
     | '/login'
     | '/more'
+    | '/organization'
+    | '/orders'
     | '/pos'
     | '/production'
     | '/products'
@@ -259,11 +307,15 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountingRoute: typeof AccountingRoute
   CashRoute: typeof CashRoute
+  CatalogRoute: typeof CatalogRoute
   CategoriesRoute: typeof CategoriesRoute
   CustomersRoute: typeof CustomersRoute
   InventoryRoute: typeof InventoryRoute
   LoginRoute: typeof LoginRoute
   MoreRoute: typeof MoreRoute
+  OrganizationRoute: typeof OrganizationRoute
+  DispatchRoute: typeof DispatchRoute
+  OrdersRoute: typeof OrdersRoute
   PosRoute: typeof PosRoute
   ProductionRoute: typeof ProductionRoute
   ProductsRoute: typeof ProductsRoute
@@ -300,6 +352,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CashRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/categories': {
       id: '/categories'
       path: '/categories'
@@ -333,6 +392,27 @@ declare module '@tanstack/react-router' {
       path: '/more'
       fullPath: '/more'
       preLoaderRoute: typeof MoreRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dispatch': {
+      id: '/dispatch'
+      path: '/dispatch'
+      fullPath: '/dispatch'
+      preLoaderRoute: typeof DispatchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/orders': {
+      id: '/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof OrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/organization': {
+      id: '/organization'
+      path: '/organization'
+      fullPath: '/organization'
+      preLoaderRoute: typeof OrganizationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pos': {
@@ -419,11 +499,15 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountingRoute: AccountingRoute,
   CashRoute: CashRoute,
+  CatalogRoute: CatalogRoute,
   CategoriesRoute: CategoriesRoute,
   CustomersRoute: CustomersRoute,
   InventoryRoute: InventoryRoute,
   LoginRoute: LoginRoute,
   MoreRoute: MoreRoute,
+  OrganizationRoute: OrganizationRoute,
+  DispatchRoute: DispatchRoute,
+  OrdersRoute: OrdersRoute,
   PosRoute: PosRoute,
   ProductionRoute: ProductionRoute,
   ProductsRoute: ProductsRoute,

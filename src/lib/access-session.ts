@@ -28,8 +28,23 @@ async function bootstrapAdmin(email: string, uid: string) {
     const roleSnaps = await Promise.all(roleRefs.map(roleRef => transaction.get(roleRef)));
     const profileSnap = await transaction.get(profileRef);
     PRESET_ROLES.forEach((role, index) => {
-      if (!roleSnaps[index]?.exists()) {
+      const roleSnapshot = roleSnaps[index];
+      if (!roleSnapshot?.exists()) {
         transaction.set(roleRefs[index], { name: role.name, permissions: role.permissions, updatedAt: serverTimestamp() });
+      } else {
+        const storedPermissions = roleSnapshot.data().permissions ?? {};
+        const missingPermissions: Record<string, string> = {};
+        for (const moduleId of ["orders", "dispatch"] as const) {
+          if (!(moduleId in storedPermissions)) {
+            missingPermissions[moduleId] = role.permissions[moduleId] ?? "none";
+          }
+        }
+        if (Object.keys(missingPermissions).length > 0) {
+          transaction.update(roleRefs[index], {
+            permissions: { ...storedPermissions, ...missingPermissions },
+            updatedAt: serverTimestamp(),
+          });
+        }
       }
     });
     if (!assignmentSnap.exists()) {

@@ -1,6 +1,5 @@
 rules_version = '2';
 
-// Reglas de seguridad del ERP: publícalas en Firebase Console → Firestore → Reglas.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -13,20 +12,285 @@ service cloud.firestore {
         && request.auth.token.email == 'sneyder.c.f@gmail.com';
     }
 
+    function assignmentPath() {
+      return /databases/$(database)/documents/userAccess/$(request.auth.token.email);
+    }
+
     function hasActiveAssignment() {
       return signedIn()
         && request.auth.token.email is string
-        && exists(/databases/$(database)/documents/userAccess/$(request.auth.token.email))
-        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.uid == request.auth.uid
-        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.active == true;
+        && exists(assignmentPath())
+        && get(assignmentPath()).data.uid == request.auth.uid
+        && get(assignmentPath()).data.active == true;
+    }
+
+    function assignment() {
+      return get(assignmentPath()).data;
     }
 
     function isAdmin() {
-      return hasActiveAssignment()
-        && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.roleId == 'admin';
+      return hasActiveAssignment() && assignment().roleId == 'admin';
     }
 
-    // Perfiles: el usuario lee el suyo; el administrador gestiona el directorio.
+    function rolePath() {
+      return /databases/$(database)/documents/accessRoles/$(assignment().roleId);
+    }
+
+    function roleExists() {
+      return hasActiveAssignment() && exists(rolePath());
+    }
+
+    function permissionLevel(moduleName) {
+      let overrides = assignment().get('overrides', {});
+      let rolePermissions = get(rolePath()).data.permissions;
+      return overrides.keys().hasAny([moduleName])
+        ? overrides[moduleName]
+        : rolePermissions.get(moduleName, 'none');
+    }
+
+    function canRead(moduleName) {
+      return isAdmin()
+        || (roleExists() && permissionLevel(moduleName) in ['read', 'write']);
+    }
+
+    function canWrite(moduleName) {
+      return isAdmin()
+        || (roleExists() && permissionLevel(moduleName) == 'write');
+    }
+
+    function hasWarehouseScope(warehouseId) {
+      return isAdmin()
+        || (hasActiveAssignment()
+          && (assignment().get('allWarehouses', false) == true
+            || assignment().get('warehouseIds', []).hasAny([warehouseId])));
+    }
+
+    function hasWarehouseReadScope(warehouseId) {
+      return isAdmin()
+        || (hasActiveAssignment()
+          && (assignment().roleId == 'accountant'
+            || assignment().get('allWarehouses', false) == true
+            || assignment().get('warehouseIds', []).hasAny([warehouseId])));
+    }
+
+    function canReadWarehouse(warehouseId) {
+      return canRead('inventory') && hasWarehouseReadScope(warehouseId);
+    }
+
+    function canWriteWarehouse(warehouseId) {
+      return canWrite('inventory') && hasWarehouseScope(warehouseId);
+    }
+
+    function validProductInventoryMarker() {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastInventoryMovementId);
+      let movement = getAfter(movementPath);
+      return canWrite('inventory')
+        && resource.data.inventoryUsed != true
+        && request.resource.data.inventoryUsed == true
+        && request.resource.data.inventoryRevision == resource.data.inventoryRevision + 1
+        && existsAfter(movementPath)
+        && movement.data.productId == resource.data.id
+        && movement.data.type in ['receipt', 'issue', 'adjustment', 'transfer_out', 'transfer_in']
+        && hasWarehouseScope(movement.data.warehouseId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'inventoryUsed', 'inventoryRevision', 'lastInventoryMovementId'
+        ]);
+    }
+
+    function validWarehouseInventoryMarker() {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastInventoryMovementId);
+      let movement = getAfter(movementPath);
+      return canWrite('inventory')
+        && resource.data.type == 'warehouse'
+        && resource.data.inventoryUsed != true
+        && request.resource.data.inventoryUsed == true
+        && request.resource.data.inventoryRevision == resource.data.inventoryRevision + 1
+        && existsAfter(movementPath)
+        && movement.data.warehouseId == resource.data.id
+        && movement.data.type in ['receipt', 'issue', 'adjustment', 'transfer_out', 'transfer_in']
+        && hasWarehouseScope(resource.data.id)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'inventoryUsed', 'inventoryRevision', 'lastInventoryMovementId'
+        ]);
+    }
+
+    function validMovementDelta() {
+      return request.resource.data.type in ['receipt', 'transfer_in']
+          ? request.resource.data.quantityDelta > 0
+          : request.resource.data.type in ['issue', 'transfer_out']
+            ? request.resource.data.quantityDelta < 0
+            : request.resource.data.type == 'adjustment'
+              && request.resource.data.quantityDelta != 0;
+    }
+
+    function validInventoryBalanceCreate(balanceId) {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastMovementId);
+      let movement = getAfter(movementPath);
+      return canWriteWarehouse(request.resource.data.warehouseId)
+        && existsAfter(movementPath)
+        && request.resource.data.id == balanceId
+        && request.resource.data.quantity > 0
+        && movement.data.createdBy == request.auth.uid
+        && movement.data.balanceId == balanceId
+        && movement.data.productId == request.resource.data.productId
+        && movement.data.warehouseId == request.resource.data.warehouseId
+        && movement.data.lotCode == request.resource.data.lotCode
+        && movement.data.balanceBefore == 0
+        && movement.data.balanceAfter == request.resource.data.quantity
+        && movement.data.quantityDelta == request.resource.data.quantity
+        && movement.data.type in ['receipt', 'adjustment', 'transfer_in'];
+    }
+
+    function validInventoryBalanceUpdate(balanceId) {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastMovementId);
+      let movement = getAfter(movementPath);
+      return canWriteWarehouse(resource.data.warehouseId)
+        && existsAfter(movementPath)
+        && request.resource.data.id == balanceId
+        && request.resource.data.warehouseId == resource.data.warehouseId
+        && request.resource.data.productId == resource.data.productId
+        && request.resource.data.lotCode == resource.data.lotCode
+        && request.resource.data.quantity >= 0
+        && request.resource.data.revision == resource.data.revision + 1
+        && request.resource.data.lastMovementId != resource.data.lastMovementId
+        && movement.data.createdBy == request.auth.uid
+        && movement.data.balanceId == balanceId
+        && movement.data.productId == resource.data.productId
+        && movement.data.warehouseId == resource.data.warehouseId
+        && movement.data.lotCode == resource.data.lotCode
+        && movement.data.balanceBefore == resource.data.quantity
+        && movement.data.balanceAfter == request.resource.data.quantity
+        && movement.data.balanceAfter == movement.data.balanceBefore + movement.data.quantityDelta
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'quantity', 'updatedAt', 'updatedBy', 'revision', 'lastMovementId'
+        ]);
+    }
+
+    function validInventoryMovementCreate(movementId) {
+      let balancePath = /databases/$(database)/documents/erp/default/inventoryBalances/$(request.resource.data.balanceId);
+      let balance = getAfter(balancePath);
+      return canWriteWarehouse(request.resource.data.warehouseId)
+        && request.resource.data.referenceType != 'sales_dispatch'
+        && existsAfter(balancePath)
+        && request.resource.data.id == movementId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.quantityDelta is number
+        && request.resource.data.balanceBefore is number
+        && request.resource.data.balanceAfter is number
+        && request.resource.data.balanceAfter >= 0
+        && validMovementDelta()
+        && (exists(balancePath)
+          ? get(balancePath).data.quantity == request.resource.data.balanceBefore
+          : request.resource.data.balanceBefore == 0)
+        && balance.data.lastMovementId == movementId
+        && balance.data.productId == request.resource.data.productId
+        && balance.data.warehouseId == request.resource.data.warehouseId
+        && balance.data.lotCode == request.resource.data.lotCode
+        && balance.data.quantity == request.resource.data.balanceAfter
+        && request.resource.data.balanceAfter == request.resource.data.balanceBefore + request.resource.data.quantityDelta;
+    }
+
+    function validSalesOrderDispatchUpdate(orderId) {
+      // La comprobación de cada línea requiere backend confiable.
+      // Hasta implementar callable con Admin SDK, se bloquea el despacho directo de roles operativos.
+      let dispatchPath = /databases/$(database)/documents/erp/default/salesDispatches/$(request.resource.data.lastDispatchId);
+      let dispatch = getAfter(dispatchPath);
+      return isAdmin()
+        && existsAfter(dispatchPath)
+        && dispatch.data.id == request.resource.data.lastDispatchId
+        && dispatch.data.orderId == orderId
+        && dispatch.data.createdBy == request.auth.uid
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.orderCode == resource.data.orderCode
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'lines', 'dispatchedQtyTotal', 'status', 'lastDispatchId', 'updatedAt', 'updatedBy', 'revision'
+        ])
+        && request.resource.data.revision == resource.data.revision + 1
+        && request.resource.data.lines.size() == resource.data.lines.size()
+        && request.resource.data.dispatchedQtyTotal > resource.data.dispatchedQtyTotal
+        && request.resource.data.dispatchedQtyTotal <= resource.data.orderedQtyTotal
+        && request.resource.data.status in ['partially_dispatched', 'dispatched'];
+    }
+
+    function validSalesDispatchCreate(dispatchId) {
+      let orderPath = /databases/$(database)/documents/erp/default/salesOrders/$(request.resource.data.orderId);
+      let order = getAfter(orderPath);
+      return isAdmin()
+        && request.resource.data.id == dispatchId
+        && existsAfter(orderPath)
+        && order.data.lastDispatchId == dispatchId
+        && order.data.status in ['partially_dispatched', 'dispatched'];
+    }
+
+    function validDispatchNotificationCreate(notificationId) {
+      let orderPath = /databases/$(database)/documents/erp/default/salesOrders/$(request.resource.data.orderId);
+      let order = getAfter(orderPath);
+      return canWrite('orders')
+        && request.resource.data.id == notificationId
+        && request.resource.data.orderId == notificationId
+        && request.resource.data.status == 'pending'
+        && existsAfter(orderPath)
+        && order.data.orderCode == request.resource.data.orderCode
+        && order.data.createdBy == request.auth.uid;
+    }
+
+    function validDispatchNotificationUpdate() {
+      return isAdmin()
+        && request.resource.data.orderId == resource.data.orderId
+        && request.resource.data.orderCode == resource.data.orderCode
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.status in ['in_progress', 'completed']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'updatedBy', 'revision'
+        ])
+        && request.resource.data.revision == resource.data.revision + 1;
+    }
+
+    function moduleForCollection(collectionName) {
+      return collectionName == 'products' ? 'products'
+        : collectionName == 'categories' ? 'categories'
+        : collectionName == 'customers' ? 'customers'
+        : collectionName == 'suppliers' ? 'suppliers'
+        : collectionName == 'sales' ? 'sales'
+        : collectionName == 'salesOrders' ? 'sales'
+        : collectionName == 'salesDispatches' ? 'dispatch'
+        : collectionName == 'dispatchNotifications' ? 'dispatch'
+        : collectionName == 'saleReturns' ? 'returns'
+        : collectionName == 'debitNotes' ? 'returns'
+        : collectionName == 'warehouses' ? 'inventory'
+        : collectionName == 'stockMoves' ? 'inventory'
+        : collectionName == 'purchases' ? 'purchases'
+        : collectionName == 'supplierPayments' ? 'purchases'
+        : collectionName == 'receivables' ? 'receivables'
+        : collectionName == 'arPayments' ? 'receivables'
+        : collectionName == 'accounts' ? 'accounting'
+        : collectionName == 'journalEntries' ? 'accounting'
+        : collectionName == 'cashSessions' ? 'cash'
+        : collectionName == 'cashMovements' ? 'cash'
+        : collectionName == 'productionRecipes' ? 'production'
+        : collectionName == 'productionOrders' ? 'production'
+        : collectionName == 'productionFormulas' ? 'production_formulas'
+        : collectionName == 'productionFormulaVersions' ? 'production_formulas'
+        : collectionName == 'productionFormulaCodeIndexes' ? 'production_formulas'
+        : collectionName == 'measures' ? 'production'
+        : collectionName == 'attachments' ? 'settings'
+        : collectionName == 'settings' ? 'settings'
+        : collectionName == 'organizationUnits' ? 'settings'
+        : collectionName == 'organizationUnitCodeIndexes' ? 'settings'
+        : collectionName == 'organizationCompanySingleton' ? 'settings'
+        : collectionName == 'categoryCodeIndexes' ? 'categories'
+        : collectionName == 'productCodeIndexes' ? 'products'
+        : collectionName == 'productSkuIndexes' ? 'products'
+        : collectionName == 'productBarcodeIndexes' ? 'products'
+        : collectionName == 'inventoryBalances' ? 'inventory'
+        : collectionName == 'inventoryMovements' ? 'inventory'
+        : collectionName == 'inventoryTransfers' ? 'inventory'
+        : 'none';
+    }
+
     match /users/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
@@ -34,7 +298,6 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Solo el administrador configurado puede crear el acceso inicial.
     match /userAccess/{email} {
       allow get: if signedIn()
         && ((request.auth.token.email is string && request.auth.token.email == email) || isAdmin());
@@ -52,26 +315,150 @@ service cloud.firestore {
       allow get: if isAdmin()
         || isBootstrapAdmin()
         || (hasActiveAssignment()
-          && get(/databases/$(database)/documents/userAccess/$(request.auth.token.email)).data.roleId == roleId);
+          && assignment().roleId == roleId);
       allow list: if isAdmin();
       allow create: if isAdmin()
-        || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'accountant', 'viewer']);
+        || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'production_manager', 'production_operator', 'dispatcher', 'accountant', 'viewer']);
       allow update, delete: if isAdmin();
     }
 
-    // Invitaciones: el usuario invitado puede leer la suya al registrarse.
     match /invites/{email} {
-      allow get: if signedIn();
+      allow get: if signedIn() && request.auth.token.email == email;
       allow list, create, update, delete: if isAdmin();
     }
 
-    // Datos del ERP sincronizados desde los dispositivos (productos, clientes, proveedores).
-    // Cualquier usuario autenticado del ERP puede leerlos y escribirlos; solo un
-    // administrador puede borrar documentos definitivamente (las bajas normales
-    // se marcan con deleted = true para que se propaguen a los demás dispositivos).
+    // La empresa se mantiene aislada por ruta. El módulo se resuelve en el servidor
+    // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
-      allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow get, list: if company == 'default' && (collection == 'dispatchNotifications'
+          ? canRead('dispatch')
+          : collection == 'salesOrders'
+          ? canRead('orders') || canRead('sales') || canRead('dispatch')
+          : collection == 'salesDispatches'
+            ? canRead('orders') || canRead('sales') || canRead('dispatch')
+            : collection in ['inventoryBalances', 'inventoryMovements']
+          ? canReadWarehouse(resource.data.warehouseId)
+          : collection == 'inventoryTransfers'
+            ? canReadWarehouse(resource.data.sourceWarehouseId)
+              && hasWarehouseReadScope(resource.data.targetWarehouseId)
+            : collection == 'productionOrders'
+              ? canRead('production') && hasWarehouseScope(resource.data.warehouseId)
+              : collection == 'organizationUnits'
+                ? canRead('settings')
+                  || (resource.data.type == 'warehouse'
+                    && (canRead('inventory') || canRead('production'))
+                    && hasWarehouseReadScope(resource.data.id))
+                : canRead(moduleForCollection(collection))
+                  || (collection in ['productionFormulas', 'productionFormulaVersions']
+                    && canRead('production')));
+
+      allow create: if company == 'default' && (collection == 'dispatchNotifications'
+          ? validDispatchNotificationCreate(docId)
+          : collection == 'salesOrders'
+          ? canWrite('orders') || canWrite('sales')
+          : collection == 'salesDispatches'
+            ? validSalesDispatchCreate(docId)
+            : collection == 'inventoryBalances'
+          ? validInventoryBalanceCreate(docId)
+          : collection == 'inventoryMovements'
+            ? validInventoryMovementCreate(docId)
+            : collection == 'inventoryTransfers'
+              ? canWriteWarehouse(request.resource.data.sourceWarehouseId)
+                && hasWarehouseScope(request.resource.data.targetWarehouseId)
+              : collection == 'productionOrders'
+                ? canWrite('production') && hasWarehouseScope(request.resource.data.warehouseId)
+                : collection in ['productionFormulas', 'productionFormulaVersions', 'productionFormulaCodeIndexes']
+                  ? canWrite('production_formulas')
+                  : canWrite(moduleForCollection(collection)));
+
+      allow update: if company == 'default' && (collection == 'dispatchNotifications'
+          ? validDispatchNotificationUpdate()
+          : collection == 'salesOrders'
+          ? validSalesOrderDispatchUpdate(docId)
+          : collection == 'salesDispatches'
+            ? false
+            : collection == 'inventoryBalances'
+          ? validInventoryBalanceUpdate(docId)
+          : collection == 'productionOrders'
+            ? canWrite('production')
+              && hasWarehouseScope(resource.data.warehouseId)
+              && request.resource.data.warehouseId == resource.data.warehouseId
+            : collection == 'productionFormulaVersions'
+              ? canWrite('production_approval')
+                && resource.data.status == 'draft'
+                && request.resource.data.status == 'approved'
+                && request.resource.data.approvedBy == request.auth.uid
+                && request.resource.data.revision == resource.data.revision + 1
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                  'status', 'approvedBy', 'approvedAt', 'updatedAt', 'updatedBy', 'revision'
+                ])
+              : collection == 'productionFormulas'
+                ? canWrite('production_formulas')
+                  && request.resource.data.code == resource.data.code
+                  && request.resource.data.outputProductId == resource.data.outputProductId
+                : collection == 'products'
+                  ? (canWrite('products')
+                    && request.resource.data.code == resource.data.code
+                    && request.resource.data.sku == resource.data.sku
+                    && request.resource.data.barcode == resource.data.barcode
+                    && request.resource.data.inventoryUsed == resource.data.inventoryUsed
+                    && request.resource.data.inventoryRevision == resource.data.inventoryRevision
+                    && request.resource.data.lastInventoryMovementId == resource.data.lastInventoryMovementId)
+                    || validProductInventoryMarker()
+                : collection == 'categories'
+                  ? (canWrite('categories')
+                    && request.resource.data.code == resource.data.code
+                    && request.resource.data.activeProductCount == resource.data.activeProductCount)
+                    || (canWrite('products')
+                      && (request.resource.data.activeProductCount == resource.data.activeProductCount + 1
+                        || request.resource.data.activeProductCount == resource.data.activeProductCount - 1)
+                      && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+                        'activeProductCount', 'updatedAt', 'updatedBy', 'revision'
+                      ]))
+                : collection == 'organizationUnits'
+                  ? (canWrite('settings')
+                    && request.resource.data.code == resource.data.code
+                    && request.resource.data.type == resource.data.type
+                    && request.resource.data.parentId == resource.data.parentId
+                    && request.resource.data.inventoryUsed == resource.data.inventoryUsed
+                    && request.resource.data.inventoryRevision == resource.data.inventoryRevision
+                    && request.resource.data.lastInventoryMovementId == resource.data.lastInventoryMovementId)
+                    || validWarehouseInventoryMarker()
+                : collection in [
+                    'inventoryMovements',
+                    'inventoryTransfers',
+                    'productionFormulaCodeIndexes',
+                    'categoryCodeIndexes',
+                    'productCodeIndexes',
+                    'productSkuIndexes',
+                    'productBarcodeIndexes',
+                    'organizationUnitCodeIndexes',
+                    'organizationCompanySingleton'
+                  ]
+                    ? false
+                    : canWrite(moduleForCollection(collection)));
+
+      allow delete: if company == 'default' && !(collection in [
+          'salesOrders',
+          'salesDispatches',
+          'dispatchNotifications',
+          'inventoryBalances',
+          'inventoryMovements',
+          'products',
+          'categories',
+          'categoryCodeIndexes',
+          'productCodeIndexes',
+          'productSkuIndexes',
+          'productBarcodeIndexes',
+          'inventoryTransfers',
+          'productionOrders',
+          'productionFormulaVersions',
+          'productionFormulas',
+          'productionFormulaCodeIndexes',
+          'organizationUnits',
+          'organizationUnitCodeIndexes',
+          'organizationCompanySingleton'
+        ]) && isAdmin();
     }
   }
 }

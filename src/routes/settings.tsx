@@ -3,12 +3,13 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
 import { db, getSettings, type AppSettings } from "@/lib/db";
-import { createDirectoryUser, listDirectory, updateDirectoryUser, type DirectoryUser } from "@/lib/users";
+import { createDirectoryUser, listDirectory, listRoles, updateDirectoryUser, type DirectoryUser } from "@/lib/users";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/AppShell";
+import { listOrganizationUnits, type OrganizationUnit } from "@/lib/cloud-organization";
 import { exportBackup, importBackup, downloadBlob } from "@/lib/backup";
 import { isBluetoothSupported, pickPrinter, printText } from "@/lib/printer";
-import { Download, Upload, Printer, Plus, Trash2, LogOut, FileCheck2, ExternalLink } from "lucide-react";
+import { Download, Upload, Printer, Plus, Trash2, LogOut, FileCheck2, ExternalLink, Boxes } from "lucide-react";
 import { toast } from "sonner";
 import { testFactusAuth, isFactusConfigured } from "@/lib/factus";
 import { FactusExtra } from "@/components/FactusExtra";
@@ -204,14 +205,32 @@ function SettingsPage() {
 
 function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: boolean }) {
   const [list, setList] = useState<DirectoryUser[]>([]);
+  const [roles, setRoles] = useState<{ id: string; name: string }[]>([]);
+  const [warehouseUnits, setWarehouseUnits] = useState<OrganizationUnit[]>([]);
+  const [scopeTarget, setScopeTarget] = useState<DirectoryUser | null>(null);
+  const [selectedWarehouseIds, setSelectedWarehouseIds] = useState<string[]>([]);
+  const [allWarehouses, setAllWarehouses] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [show, setShow] = useState(false);
-  const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [role, setRole] = useState<"admin"|"cashier">("cashier");
+  const [email, setEmail] = useState(""); const [name, setName] = useState(""); const [role, setRole] = useState("production_operator");
   const [password, setPassword] = useState("");
 
   async function reload() {
-    try { setList(await listDirectory()); setError(null); }
+    try {
+      const [users, availableRoles, organizationUnits] = await Promise.all([
+        listDirectory(),
+        listRoles(),
+        listOrganizationUnits(),
+      ]);
+      setList(users);
+      setRoles(availableRoles);
+      setWarehouseUnits(organizationUnits);
+      if (availableRoles.length && !availableRoles.some((item) => item.id === role)) {
+        setRole(availableRoles[0].id);
+      }
+      setError(null);
+    }
     catch { setError("No se pudo cargar la lista (revisa la conexión o los permisos)"); }
     finally { setLoading(false); }
   }
@@ -228,9 +247,30 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
     try { await updateDirectoryUser(u, { active: !u.active }); reload(); toast.success(u.active ? "Desactivado" : "Activado"); }
     catch { toast.error("No se pudo actualizar"); }
   }
-  async function changeRole(u: DirectoryUser, r: "admin"|"cashier") {
+  async function changeRole(u: DirectoryUser, r: string) {
     try { await updateDirectoryUser(u, { roleId: r }); reload(); toast.success("Rol actualizado"); }
     catch { toast.error("No se pudo actualizar"); }
+  }
+
+  function openWarehouseScope(u: DirectoryUser) {
+    setScopeTarget(u);
+    setSelectedWarehouseIds(u.warehouseIds ?? []);
+    setAllWarehouses(u.allWarehouses === true);
+  }
+
+  async function saveWarehouseScope() {
+    if (!scopeTarget) return;
+    try {
+      await updateDirectoryUser(scopeTarget, {
+        warehouseIds: allWarehouses ? [] : selectedWarehouseIds,
+        allWarehouses,
+      });
+      toast.success("Alcance de bodegas actualizado");
+      setScopeTarget(null);
+      await reload();
+    } catch (e: any) {
+      toast.error(e?.message ?? "No se pudo guardar el alcance");
+    }
   }
   async function remove(u: DirectoryUser) {
     if (u.email === currentEmail) { toast.error("No puedes quitar tu propia cuenta"); return; }
@@ -260,18 +300,71 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
           </div>
           <select
             value={u.roleId}
-            onChange={(e) => changeRole(u, e.target.value as any)}
+            onChange={(e) => changeRole(u, e.target.value)}
             className="h-9 px-2 rounded-lg bg-card border border-border text-xs"
           >
-            <option value="cashier">Cajero</option>
-            <option value="admin">Administrador</option>
+            {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
+          <button onClick={() => openWarehouseScope(u)} className="h-9 px-2 rounded-lg bg-muted text-xs inline-flex items-center gap-1">
+            <Boxes className="h-3.5 w-3.5" /> Bodegas
+          </button>
           <button onClick={() => toggle(u)} className="text-xs text-muted-foreground hover:text-foreground underline">
             {u.active ? "Desactivar" : "Activar"}
           </button>
           <button onClick={() => remove(u)} className="text-muted-foreground hover:text-destructive"><Trash2 className="h-4 w-4" /></button>
         </div>
       ))}
+      {scopeTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end md:items-center justify-center">
+          <div className="w-full md:max-w-lg max-h-[90vh] overflow-y-auto rounded-t-2xl md:rounded-2xl bg-card border border-border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-semibold">Alcance de inventario</div>
+                <div className="text-xs text-muted-foreground">{scopeTarget.name} · {scopeTarget.email}</div>
+              </div>
+              <button onClick={() => setScopeTarget(null)} className="text-sm text-muted-foreground">Cerrar</button>
+            </div>
+            <label className="flex items-center gap-2 rounded-lg bg-background border border-border p-3 text-sm">
+              <input type="checkbox" checked={allWarehouses} onChange={(event) => setAllWarehouses(event.target.checked)} />
+              Acceso a todas las bodegas
+            </label>
+            {!allWarehouses && (
+              <div className="max-h-72 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+                {warehouseUnits.filter((unit) => unit.type === "warehouse" && unit.active).map((warehouse) => {
+                  const site = warehouseUnits.find((unit) => unit.id === warehouse.siteId);
+                  const area = warehouseUnits.find((unit) => unit.id === warehouse.areaId);
+                  const selected = selectedWarehouseIds.includes(warehouse.id);
+                  return (
+                    <label key={warehouse.id} className="flex items-start gap-3 p-3 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={(event) => setSelectedWarehouseIds((current) =>
+                          event.target.checked
+                            ? [...current, warehouse.id]
+                            : current.filter((id) => id !== warehouse.id)
+                        )}
+                      />
+                      <span className="min-w-0">
+                        <span className="block font-medium">{warehouse.name}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {site?.name ?? "Sede no definida"}{area ? ` · ${area.name}` : ""}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+                {!warehouseUnits.some((unit) => unit.type === "warehouse" && unit.active) && <p className="p-4 text-xs text-muted-foreground">Primero crea bodegas en Estructura organizacional.</p>}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">Sin bodegas asignadas, el usuario no podrá consultar ni modificar inventario ni operar órdenes en una bodega.</p>
+            <div className="flex gap-2">
+              <button onClick={() => setScopeTarget(null)} className="flex-1 h-10 rounded-lg border border-border text-sm">Cancelar</button>
+              <button onClick={saveWarehouseScope} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Guardar alcance</button>
+            </div>
+          </div>
+        </div>
+      )}
       {!show ? (
         <button onClick={() => setShow(true)} className="w-full h-11 rounded-xl bg-card border border-border font-medium inline-flex items-center justify-center gap-2"><Plus className="h-4 w-4" /> Invitar usuario</button>
       ) : (
@@ -279,9 +372,8 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
           <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mínimo 6 caracteres)" type="password" autoComplete="new-password" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <select value={role} onChange={(e) => setRole(e.target.value as any)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
-            <option value="cashier">Cajero</option>
-            <option value="admin">Administrador</option>
+          <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
+            {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
           <p className="text-[11px] text-muted-foreground">
             Se creará la cuenta con este correo y la contraseña inicial. El usuario podrá cambiarla después.

@@ -1,19 +1,20 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
+import { landingPath, moduleForPath } from "@/lib/permissions";
 import { useTheme } from "@/lib/theme";
 import { SyncStatus } from "@/components/SyncStatus";
 import { Button } from "@/components/ui/button";
 import {
-  ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
-  Users, Settings, LogOut, MoreHorizontal, Tag, Truck, ShoppingBag,
-  Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory,
+  ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3, ClipboardList,
+  Users, Settings, LogOut, MoreHorizontal, Truck, ShoppingBag,
+  Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory, Building2,
 } from "lucide-react";
 
 const primaryNavAdmin = [
   { to: "/", label: "Inicio", icon: LayoutDashboard },
   { to: "/pos", label: "Vender", icon: ShoppingCart },
-  { to: "/products", label: "Productos", icon: Package },
+  { to: "/catalog", label: "Catálogo", icon: Package },
   { to: "/cash", label: "Caja", icon: Wallet },
   { to: "/more", label: "Más", icon: MoreHorizontal },
 ] as const;
@@ -34,6 +35,8 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/", label: "Inicio", icon: LayoutDashboard },
       { to: "/pos", label: "Vender", icon: ShoppingCart },
       { to: "/sales", label: "Ventas", icon: BarChart3 },
+      { to: "/orders", label: "Pedidos", icon: ClipboardList },
+      { to: "/dispatch", label: "Despachos", icon: Truck },
       { to: "/returns", label: "Devoluciones y notas", icon: Undo2 },
       { to: "/receivables", label: "Cartera", icon: HandCoins },
       { to: "/customers", label: "Clientes", icon: Users },
@@ -46,8 +49,7 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/suppliers", label: "Proveedores", icon: Truck },
       { to: "/inventory", label: "Inventario", icon: Boxes },
       { to: "/production", label: "Producción", icon: Factory },
-      { to: "/products", label: "Productos", icon: Package },
-      { to: "/categories", label: "Categorías", icon: Tag },
+      { to: "/catalog", label: "Catálogo maestro", icon: Package },
     ],
   },
   {
@@ -56,6 +58,7 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/accounting", label: "Contabilidad", icon: Landmark },
       { to: "/cash", label: "Caja", icon: Wallet },
       { to: "/reports", label: "Reportes", icon: BarChart3 },
+      { to: "/organization", label: "Estructura organizacional", icon: Building2 },
       { to: "/settings", label: "Ajustes", icon: Settings },
     ],
   },
@@ -68,6 +71,7 @@ const navGroupsCashier: readonly NavGroup[] = [
       { to: "/pos", label: "Vender", icon: ShoppingCart },
       { to: "/cash", label: "Caja", icon: Wallet },
       { to: "/sales", label: "Tickets", icon: BarChart3 },
+      { to: "/orders", label: "Pedidos", icon: ClipboardList },
     ],
   },
 ];
@@ -76,6 +80,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/": "Panel general",
   "/pos": "Punto de venta",
   "/sales": "Ventas",
+  "/orders": "Pedidos",
+  "/dispatch": "Despachos",
   "/returns": "Devoluciones y notas",
   "/receivables": "Cartera",
   "/customers": "Clientes",
@@ -83,17 +89,19 @@ const ROUTE_TITLES: Record<string, string> = {
   "/suppliers": "Proveedores",
   "/inventory": "Inventario",
   "/production": "Producción",
-  "/products": "Productos",
+  "/products": "Productos (catálogo anterior)",
+  "/catalog": "Catálogo maestro",
   "/categories": "Categorías",
   "/accounting": "Contabilidad",
   "/cash": "Caja",
   "/reports": "Reportes",
   "/settings": "Ajustes",
+  "/organization": "Estructura organizacional",
   "/more": "Módulos",
 };
 
 // Rutas permitidas para el rol cajero
-export const CASHIER_ALLOWED = ["/pos", "/cash", "/sales", "/more", "/login"];
+export const CASHIER_ALLOWED = ["/pos", "/cash", "/sales", "/orders", "/more", "/login"];
 
 export function isRouteAllowed(role: string | undefined, pathname: string) {
   if (role !== "cashier") return true;
@@ -105,7 +113,7 @@ function isActive(pathname: string, to: string) {
 }
 
 export function AppShell({ children }: { children: ReactNode }) {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, can, access } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggle } = useTheme();
@@ -117,10 +125,19 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [loading, user, location.pathname, navigate]);
 
   useEffect(() => {
-    if (!loading && user && user.role === "cashier" && !isRouteAllowed("cashier", location.pathname)) {
-      navigate({ to: "/pos", replace: true });
-    }
-  }, [loading, user, location.pathname, navigate]);
+    if (loading || !user || location.pathname === "/login") return;
+    const module = moduleForPath(location.pathname);
+    const allowed = location.pathname === "/catalog"
+      ? can("products", "read") && can("categories", "read")
+      : location.pathname === "/products" || location.pathname === "/categories"
+        ? user.role === "admin"
+        : module
+          ? can(module, "read")
+          : location.pathname === "/organization"
+            ? can("settings", "write")
+            : true;
+    if (!allowed) navigate({ to: landingPath(access) as any, replace: true });
+  }, [loading, user, location.pathname, navigate, can, access]);
 
   const sectionTitle = useMemo(() => {
     const exact = ROUTE_TITLES[location.pathname];
@@ -143,8 +160,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     );
   }
 
-  const primaryNav = user.role === "cashier" ? primaryNavCashier : primaryNavAdmin;
-  const navGroups = user.role === "cashier" ? navGroupsCashier : navGroupsAdmin;
+  const canOpen = (to: string) => {
+    if (to === "/catalog") return can("products", "read") && can("categories", "read");
+    if (to === "/products" || to === "/categories") return user.role === "admin";
+    if (to === "/organization") return can("settings", "write");
+    const module = moduleForPath(to);
+    return module ? can(module, "read") : true;
+  };
+  const primaryNav = (user.role === "cashier" ? primaryNavCashier : primaryNavAdmin)
+    .filter((item) => canOpen(item.to));
+  const navGroups = (user.role === "cashier" ? navGroupsCashier : navGroupsAdmin)
+    .map((group) => ({ ...group, items: group.items.filter((item) => canOpen(item.to)) }))
+    .filter((group) => group.items.length > 0);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
@@ -158,7 +185,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="leading-tight min-w-0">
               <div className="text-sm font-display font-semibold truncate">ERP Importaciones</div>
               <div className="text-[11px] text-sidebar-foreground/60 truncate">
-                {user.name} · {user.role === "cashier" ? "Cajero" : "Administrador"}
+                {user.name} · {access?.role.name ?? user.role}
               </div>
             </div>
           </div>
@@ -236,7 +263,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 <div className="leading-tight">
                   <div className="text-xs font-medium">{user.name}</div>
                   <div className="text-[10px] text-muted-foreground">
-                    {user.role === "cashier" ? "Cajero" : "Administrador"}
+                    {access?.role.name ?? user.role}
                   </div>
                 </div>
               </div>
@@ -248,7 +275,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
         {/* Bottom nav (mobile) */}
         <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border safe-bottom">
-          <div className={primaryNav.length === 4 ? "grid grid-cols-4" : "grid grid-cols-5"}>
+          <div className="grid" style={{ gridTemplateColumns: `repeat(${Math.max(primaryNav.length, 1)}, minmax(0, 1fr))` }}>
             {primaryNav.map((n) => {
               const Icon = n.icon;
               const active = isActive(location.pathname, n.to);

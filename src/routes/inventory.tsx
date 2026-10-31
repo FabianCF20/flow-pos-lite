@@ -1,24 +1,28 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useLiveQuery } from "dexie-react-hooks";
-import { useMemo, useState } from "react";
-import { db, getSettings } from "@/lib/db";
-import { useAuth } from "@/lib/auth";
-import { formatMoney, formatDate } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
+import { useAuth } from "@/lib/auth";
+import { listCloudProducts, type CloudProduct } from "@/lib/cloud-catalog";
+import {
+  listAccessibleWarehouses,
+  listInventoryBalances,
+  listInventoryMovements,
+  postInventoryMovement,
+  transferInventory,
+  type InventoryBalance,
+  type InventoryMovement,
+  type InventoryWarehouse,
+} from "@/lib/cloud-inventory";
+import { formatDate, formatMoney } from "@/lib/format";
 import { Sheet, Field } from "./suppliers";
-import { adjustStock, transferStock, signedQty } from "@/lib/erp";
-import { Warehouse, Plus, ArrowLeftRight, SlidersHorizontal, ScrollText } from "lucide-react";
 import { toast } from "sonner";
+import { Warehouse, RefreshCw, ArrowLeftRight, SlidersHorizontal, ScrollText, Plus, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/inventory")({
   head: () => ({
     meta: [
       { title: "Inventario y bodegas — ERP" },
-      { name: "description", content: "Controla existencias por bodega, ajustes, traslados y el kardex de cada producto." },
-      { property: "og:title", content: "Inventario y bodegas — ERP" },
-      { property: "og:description", content: "Controla existencias por bodega, ajustes, traslados y el kardex de cada producto." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
+      { name: "description", content: "Control de existencias por bodega, lotes, movimientos y trazabilidad." },
     ],
   }),
   component: InventoryPage,
@@ -27,126 +31,211 @@ export const Route = createFileRoute("/inventory")({
 type Tab = "stock" | "warehouses" | "kardex";
 
 function InventoryPage() {
-  const settings = useLiveQuery(() => getSettings(), [], undefined);
+  const { can, loading } = useAuth();
+  const canRead = can("inventory", "read") && can("products", "read");
+  const canWrite = can("inventory", "write");
   const [tab, setTab] = useState<Tab>("stock");
-  const products = useLiveQuery(async () => (await db.products.toArray()).filter((p) => p.active), []);
-  const warehouses = useLiveQuery(() => db.warehouses.toArray(), []);
-  const measures = useLiveQuery(() => db.measures.toArray(), []);
-  const moves = useLiveQuery(async () => (await db.stockMoves.toArray()).sort((a, b) => b.createdAt - a.createdAt).slice(0, 200), []);
+  const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>([]);
+  const [products, setProducts] = useState<CloudProduct[]>([]);
+  const [warehouseId, setWarehouseId] = useState("");
+  const [balances, setBalances] = useState<InventoryBalance[]>([]);
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
+  const [busy, setBusy] = useState(false);
   const [adjusting, setAdjusting] = useState(false);
   const [transferring, setTransferring] = useState(false);
-  const [newWh, setNewWh] = useState(false);
 
-  const inventoryValue = useMemo(
-    () => (products ?? []).reduce((a, p) => a + p.stock * (p.cost ?? 0), 0),
-    [products],
-  );
+  const reloadBase = useCallback(async () => {
+    const [nextWarehouses, nextProducts] = await Promise.all([
+      listAccessibleWarehouses(),
+      listCloudProducts(),
+    ]);
+    setWarehouses(nextWarehouses);
+    setProducts(nextProducts.filter((product) => product.active && product.trackInventory));
+    setWarehouseId((current) => current && nextWarehouses.some((item) => item.id === current)
+      ? current
+      : nextWarehouses[0]?.id ?? "");
+  }, []);
 
-  const stockByWarehouse = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const m of moves ?? []) {
-      const key = `${m.productId}:${m.warehouseId}`;
-      map.set(key, (map.get(key) ?? 0) + signedQty(m));
+  const reloadWarehouseData = useCallback(async (id: string) => {
+    if (!id) {
+      setBalances([]);
+      setMovements([]);
+      return;
     }
-    return map;
-  }, [moves]);
+    const [nextBalances, nextMovements] = await Promise.all([
+      listInventoryBalances(id),
+      listInventoryMovements(id),
+    ]);
+    setBalances(nextBalances);
+    setMovements(nextMovements);
+  }, []);
+
+  const reload = useCallback(async () => {
+    setBusy(true);
+    try {
+      await reloadBase();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo consultar el inventario en Firestore.");
+    } finally {
+      setBusy(false);
+    }
+  }, [reloadBase]);
+
+  useEffect(() => {
+    if (!loading && canRead) void reload();
+  }, [loading, canRead, reload]);
+
+  useEffect(() => {
+    if (!loading && canRead && warehouseId) {
+      void reloadWarehouseData(warehouseId).catch((error) => {
+        toast.error(error instanceof Error ? error.message : "No se pudieron consultar las existencias.");
+      });
+    }
+  }, [loading, canRead, warehouseId, reloadWarehouseData]);
+
+  const productById = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
+  const inventoryValue = useMemo(() => balances.reduce((total, balance) => {
+    const product = productById.get(balance.productId);
+    return total + balance.quantity * (product?.standardCost ?? 0);
+  }, 0), [balances, productById]);
+
+  if (loading) return <div className="p-6 text-sm text-muted-foreground">Verificando permisos…</div>;
+  if (!canRead) return <div className="p-6 text-sm text-destructive">Necesitas permiso de lectura de inventario y catálogo para consultar las existencias.</div>;
+
+  async function refreshAll() {
+    setBusy(true);
+    try {
+      await reloadBase();
+      if (warehouseId) await reloadWarehouseData(warehouseId);
+      toast.success("Inventario actualizado desde Firestore");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar el inventario.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function refreshWarehouse() {
+    if (!warehouseId) return;
+    try {
+      await reloadWarehouseData(warehouseId);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo actualizar la bodega.");
+    }
+  }
 
   return (
     <div>
-      <PageHeader title="Inventario" subtitle={`Valor en costo: ${formatMoney(inventoryValue, settings)}`} />
+      <PageHeader
+        title="Inventario"
+        subtitle={`Valor estimado en costo estándar: ${formatMoney(inventoryValue)}`}
+        right={
+          <button onClick={() => void refreshAll()} disabled={busy} className="h-9 px-3 rounded-lg border border-border text-xs inline-flex items-center gap-2 disabled:opacity-50">
+            <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Actualizar
+          </button>
+        }
+      />
 
-      <div className="px-4 md:px-6 flex gap-2 overflow-x-auto pb-2">
+      <div className="px-4 md:px-6 pb-2 flex flex-wrap items-center gap-2">
+        <label className="text-xs text-muted-foreground">Bodega</label>
+        <select value={warehouseId} onChange={(event) => setWarehouseId(event.target.value)} className="h-10 min-w-0 flex-1 sm:flex-none sm:min-w-64 px-3 rounded-lg bg-background border border-border text-sm">
+          <option value="">Selecciona bodega…</option>
+          {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name} · {warehouse.code}</option>)}
+        </select>
+      </div>
+
+      <div className="px-4 md:px-6 flex gap-2 overflow-x-auto pb-3">
         <TabBtn active={tab === "stock"} onClick={() => setTab("stock")}>Existencias</TabBtn>
         <TabBtn active={tab === "warehouses"} onClick={() => setTab("warehouses")}>Bodegas</TabBtn>
         <TabBtn active={tab === "kardex"} onClick={() => setTab("kardex")}>Kardex</TabBtn>
       </div>
 
-      {tab === "stock" && (
-        <div className="px-4 md:px-6 desktop-items catalog-items">
-          <div className="list-toolbar grid grid-cols-2 sm:flex gap-2">
-            <button onClick={() => setAdjusting(true)} className="h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2">
-              <SlidersHorizontal className="h-4 w-4" /> Ajustar
-            </button>
-            <button onClick={() => setTransferring(true)} className="h-11 rounded-xl border border-border text-sm font-semibold inline-flex items-center justify-center gap-2">
-              <ArrowLeftRight className="h-4 w-4" /> Trasladar
-            </button>
-          </div>
-          {products?.map((p) => (
-            <div key={p.id} className="rounded-xl bg-card border border-border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-sm font-medium truncate">{p.name}</div>
-                  <div className="text-xs text-muted-foreground">Costo {formatMoney(p.cost ?? 0, settings)} · Venta {formatMoney(p.price, settings)}</div>
-                </div>
-                <div className={`text-sm font-semibold ${p.trackStock && p.stock <= 5 ? "text-warning" : ""}`}>{p.stock} {measures?.find(m => m.id === p.measureId)?.symbol ?? "u"}</div>
-              </div>
-              {(warehouses?.length ?? 0) > 1 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {warehouses?.map((w) => (
-                    <span key={w.id} className="text-[11px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-                      {w.name}: {stockByWarehouse.get(`${p.id}:${w.id}`) ?? 0}
-                    </span>
-                  ))}
-                </div>
-              )}
+      {!warehouseId && tab !== "warehouses" && (
+        <div className="mx-4 md:mx-6 rounded-xl border border-dashed border-border p-8 text-center">
+          <Warehouse className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+          <p className="font-medium">No hay bodegas disponibles</p>
+          <p className="text-sm text-muted-foreground mt-1">Configura una bodega activa en la estructura organizacional y asígnala a tu usuario.</p>
+          <a href="/organization" className="inline-flex items-center gap-2 mt-4 text-sm text-primary">Ir a estructura organizacional <ExternalLink className="h-3.5 w-3.5" /></a>
+        </div>
+      )}
+
+      {tab === "stock" && warehouseId && (
+        <div className="px-4 md:px-6 pb-8 space-y-3">
+          {canWrite && (
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => setAdjusting(true)} className="h-10 px-3 rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2">
+                <SlidersHorizontal className="h-4 w-4" /> Nuevo movimiento
+              </button>
+              <button onClick={() => setTransferring(true)} disabled={warehouses.length < 2} className="h-10 px-3 rounded-xl border border-border text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50">
+                <ArrowLeftRight className="h-4 w-4" /> Trasladar
+              </button>
             </div>
-          ))}
-          {products?.length === 0 && <div className="text-center text-sm text-muted-foreground py-10">Crea productos primero</div>}
+          )}
+          {balances.map((balance) => {
+            const product = productById.get(balance.productId);
+            return (
+              <article key={balance.id} className="rounded-xl bg-card border border-border p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{product?.name ?? "Producto no encontrado"}</div>
+                    <div className="text-xs text-muted-foreground">{product?.code ?? balance.productId} · Lote {balance.lotCode}</div>
+                    <div className="text-xs text-muted-foreground mt-1">Vence: {balance.expiryDate ? formatDate(balance.expiryDate) : "No aplica / no registrado"}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className={`text-sm font-semibold ${balance.quantity <= 0 ? "text-destructive" : ""}`}>{balance.quantity} {balance.baseUnit}</div>
+                    <div className="text-xs text-muted-foreground">{formatMoney(balance.quantity * (product?.standardCost ?? 0))}</div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+          {balances.length === 0 && <div className="text-center text-sm text-muted-foreground py-10">Esta bodega todavía no tiene existencias registradas.</div>}
         </div>
       )}
 
       {tab === "warehouses" && (
-        <div className="px-4 md:px-6 desktop-items catalog-items">
-          <button onClick={() => setNewWh(true)} className="list-toolbar h-11 w-full rounded-xl bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center justify-center gap-2">
-            <Plus className="h-4 w-4" /> Nueva bodega
-          </button>
-          {warehouses?.map((w) => (
-            <div key={w.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
+        <div className="px-4 md:px-6 pb-8 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">Las bodegas se crean y administran desde la estructura organizacional.</p>
+            <a href="/organization" className="text-sm text-primary whitespace-nowrap">Administrar <ExternalLink className="inline h-3.5 w-3.5" /></a>
+          </div>
+          {warehouses.map((warehouse) => (
+            <button key={warehouse.id} onClick={() => { setWarehouseId(warehouse.id); setTab("stock"); }} className="w-full text-left rounded-xl bg-card border border-border p-3 flex items-center gap-3">
               <div className="h-10 w-10 rounded-lg bg-primary/15 text-primary grid place-items-center"><Warehouse className="h-5 w-5" /></div>
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium truncate">{w.name}</div>
-                <div className="text-xs text-muted-foreground">{w.location || "Sin ubicación"}{w.isDefault ? " · Principal" : ""}</div>
+                <div className="text-sm font-medium truncate">{warehouse.name}</div>
+                <div className="text-xs text-muted-foreground">{warehouse.code} · {warehouse.active ? "Activa" : "Inactiva"}</div>
               </div>
-              {!w.isDefault && (
-                <button
-                  onClick={async () => {
-                    await db.warehouses.toCollection().modify({ isDefault: false });
-                    await db.warehouses.update(w.id!, { isDefault: true });
-                    toast.success("Bodega principal actualizada");
-                  }}
-                  className="text-xs px-3 h-9 rounded-lg bg-muted font-medium"
-                >
-                  Principal
-                </button>
-              )}
-            </div>
+              <span className="text-xs text-primary">Ver existencias</span>
+            </button>
           ))}
+          {warehouses.length === 0 && <p className="text-center text-sm text-muted-foreground py-8">No tienes bodegas asignadas.</p>}
         </div>
       )}
 
-      {tab === "kardex" && (
-        <div className="px-4 md:px-6 space-y-2">
-          {moves?.map((m) => {
-            const wh = warehouses?.find((w) => w.id === m.warehouseId);
-            const q = signedQty(m);
+      {tab === "kardex" && warehouseId && (
+        <div className="px-4 md:px-6 pb-8 space-y-2">
+          {movements.map((movement) => {
+            const product = productById.get(movement.productId);
+            const quantity = movement.quantityDelta;
             return (
-              <div key={m.id} className="rounded-xl bg-card border border-border p-3 flex items-center gap-3">
+              <article key={movement.id} className="rounded-xl bg-card border border-border p-3 flex items-start gap-3">
                 <div className="h-9 w-9 rounded-lg bg-muted grid place-items-center"><ScrollText className="h-4 w-4 text-muted-foreground" /></div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{m.productName}</div>
-                  <div className="text-xs text-muted-foreground truncate">{formatDate(m.createdAt)} · {wh?.name ?? "—"}{m.note ? ` · ${m.note}` : ""}</div>
+                  <div className="text-sm font-medium truncate">{product?.name ?? movement.productId}</div>
+                  <div className="text-xs text-muted-foreground">{formatDate(movement.createdAt)} · Lote {movement.lotCode} · {movement.reason}</div>
+                  <div className="text-[11px] text-muted-foreground">Saldo: {movement.balanceBefore} → {movement.balanceAfter} {movement.baseUnit}</div>
                 </div>
-                <div className={`text-sm font-semibold ${q >= 0 ? "text-success" : "text-destructive"}`}>{q >= 0 ? "+" : ""}{q}</div>
-              </div>
+                <div className={`text-sm font-semibold ${quantity >= 0 ? "text-success" : "text-destructive"}`}>{quantity > 0 ? "+" : ""}{quantity}</div>
+              </article>
             );
           })}
-          {moves?.length === 0 && <div className="text-center text-sm text-muted-foreground py-10">Sin movimientos todavía</div>}
+          {movements.length === 0 && <div className="text-center text-sm text-muted-foreground py-10">Sin movimientos registrados en esta bodega.</div>}
         </div>
       )}
 
-      {adjusting && <AdjustSheet onClose={() => setAdjusting(false)} />}
-      {transferring && <TransferSheet onClose={() => setTransferring(false)} />}
-      {newWh && <WarehouseSheet onClose={() => setNewWh(false)} />}
+      {adjusting && <MovementSheet products={products} warehouseId={warehouseId} onClose={() => setAdjusting(false)} onSaved={refreshWarehouse} />}
+      {transferring && <TransferSheet products={products} warehouses={warehouses} sourceWarehouseId={warehouseId} onClose={() => setTransferring(false)} onSaved={refreshAll} />}
     </div>
   );
 }
@@ -159,116 +248,120 @@ function TabBtn({ active, onClick, children }: { active: boolean; onClick: () =>
   );
 }
 
-function WarehouseSheet({ onClose }: { onClose: () => void }) {
-  const [name, setName] = useState("");
-  const [location, setLocation] = useState("");
+function MovementSheet({ products, warehouseId, onClose, onSaved }: {
+  products: CloudProduct[];
+  warehouseId: string;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [productId, setProductId] = useState("");
+  const [type, setType] = useState<"receipt" | "issue" | "adjustment">("receipt");
+  const [quantity, setQuantity] = useState("");
+  const [lotCode, setLotCode] = useState("");
+  const [expiryDate, setExpiryDate] = useState("");
+  const [unitCost, setUnitCost] = useState("");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const selected = products.find((product) => product.id === productId);
+      if (!selected) throw new Error("Selecciona un producto.");
+      const amount = Number(quantity);
+      if (!Number.isFinite(amount) || (type === "adjustment" ? amount === 0 : amount <= 0)) {
+        throw new Error(type === "adjustment" ? "El ajuste debe ser distinto de cero." : "La cantidad debe ser mayor que cero.");
+      }
+      const expiry = expiryDate ? new Date(`${expiryDate}T23:59:59`).getTime() : undefined;
+      await postInventoryMovement({
+        productId,
+        warehouseId,
+        type,
+        quantity: amount,
+        lotCode: lotCode.trim(),
+        ...(expiry !== undefined ? { expiryDate: expiry } : {}),
+        ...(unitCost.trim() ? { unitCost: Number(unitCost) } : {}),
+        reason,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      toast.success("Movimiento confirmado en Firestore");
+      await onSaved();
+      onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo registrar el movimiento.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <Sheet title="Nueva bodega" onClose={onClose}>
-      <Field label="Nombre" value={name} onChange={setName} />
-      <Field label="Ubicación" value={location} onChange={setLocation} />
-      <button
-        onClick={async () => {
-          if (!name.trim()) { toast.error("Nombre obligatorio"); return; }
-          await db.warehouses.add({ name: name.trim(), location: location.trim(), createdAt: Date.now() });
-          toast.success("Bodega creada");
-          onClose();
-        }}
-        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold"
-      >
-        Guardar
-      </button>
+    <Sheet title="Nuevo movimiento de inventario" onClose={onClose}>
+      <form onSubmit={save} className="space-y-3">
+        <label className="block"><span className="text-xs text-muted-foreground">Tipo</span><select value={type} onChange={(event) => setType(event.target.value as typeof type)} className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm"><option value="receipt">Entrada</option><option value="issue">Salida</option><option value="adjustment">Ajuste (+/-)</option></select></label>
+        <label className="block"><span className="text-xs text-muted-foreground">Producto</span><select required value={productId} onChange={(event) => setProductId(event.target.value)} className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm"><option value="">Selecciona…</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.baseUnit}</option>)}</select></label>
+        <Field label={type === "adjustment" ? "Cantidad (negativo para descontar)" : "Cantidad"} value={quantity} onChange={setQuantity} type="number" />
+        <Field label="Lote" value={lotCode} onChange={setLotCode} />
+        <label className="block"><span className="text-xs text-muted-foreground">Vencimiento (obligatorio para materias primas y producto terminado al recibir)</span><input type="date" value={expiryDate} onChange={(event) => setExpiryDate(event.target.value)} className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm" /></label>
+        {type === "receipt" && <Field label="Costo unitario (opcional)" value={unitCost} onChange={setUnitCost} type="number" />}
+        <Field label="Motivo / referencia" value={reason} onChange={setReason} />
+        <button type="submit" disabled={saving} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold disabled:opacity-50">{saving ? "Guardando…" : "Confirmar movimiento"}</button>
+      </form>
     </Sheet>
   );
 }
 
-function ProductPicker({ value, onChange }: { value: number | ""; onChange: (v: number | "") => void }) {
-  const products = useLiveQuery(async () => (await db.products.toArray()).filter((p) => p.active), []);
-  return (
-    <label className="block">
-      <span className="text-xs text-muted-foreground">Producto</span>
-      <select value={value} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : "")} className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm">
-        <option value="">Selecciona…</option>
-        {products?.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.stock})</option>)}
-      </select>
-    </label>
-  );
-}
+function TransferSheet({ products, warehouses, sourceWarehouseId, onClose, onSaved }: {
+  products: CloudProduct[];
+  warehouses: InventoryWarehouse[];
+  sourceWarehouseId: string;
+  onClose: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const [productId, setProductId] = useState("");
+  const [targetWarehouseId, setTargetWarehouseId] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [lotCode, setLotCode] = useState("");
+  const [reason, setReason] = useState("Traslado interno");
+  const [saving, setSaving] = useState(false);
 
-function WarehousePicker({ label, value, onChange }: { label: string; value: number | ""; onChange: (v: number | "") => void }) {
-  const warehouses = useLiveQuery(() => db.warehouses.toArray(), []);
-  return (
-    <label className="block">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value ? Number(e.target.value) : "")} className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm">
-        <option value="">Selecciona…</option>
-        {warehouses?.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
-      </select>
-    </label>
-  );
-}
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    try {
+      if (!productId) throw new Error("Selecciona un producto.");
+      if (!targetWarehouseId || targetWarehouseId === sourceWarehouseId) throw new Error("Selecciona una bodega destino diferente.");
+      const amount = Number(quantity);
+      if (!Number.isFinite(amount) || amount <= 0) throw new Error("La cantidad debe ser mayor que cero.");
+      await transferInventory({
+        productId,
+        sourceWarehouseId,
+        targetWarehouseId,
+        quantity: amount,
+        lotCode,
+        reason,
+        idempotencyKey: crypto.randomUUID(),
+      });
+      toast.success("Traslado confirmado en Firestore");
+      await onSaved();
+      onClose();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "No se pudo trasladar el inventario.");
+    } finally {
+      setSaving(false);
+    }
+  }
 
-function AdjustSheet({ onClose }: { onClose: () => void }) {
-  const { user } = useAuth();
-  const [productId, setProductId] = useState<number | "">("");
-  const [warehouseId, setWarehouseId] = useState<number | "">("");
-  const [qty, setQty] = useState("");
-  const [note, setNote] = useState("");
-  return (
-    <Sheet title="Ajuste de inventario" onClose={onClose}>
-      <ProductPicker value={productId} onChange={setProductId} />
-      <WarehousePicker label="Bodega" value={warehouseId} onChange={setWarehouseId} />
-      <Field label="Cantidad (usa negativo para descontar)" value={qty} onChange={setQty} type="number" />
-      <Field label="Motivo" value={note} onChange={setNote} />
-      <button
-        onClick={async () => {
-          const n = Number(qty);
-          if (!productId || !warehouseId || !n) { toast.error("Completa los campos"); return; }
-          const p = await db.products.get(Number(productId));
-          await adjustStock({
-            productId: Number(productId), productName: p?.name ?? "", warehouseId: Number(warehouseId),
-            qty: n, note: note || "Ajuste manual", ...(user?.id !== undefined ? { userId: user.id } : {}),
-          });
-          toast.success("Ajuste registrado");
-          onClose();
-        }}
-        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold"
-      >
-        Aplicar ajuste
-      </button>
-    </Sheet>
-  );
-}
-
-function TransferSheet({ onClose }: { onClose: () => void }) {
-  const { user } = useAuth();
-  const [productId, setProductId] = useState<number | "">("");
-  const [fromId, setFromId] = useState<number | "">("");
-  const [toId, setToId] = useState<number | "">("");
-  const [qty, setQty] = useState("");
   return (
     <Sheet title="Traslado entre bodegas" onClose={onClose}>
-      <ProductPicker value={productId} onChange={setProductId} />
-      <WarehousePicker label="Desde" value={fromId} onChange={setFromId} />
-      <WarehousePicker label="Hacia" value={toId} onChange={setToId} />
-      <Field label="Cantidad" value={qty} onChange={setQty} type="number" />
-      <button
-        onClick={async () => {
-          try {
-            if (!productId || !fromId || !toId) throw new Error("Completa los campos");
-            const p = await db.products.get(Number(productId));
-            await transferStock({
-              productId: Number(productId), productName: p?.name ?? "",
-              fromId: Number(fromId), toId: Number(toId), qty: Number(qty) || 0,
-              note: "Traslado", ...(user?.id !== undefined ? { userId: user.id } : {}),
-            });
-            toast.success("Traslado registrado");
-            onClose();
-          } catch (e: any) { toast.error(e?.message ?? "Error"); }
-        }}
-        className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold"
-      >
-        Trasladar
-      </button>
+      <form onSubmit={save} className="space-y-3">
+        <label className="block"><span className="text-xs text-muted-foreground">Producto</span><select required value={productId} onChange={(event) => setProductId(event.target.value)} className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm"><option value="">Selecciona…</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>
+        <label className="block"><span className="text-xs text-muted-foreground">Bodega destino</span><select required value={targetWarehouseId} onChange={(event) => setTargetWarehouseId(event.target.value)} className="mt-1 w-full h-11 px-3 rounded-xl bg-background border border-border text-sm"><option value="">Selecciona…</option>{warehouses.filter((warehouse) => warehouse.id !== sourceWarehouseId).map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.name}</option>)}</select></label>
+        <Field label="Lote" value={lotCode} onChange={setLotCode} />
+        <Field label="Cantidad" value={quantity} onChange={setQuantity} type="number" />
+        <Field label="Motivo" value={reason} onChange={setReason} />
+        <button type="submit" disabled={saving} className="w-full h-12 rounded-xl bg-primary text-primary-foreground font-semibold disabled:opacity-50">{saving ? "Trasladando…" : "Confirmar traslado"}</button>
+      </form>
     </Sheet>
   );
 }
