@@ -6,7 +6,7 @@ import { useTheme } from "@/lib/theme";
 import { SyncStatus } from "@/components/SyncStatus";
 import { Button } from "@/components/ui/button";
 import {
-  ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3,
+  ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3, ClipboardList,
   Users, Settings, LogOut, MoreHorizontal, Truck, ShoppingBag,
   Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory, Building2,
 } from "lucide-react";
@@ -35,6 +35,8 @@ const navGroupsAdmin: readonly NavGroup[] = [
       { to: "/", label: "Inicio", icon: LayoutDashboard },
       { to: "/pos", label: "Vender", icon: ShoppingCart },
       { to: "/sales", label: "Ventas", icon: BarChart3 },
+      { to: "/orders", label: "Pedidos", icon: ClipboardList },
+      { to: "/dispatch", label: "Despachos", icon: Truck },
       { to: "/returns", label: "Devoluciones y notas", icon: Undo2 },
       { to: "/receivables", label: "Cartera", icon: HandCoins },
       { to: "/customers", label: "Clientes", icon: Users },
@@ -77,6 +79,8 @@ const ROUTE_TITLES: Record<string, string> = {
   "/": "Panel general",
   "/pos": "Punto de venta",
   "/sales": "Ventas",
+  "/orders": "Pedidos",
+  "/dispatch": "Despachos",
   "/returns": "Devoluciones y notas",
   "/receivables": "Cartera",
   "/customers": "Clientes",
