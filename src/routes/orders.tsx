@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { listCloudProducts, type CloudProduct } from "@/lib/cloud-catalog";
-import { createSalesOrder, listSalesOrders, type SalesOrder } from "@/lib/cloud-orders";
+import { createSalesOrder, listOrderDispatches, listSalesOrders, type SalesDispatch, type SalesOrder } from "@/lib/cloud-orders";
 import { formatMoney, formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { ClipboardList, Plus, RefreshCw, Trash2 } from "lucide-react";
@@ -157,10 +157,59 @@ function OrdersPage() {
             </div>
             <div className="text-xs text-muted-foreground">{order.lines.map((line) => `${line.productName}: ${line.dispatchedQty}/${line.orderedQty} ${line.baseUnit}`).join(" · ")}</div>
             <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total del pedido</span><strong>{formatMoney(order.subtotal)}</strong></div>
+            <OrderDispatchHistory orderId={order.id} />
           </article>
         ))}
         {orders.length === 0 && <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Todavía no hay pedidos en Firestore.</div>}
       </div>
+    </div>
+  );
+}
+
+
+function OrderDispatchHistory({ orderId }: { orderId: string }) {
+  const [open, setOpen] = useState(false);
+  const [dispatches, setDispatches] = useState<SalesDispatch[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  async function toggleHistory() {
+    if (!open && dispatches.length === 0) {
+      setLoadingHistory(true);
+      try {
+        setDispatches(await listOrderDispatches(orderId));
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "No se pudo consultar el historial de despachos.");
+        setLoadingHistory(false);
+        return;
+      }
+      setLoadingHistory(false);
+    }
+    setOpen((value) => !value);
+  }
+
+  return (
+    <div className="pt-2 border-t border-border">
+      <button type="button" onClick={() => void toggleHistory()} className="text-xs font-medium text-primary">
+        {loadingHistory ? "Consultando…" : open ? "Ocultar despachos" : "Ver historial de despachos"}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          {dispatches.map((dispatch) => (
+            <div key={dispatch.id} className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
+              <div className="font-semibold">Despacho confirmado · {formatDate(dispatch.createdAt)}</div>
+              <div className="text-muted-foreground">Bodega: {dispatch.warehouseId}</div>
+              {dispatch.lines.map((line, index) => (
+                <div key={`${dispatch.id}-${index}`} className="flex justify-between gap-2">
+                  <span>{line.productName} · Lote {line.lotCode}</span>
+                  <strong>{line.quantity}</strong>
+                </div>
+              ))}
+              {dispatch.notes && <div className="text-muted-foreground">Observación: {dispatch.notes}</div>}
+            </div>
+          ))}
+          {dispatches.length === 0 && <div className="text-xs text-muted-foreground">Este pedido todavía no tiene despachos confirmados.</div>}
+        </div>
+      )}
     </div>
   );
 }
