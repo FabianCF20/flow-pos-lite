@@ -186,7 +186,9 @@ export async function postInventoryMovement(input: {
         && existing.lotCode === lotCode
         && existing.expiryDate === (input.expiryDate ?? existing.expiryDate ?? null)
         && existing.unitCost === (input.unitCost ?? null)
-        && existing.reason === input.reason.trim();
+        && existing.reason === input.reason.trim()
+        && existing.referenceType === (input.referenceType ?? null)
+        && existing.referenceId === (input.referenceId ?? null);
       if (!sameOperation) throw new Error("La clave de operación ya fue utilizada para otro movimiento.");
       return movementId;
     }
