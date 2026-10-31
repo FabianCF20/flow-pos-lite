@@ -196,7 +196,7 @@ service cloud.firestore {
           ? canReadWarehouse(resource.data.warehouseId)
           : collection == 'inventoryTransfers'
             ? canReadWarehouse(resource.data.sourceWarehouseId)
-              && hasWarehouseScope(resource.data.targetWarehouseId)
+              && hasWarehouseReadScope(resource.data.targetWarehouseId)
             : collection == 'productionOrders'
               ? canRead('production') && hasWarehouseScope(resource.data.warehouseId)
               : collection == 'organizationUnits'
