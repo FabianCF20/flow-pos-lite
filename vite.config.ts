@@ -10,7 +10,7 @@ export default defineConfig(({ command }) => ({
     tailwindcss(),
     tsconfigPaths({ projects: ["./tsconfig.json"] }),
     tanstackStart({ server: { entry: "server" } }),
-    ...(command === "build" ? [nitro({ preset: "cloudflare-module" })] : []),
+    ...(command === "build" ? [nitro()] : []),
     react(),
   ],
   server: { host: "::", port: 8080 },
