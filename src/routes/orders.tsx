@@ -197,7 +197,7 @@ function OrderDispatchHistory({ orderId }: { orderId: string }) {
           {dispatches.map((dispatch) => (
             <div key={dispatch.id} className="rounded-lg bg-background border border-border p-3 text-xs space-y-1">
               <div className="font-semibold">Despacho confirmado · {formatDate(dispatch.createdAt)}</div>
-              <div className="text-muted-foreground">Bodega: {dispatch.warehouseId}</div>
+              <div className="text-muted-foreground">Bodega: {dispatch.warehouseName || dispatch.warehouseId}</div>
               {dispatch.lines.map((line, index) => (
                 <div key={`${dispatch.id}-${index}`} className="flex justify-between gap-2">
                   <span>{line.productName} · Lote {line.lotCode}</span>
