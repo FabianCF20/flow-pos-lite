@@ -69,7 +69,7 @@ function ref(name: string, id: string) {
 }
 
 async function hashId(value: string): Promise<string> {
-  const bytes = new TextEncoder().encode(value.trim().toUpperCase());
+  const bytes = new TextEncoder().encode(value.trim());
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
@@ -226,7 +226,13 @@ export async function confirmSalesOrderDispatch(input: {
       const existing = dispatchSnapshot.data();
       const same = existing.orderId === input.orderId
         && existing.warehouseId === input.warehouseId
-        && existing.idempotencyKey === input.idempotencyKey;
+        && existing.idempotencyKey === input.idempotencyKey
+        && Array.isArray(existing.lines)
+        && existing.lines.length === input.lines.length
+        && input.lines.every((line, index) =>
+          existing.lines[index]?.productId === line.productId
+          && existing.lines[index]?.quantity === line.quantity
+          && existing.lines[index]?.lotCode === (line.lotCode.trim().toUpperCase()));
       if (!same) throw new Error("La clave de operación ya fue utilizada por otro despacho.");
       return;
     }
