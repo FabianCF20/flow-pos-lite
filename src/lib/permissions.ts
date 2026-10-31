@@ -4,7 +4,6 @@ export const MODULES = [
   { id: "sales", label: "Ventas", path: "/sales" },
   { id: "orders", label: "Pedidos", path: "/orders" },
   { id: "dispatch", label: "Despachos", path: "/dispatch" },
-  { id: "orders", label: "Pedidos", path: "/orders" },
   { id: "returns", label: "Devoluciones y notas", path: "/returns" },
   { id: "customers", label: "Clientes", path: "/customers" },
   { id: "products", label: "Productos", path: "/products" },
