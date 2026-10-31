@@ -195,9 +195,9 @@ service cloud.firestore {
     // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
       allow get, list: if company == 'default' && (collection == 'salesOrders'
-          ? canRead('sales') || canRead('dispatch')
+          ? canRead('orders') || canRead('sales') || canRead('dispatch')
           : collection == 'salesDispatches'
-            ? canRead('sales') || canRead('dispatch')
+            ? canRead('orders') || canRead('sales') || canRead('dispatch')
             : collection in ['inventoryBalances', 'inventoryMovements']
           ? canReadWarehouse(resource.data.warehouseId)
           : collection == 'inventoryTransfers'
@@ -215,7 +215,7 @@ service cloud.firestore {
                     && canRead('production')));
 
       allow create: if company == 'default' && (collection == 'salesOrders'
-          ? canWrite('sales')
+          ? canWrite('orders') || canWrite('sales')
           : collection == 'salesDispatches'
             ? canWrite('dispatch') && canWriteWarehouse(request.resource.data.warehouseId)
             : collection == 'inventoryBalances'
