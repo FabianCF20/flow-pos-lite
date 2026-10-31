@@ -16,6 +16,7 @@ export const Route = createFileRoute("/dispatch")({
 function DispatchPage() {
   const { can, loading } = useAuth();
   const canRead = can("dispatch", "read");
+  const canConfirm = can("dispatch", "write") && can("inventory", "write");
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>([]);
   const [busy, setBusy] = useState(false);
@@ -57,7 +58,7 @@ function DispatchPage() {
           </div>
         )}
         {orders.map((order) => (
-          <DispatchOrderCard key={order.id} order={order} warehouses={warehouses} onSaved={reload} />
+          <DispatchOrderCard key={order.id} order={order} warehouses={warehouses} canConfirm={canConfirm} onSaved={reload} />
         ))}
         {orders.length === 0 && !busy && (
           <div className="rounded-xl border border-dashed border-border p-8 text-center">
@@ -71,9 +72,10 @@ function DispatchPage() {
   );
 }
 
-function DispatchOrderCard({ order, warehouses, onSaved }: {
+function DispatchOrderCard({ order, warehouses, canConfirm, onSaved }: {
   order: SalesOrder;
   warehouses: InventoryWarehouse[];
+  canConfirm: boolean;
   onSaved: () => Promise<void>;
 }) {
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
@@ -158,7 +160,7 @@ function DispatchOrderCard({ order, warehouses, onSaved }: {
       </label>
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs text-muted-foreground">{order.dispatchedQtyTotal}/{order.orderedQtyTotal} unidades despachadas</span>
-        <button type="submit" disabled={saving || warehouses.length === 0} className="h-11 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Truck className="h-4 w-4" />{saving ? "Confirmando…" : "Confirmar despacho"}</button>
+        <button type="submit" disabled={!canConfirm || saving || warehouses.length === 0} className="h-11 px-4 rounded-lg bg-primary text-primary-foreground text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"><Truck className="h-4 w-4" />{!canConfirm ? "Solo consulta" : saving ? "Confirmando…" : "Confirmar despacho"}</button>
       </div>
     </form>
   );
