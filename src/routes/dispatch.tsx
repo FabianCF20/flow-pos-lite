@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { listAccessibleWarehouses, type InventoryWarehouse } from "@/lib/cloud-inventory";
-import { confirmSalesOrderDispatch, listDispatchQueue, type SalesOrder } from "@/lib/cloud-orders";
+import { confirmSalesOrderDispatch, listDispatchNotifications, listDispatchQueue, type DispatchNotification, type SalesOrder } from "@/lib/cloud-orders";
 import { formatDate } from "@/lib/format";
 import { toast } from "sonner";
 import { RefreshCw, Truck, PackageCheck } from "lucide-react";
@@ -18,17 +18,20 @@ function DispatchPage() {
   const canRead = can("dispatch", "read");
   const canConfirm = can("dispatch", "write") && can("inventory", "write");
   const [orders, setOrders] = useState<SalesOrder[]>([]);
+  const [notifications, setNotifications] = useState<DispatchNotification[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>([]);
   const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
     setBusy(true);
     try {
-      const [nextOrders, nextWarehouses] = await Promise.all([
+      const [nextOrders, nextNotifications, nextWarehouses] = await Promise.all([
         listDispatchQueue(),
+        listDispatchNotifications(),
         listAccessibleWarehouses(),
       ]);
       setOrders(nextOrders);
+      setNotifications(nextNotifications);
       setWarehouses(nextWarehouses);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "No se pudo cargar la cola de despachos.");
@@ -52,13 +55,26 @@ function DispatchPage() {
         right={<button onClick={() => void reload()} disabled={busy} className="h-9 px-3 rounded-lg border border-border text-xs inline-flex items-center gap-2"><RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Actualizar</button>}
       />
       <div className="px-4 md:px-6 pb-8 space-y-4">
+        {notifications.some((item) => item.status === "pending") && (
+          <div className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-sm">
+            <strong>{notifications.filter((item) => item.status === "pending").length} pedido(s) nuevo(s).</strong>
+            <span className="text-muted-foreground"> Ventas registró pedidos que requieren preparación y despacho.</span>
+          </div>
+        )}
         {warehouses.length === 0 && (
           <div className="rounded-xl border border-dashed border-border p-5 text-sm text-muted-foreground">
             No tienes bodegas asignadas. Solicita al administrador que asigne una bodega a tu usuario.
           </div>
         )}
         {orders.map((order) => (
-          <DispatchOrderCard key={order.id} order={order} warehouses={warehouses} canConfirm={canConfirm} onSaved={reload} />
+          <DispatchOrderCard
+            key={order.id}
+            order={order}
+            warehouses={warehouses}
+            canConfirm={canConfirm}
+            notificationStatus={notifications.find((item) => item.orderId === order.id)?.status}
+            onSaved={reload}
+          />
         ))}
         {orders.length === 0 && !busy && (
           <div className="rounded-xl border border-dashed border-border p-8 text-center">
@@ -72,10 +88,11 @@ function DispatchPage() {
   );
 }
 
-function DispatchOrderCard({ order, warehouses, canConfirm, onSaved }: {
+function DispatchOrderCard({ order, warehouses, canConfirm, notificationStatus, onSaved }: {
   order: SalesOrder;
   warehouses: InventoryWarehouse[];
   canConfirm: boolean;
+  notificationStatus?: DispatchNotification["status"];
   onSaved: () => Promise<void>;
 }) {
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
@@ -125,7 +142,7 @@ function DispatchOrderCard({ order, warehouses, canConfirm, onSaved }: {
     <form onSubmit={confirm} className="rounded-xl border border-border bg-card p-4 space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div><div className="font-semibold">{order.orderCode}</div><div className="text-xs text-muted-foreground">{order.customerName} · {formatDate(order.createdAt)}</div></div>
-        <span className="text-xs rounded-full bg-muted px-2.5 py-1">{order.status === "partially_dispatched" ? "Despacho parcial" : "Pendiente"}</span>
+        <span className="text-xs rounded-full bg-muted px-2.5 py-1">{notificationStatus === "pending" ? "Nuevo pedido" : notificationStatus === "in_progress" ? "En preparación" : order.status === "partially_dispatched" ? "Despacho parcial" : "Pendiente"}</span>
       </div>
       {order.deliveryAddress && <div className="text-xs text-muted-foreground">Entrega: {order.deliveryAddress}</div>}
       <div className="space-y-2">
