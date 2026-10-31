@@ -262,6 +262,12 @@ export async function confirmSalesOrderDispatch(input: {
         throw new Error(`La cantidad de ${orderLine.productName} supera lo pendiente del pedido.`);
       }
       const product = productSnapshot.data();
+      if (product.productType !== "finished_product") {
+        throw new Error("El producto ya no está clasificado como producto terminado.");
+      }
+      if ((product.trackInventory !== false) !== orderLine.trackInventory) {
+        throw new Error("El control de inventario del producto cambió después de crear el pedido. Solicita revisión antes de despachar.");
+      }
       if (orderLine.trackInventory) {
         if (product.trackInventory === false) throw new Error("El producto ya no tiene control de inventario habilitado.");
         const balance = Number(balanceSnapshot?.data()?.quantity ?? 0);
@@ -269,7 +275,8 @@ export async function confirmSalesOrderDispatch(input: {
         if (!balanceSnapshot?.exists() || balance < requestLine.quantity) {
           throw new Error(`Existencia insuficiente del lote ${lotCodes[index]} para ${orderLine.productName}. Disponible: ${balance}.`);
         }
-        if (expiryDate !== null && Number(expiryDate) < now) throw new Error(`El lote ${lotCodes[index]} está vencido.`);
+        if (expiryDate === null) throw new Error(`El lote ${lotCodes[index]} no tiene vencimiento registrado.`);
+        if (Number(expiryDate) < now) throw new Error(`El lote ${lotCodes[index]} está vencido.`);
         if (requestLine.expiryDate !== undefined && balanceSnapshot.data().expiryDate !== undefined
           && requestLine.expiryDate !== balanceSnapshot.data().expiryDate) {
           throw new Error("La fecha de vencimiento no coincide con el lote registrado.");
