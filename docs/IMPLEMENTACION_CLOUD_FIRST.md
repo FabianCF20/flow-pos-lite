@@ -207,3 +207,10 @@ Limitaciones pendientes:
 - No hay todavía asignación automática FEFO ni cierre de producción que consuma materias primas y genere lotes terminados.
 - No hay todavía flujo de recepción de compras conectado a entradas de inventario.
 - Los movimientos manuales deben reservarse para operaciones autorizadas y ajustes justificados; las entradas/salidas operativas deberán originarse en recepción, producción o despacho cuando esos flujos se implementen.
+
+
+### Permisos de inventario para Contabilidad
+
+El rol predefinido de Contabilidad ahora incluye lectura del catálogo y del inventario general, sin permiso de escritura de inventario. Las reglas permiten a ese rol consultar existencias, movimientos y ambos extremos de los traslados en todas las bodegas. La escritura de movimientos y traslados sigue requiriendo permiso de inventario y alcance explícito sobre las bodegas.
+
+Este ajuste del rol predefinido aplica al crear roles nuevos; no sobrescribe roles existentes ni asignaciones personalizadas en Firestore.
