@@ -20,6 +20,7 @@ const identities = {
   cashier: { uid: "cashier-uid", email: "cashier@example.test" },
   dispatcher: { uid: "dispatcher-uid", email: "dispatcher@example.test" },
   noAssignment: { uid: "unassigned-uid", email: "unassigned@example.test" },
+  warehouse: { uid: "warehouse-uid", email: "warehouse@example.test" },
 };
 
 const roles = {
@@ -34,6 +35,10 @@ const roles = {
       pos: "write",
       cash: "write",
     },
+  },
+  warehouse: {
+    name: "Inventario",
+    permissions: { inventory: "write", products: "read" },
   },
   dispatcher: {
     name: "Despachador",
@@ -59,6 +64,14 @@ async function seed() {
       active: true,
       overrides: {},
       warehouseIds: [],
+    });
+    await setDoc(doc(db, "userAccess", identities.warehouse.email), {
+      uid: identities.warehouse.uid,
+      email: identities.warehouse.email,
+      roleId: "warehouse",
+      active: true,
+      overrides: {},
+      warehouseIds: ["warehouse-a"],
     });
     await setDoc(doc(db, "userAccess", identities.dispatcher.email), {
       uid: identities.dispatcher.uid,
@@ -243,6 +256,158 @@ describe("Firestore security rules", () => {
       updatedBy: identities.dispatcher.uid,
       revision: 2,
     }));
+  });
+
+
+  it("denies dispatchers from directly creating dispatch records", async () => {
+    const db = dbFor(identities.dispatcher);
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "erp/default/salesOrders/order-secure"), {
+        id: "order-secure",
+        orderCode: "PED-SECURE",
+        createdBy: identities.cashier.uid,
+        createdAt: 100,
+        status: "open",
+        lines: [{ productId: "product-a", orderedQty: 5, dispatchedQty: 0 }],
+        orderedQtyTotal: 5,
+        dispatchedQtyTotal: 0,
+        revision: 1,
+      });
+    });
+    const batch = writeBatch(db);
+    batch.set(doc(db, "erp/default/salesDispatches/forged-dispatch"), {
+      id: "forged-dispatch",
+      orderId: "order-secure",
+      warehouseId: "warehouse-a",
+      createdBy: identities.dispatcher.uid,
+      lines: [{ productId: "product-a", quantity: 5, lotCode: "LOT-001" }],
+      status: "confirmed",
+    });
+    batch.update(doc(db, "erp/default/salesOrders/order-secure"), {
+      status: "dispatched",
+      dispatchedQtyTotal: 5,
+      lines: [{ productId: "product-a", orderedQty: 5, dispatchedQty: 5 }],
+      lastDispatchId: "forged-dispatch",
+      updatedAt: 200,
+      updatedBy: identities.dispatcher.uid,
+      revision: 2,
+    });
+    await assertFails(batch.commit());
+  });
+
+  it("denies dispatchers from marking a notification completed without an authorized dispatch", async () => {
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), "erp/default/dispatchNotifications/order-notify"), {
+        id: "order-notify",
+        orderId: "order-notify",
+        orderCode: "PED-NOTIFY",
+        createdBy: identities.cashier.uid,
+        createdAt: 100,
+        updatedAt: 100,
+        status: "pending",
+        revision: 1,
+      });
+    });
+    const db = dbFor(identities.dispatcher);
+    await assertFails(setDoc(doc(db, "erp/default/dispatchNotifications/order-notify"), {
+      id: "order-notify",
+      orderId: "order-notify",
+      orderCode: "PED-NOTIFY",
+      createdBy: identities.cashier.uid,
+      createdAt: 100,
+      updatedAt: 200,
+      updatedBy: identities.dispatcher.uid,
+      status: "completed",
+      revision: 2,
+    }));
+  });
+
+  it("allows inventory staff to create an opening balance only with its matching receipt movement", async () => {
+    const db = dbFor(identities.warehouse);
+    const batch = writeBatch(db);
+    batch.set(doc(db, "erp/default/inventoryBalances/opening-balance"), {
+      id: "opening-balance",
+      productId: "product-a",
+      warehouseId: "warehouse-a",
+      lotCode: "LOT-OPEN",
+      quantity: 5,
+      revision: 1,
+      lastMovementId: "opening-movement",
+      createdAt: 100,
+      updatedAt: 100,
+      createdBy: identities.warehouse.uid,
+      updatedBy: identities.warehouse.uid,
+    });
+    batch.set(doc(db, "erp/default/inventoryMovements/opening-movement"), {
+      id: "opening-movement",
+      balanceId: "opening-balance",
+      productId: "product-a",
+      warehouseId: "warehouse-a",
+      lotCode: "LOT-OPEN",
+      type: "receipt",
+      quantityDelta: 5,
+      balanceBefore: 0,
+      balanceAfter: 5,
+      referenceType: "opening",
+      createdBy: identities.warehouse.uid,
+      createdAt: 100,
+    });
+    await assertSucceeds(batch.commit());
+  });
+
+  it("denies inventory staff from fabricating a previous balance during an update", async () => {
+    const db = dbFor(identities.warehouse);
+    const batch = writeBatch(db);
+    batch.update(doc(db, "erp/default/inventoryBalances/balance-a"), {
+      quantity: 19,
+      revision: 2,
+      lastMovementId: "forged-history",
+      updatedAt: 200,
+      updatedBy: identities.warehouse.uid,
+    });
+    batch.set(doc(db, "erp/default/inventoryMovements/forged-history"), {
+      id: "forged-history",
+      balanceId: "balance-a",
+      productId: "product-a",
+      warehouseId: "warehouse-a",
+      lotCode: "LOT-001",
+      type: "issue",
+      quantityDelta: -1,
+      balanceBefore: 20,
+      balanceAfter: 19,
+      referenceType: "manual",
+      createdBy: identities.warehouse.uid,
+      createdAt: 200,
+    });
+    await assertFails(batch.commit());
+  });
+
+  it("denies inventory staff from linking a client-created movement to a sales dispatch", async () => {
+    const db = dbFor(identities.warehouse);
+    const batch = writeBatch(db);
+    batch.update(doc(db, "erp/default/inventoryBalances/balance-a"), {
+      quantity: 24,
+      revision: 2,
+      lastMovementId: "spoofed-dispatch-movement",
+      updatedAt: 200,
+      updatedBy: identities.warehouse.uid,
+    });
+    batch.set(doc(db, "erp/default/inventoryMovements/spoofed-dispatch-movement"), {
+      id: "spoofed-dispatch-movement",
+      balanceId: "balance-a",
+      productId: "product-a",
+      warehouseId: "warehouse-a",
+      lotCode: "LOT-001",
+      type: "issue",
+      quantityDelta: -1,
+      balanceBefore: 25,
+      balanceAfter: 24,
+      referenceType: "sales_dispatch",
+      referenceId: "not-a-real-dispatch",
+      createdBy: identities.warehouse.uid,
+      createdAt: 200,
+    });
+    await assertFails(batch.commit());
   });
 
   it("denies writes to unknown ERP collections", async () => {
