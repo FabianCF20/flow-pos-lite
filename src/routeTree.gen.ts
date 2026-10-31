@@ -259,10 +259,12 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/categories'
     | '/customers'
+    | '/dispatch'
     | '/inventory'
     | '/login'
     | '/more'
     | '/organization'
+    | '/orders'
     | '/pos'
     | '/production'
     | '/products'
@@ -282,6 +284,7 @@ export interface FileRouteTypes {
     | '/catalog'
     | '/categories'
     | '/customers'
+    | '/dispatch'
     | '/inventory'
     | '/login'
     | '/more'
@@ -388,13 +391,6 @@ declare module '@tanstack/react-router' {
       path: '/more'
       fullPath: '/more'
       preLoaderRoute: typeof MoreRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/organization': {
-      id: '/organization'
-      path: '/organization'
-      fullPath: '/organization'
-      preLoaderRoute: typeof OrganizationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dispatch': {
