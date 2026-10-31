@@ -78,7 +78,7 @@ export async function listAccessibleWarehouses(module: "inventory" | "production
   if (!assignment) throw new Error("No se encontró la asignación de acceso.");
 
   const base = collection(fbDb(), "erp", CLOUD_COMPANY_ID, "organizationUnits");
-  if (assignment.roleId === "admin" || assignment.allWarehouses === true) {
+  if (assignment.roleId === "admin" || assignment.roleId === "accountant" || assignment.allWarehouses === true) {
     const snapshot = await getDocsFromServer(query(base, where("type", "==", "warehouse")));
     return snapshot.docs
       .filter((item) => item.data().active === true && item.data().deleted !== true)
