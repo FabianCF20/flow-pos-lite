@@ -50,6 +50,7 @@ export interface SalesDispatch extends CloudRecord {
   orderId: string;
   orderCode: string;
   warehouseId: string;
+  warehouseName: string;
   lines: Array<{
     productId: string;
     productName: string;
@@ -374,7 +375,9 @@ export async function confirmSalesOrderDispatch(input: {
     transaction.set(dispatchRef, {
       id: dispatchId, companyId: CLOUD_COMPANY_ID,
       orderId: input.orderId, orderCode: order.orderCode,
-      warehouseId: input.warehouseId, lines: dispatchLines,
+      warehouseId: input.warehouseId,
+      warehouseName: String(warehouseSnapshot.data().name ?? ""),
+      lines: dispatchLines,
       notes: input.notes?.trim() ?? "", status: "confirmed",
       idempotencyKey: input.idempotencyKey,
       createdAt: now, updatedAt: now, createdBy: user.uid,
