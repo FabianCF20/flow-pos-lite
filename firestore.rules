@@ -176,6 +176,31 @@ service cloud.firestore {
         && order.data.status in ['partially_dispatched', 'dispatched'];
     }
 
+    function validDispatchNotificationCreate(notificationId) {
+      let orderPath = /databases/$(database)/documents/erp/default/salesOrders/$(request.resource.data.orderId);
+      let order = getAfter(orderPath);
+      return canWrite('orders')
+        && request.resource.data.id == notificationId
+        && request.resource.data.orderId == notificationId
+        && request.resource.data.status == 'pending'
+        && existsAfter(orderPath)
+        && order.data.orderCode == request.resource.data.orderCode
+        && order.data.createdBy == request.auth.uid;
+    }
+
+    function validDispatchNotificationUpdate() {
+      return canWrite('dispatch')
+        && request.resource.data.orderId == resource.data.orderId
+        && request.resource.data.orderCode == resource.data.orderCode
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.status in ['in_progress', 'completed']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'updatedBy', 'revision'
+        ])
+        && request.resource.data.revision == resource.data.revision + 1;
+    }
+
     function moduleForCollection(collectionName) {
       return collectionName == 'products' ? 'products'
         : collectionName == 'categories' ? 'categories'
@@ -184,6 +209,7 @@ service cloud.firestore {
         : collectionName == 'sales' ? 'sales'
         : collectionName == 'salesOrders' ? 'sales'
         : collectionName == 'salesDispatches' ? 'dispatch'
+        : collectionName == 'dispatchNotifications' ? 'dispatch'
         : collectionName == 'saleReturns' ? 'returns'
         : collectionName == 'debitNotes' ? 'returns'
         : collectionName == 'warehouses' ? 'inventory'
@@ -256,7 +282,9 @@ service cloud.firestore {
     // La empresa se mantiene aislada por ruta. El módulo se resuelve en el servidor
     // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
-      allow get, list: if company == 'default' && (collection == 'salesOrders'
+      allow get, list: if company == 'default' && (collection == 'dispatchNotifications'
+          ? canRead('dispatch')
+          : collection == 'salesOrders'
           ? canRead('orders') || canRead('sales') || canRead('dispatch')
           : collection == 'salesDispatches'
             ? canRead('orders') || canRead('sales') || canRead('dispatch')
@@ -276,7 +304,9 @@ service cloud.firestore {
                   || (collection in ['productionFormulas', 'productionFormulaVersions']
                     && canRead('production')));
 
-      allow create: if company == 'default' && (collection == 'salesOrders'
+      allow create: if company == 'default' && (collection == 'dispatchNotifications'
+          ? validDispatchNotificationCreate(docId)
+          : collection == 'salesOrders'
           ? canWrite('orders') || canWrite('sales')
           : collection == 'salesDispatches'
             ? validSalesDispatchCreate(docId)
@@ -293,7 +323,9 @@ service cloud.firestore {
                   ? canWrite('production_formulas')
                   : canWrite(moduleForCollection(collection)));
 
-      allow update: if company == 'default' && (collection == 'salesOrders'
+      allow update: if company == 'default' && (collection == 'dispatchNotifications'
+          ? validDispatchNotificationUpdate()
+          : collection == 'salesOrders'
           ? validSalesOrderDispatchUpdate(docId)
           : collection == 'salesDispatches'
             ? false
@@ -364,6 +396,7 @@ service cloud.firestore {
       allow delete: if company == 'default' && !(collection in [
           'salesOrders',
           'salesDispatches',
+          'dispatchNotifications',
           'inventoryBalances',
           'inventoryMovements',
           'products',
