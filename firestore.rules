@@ -65,8 +65,16 @@ service cloud.firestore {
             || assignment().get('warehouseIds', []).hasAny([warehouseId])));
     }
 
+    function hasWarehouseReadScope(warehouseId) {
+      return isAdmin()
+        || (hasActiveAssignment()
+          && (assignment().roleId == 'accountant'
+            || assignment().get('allWarehouses', false) == true
+            || assignment().get('warehouseIds', []).hasAny([warehouseId])));
+    }
+
     function canReadWarehouse(warehouseId) {
-      return canRead('inventory') && hasWarehouseScope(warehouseId);
+      return canRead('inventory') && hasWarehouseReadScope(warehouseId);
     }
 
     function canWriteWarehouse(warehouseId) {
@@ -195,7 +203,7 @@ service cloud.firestore {
                 ? canRead('settings')
                   || (resource.data.type == 'warehouse'
                     && (canRead('inventory') || canRead('production'))
-                    && hasWarehouseScope(resource.data.id))
+                    && hasWarehouseReadScope(resource.data.id))
                 : canRead(moduleForCollection(collection))
                   || (collection in ['productionFormulas', 'productionFormulaVersions']
                     && canRead('production')));
