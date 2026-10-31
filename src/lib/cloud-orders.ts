@@ -9,7 +9,7 @@ import {
 } from "firebase/firestore";
 import { fbAuth, fbDb } from "./firebase";
 import { CLOUD_COMPANY_ID, type CloudRecord } from "./cloud-data";
-import { assertAccess } from "./access-session";
+import { assertAccess, getAccessSession } from "./access-session";
 
 export type SalesOrderStatus = "open" | "partially_dispatched" | "dispatched" | "cancelled";
 
@@ -220,8 +220,13 @@ export async function confirmSalesOrderDispatch(input: {
 }): Promise<string> {
   const user = userOnline();
   assertAccess("dispatch", "write");
-  assertAccess("inventory", "write");
   if (!input.warehouseId.trim()) throw new Error("Selecciona la bodega desde la que se despacha.");
+  const assignment = getAccessSession()?.assignment;
+  if (assignment?.roleId !== "admin"
+    && assignment?.allWarehouses !== true
+    && !(assignment?.warehouseIds ?? []).includes(input.warehouseId)) {
+    throw new Error("No tienes asignada la bodega seleccionada para despachar.");
+  }
   if (!input.lines.length || input.lines.length > 40) throw new Error("El despacho debe contener entre 1 y 40 líneas.");
   if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) throw new Error("La clave de operación no es válida.");
   const uniqueProducts = new Set<string>();
