@@ -71,6 +71,7 @@ const navGroupsCashier: readonly NavGroup[] = [
       { to: "/pos", label: "Vender", icon: ShoppingCart },
       { to: "/cash", label: "Caja", icon: Wallet },
       { to: "/sales", label: "Tickets", icon: BarChart3 },
+      { to: "/orders", label: "Pedidos", icon: ClipboardList },
     ],
   },
 ];
@@ -100,7 +101,7 @@ const ROUTE_TITLES: Record<string, string> = {
 };
 
 // Rutas permitidas para el rol cajero
-export const CASHIER_ALLOWED = ["/pos", "/cash", "/sales", "/more", "/login"];
+export const CASHIER_ALLOWED = ["/pos", "/cash", "/sales", "/orders", "/more", "/login"];
 
 export function isRouteAllowed(role: string | undefined, pathname: string) {
   if (role !== "cashier") return true;
