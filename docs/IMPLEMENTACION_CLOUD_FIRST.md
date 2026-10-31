@@ -240,9 +240,11 @@ Se añadieron las rutas `/orders` y `/dispatch` y el servicio `src/lib/cloud-ord
 
 **Permisos**
 - Ventas: lectura y creación de pedidos, sin permisos para confirmar despachos.
-- Inventario y despachos: lectura de pedidos, confirmación de despachos y escritura de inventario, siempre con bodegas asignadas.
+- Supervisor de despachos (`dispatcher`): consulta pedidos e inventario, confirma despachos únicamente en bodegas asignadas; no recibe permiso para ajustes manuales ni traslados de inventario.
+- Inventario: conserva los permisos para entradas, salidas, ajustes y traslados manuales autorizados.
 - Jefe de producción y Contabilidad: lectura según los permisos predefinidos.
 - El inicio de sesión del administrador agrega los permisos nuevos que falten en roles predefinidos existentes, sin sobrescribir permisos personalizados ya configurados.
+- La salida de inventario realizada por el supervisor de despachos solo se permite cuando forma parte de una transacción de despacho confirmada y está asociada a una bodega asignada.
 
 **Límites de esta entrega**
 - El POS anterior y la pantalla histórica de ventas siguen dependiendo de Dexie. No se han conectado a estos pedidos ni se han eliminado sus operaciones locales.
