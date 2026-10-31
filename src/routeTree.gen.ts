@@ -289,6 +289,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/more'
     | '/organization'
+    | '/orders'
     | '/pos'
     | '/production'
     | '/products'
