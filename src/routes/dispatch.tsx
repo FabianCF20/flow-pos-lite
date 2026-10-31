@@ -16,7 +16,7 @@ export const Route = createFileRoute("/dispatch")({
 function DispatchPage() {
   const { can, loading } = useAuth();
   const canRead = can("dispatch", "read");
-  const canConfirm = can("dispatch", "write") && can("inventory", "write");
+  const canConfirm = can("dispatch", "write");
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [notifications, setNotifications] = useState<DispatchNotification[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouse[]>([]);
