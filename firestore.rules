@@ -114,52 +114,92 @@ service cloud.firestore {
         ]);
     }
 
-    function validInventoryBalanceWrite(balanceId) {
+    function validMovementDelta() {
+      return request.resource.data.type in ['receipt', 'transfer_in']
+          ? request.resource.data.quantityDelta > 0
+          : request.resource.data.type in ['issue', 'transfer_out']
+            ? request.resource.data.quantityDelta < 0
+            : request.resource.data.type == 'adjustment'
+              && request.resource.data.quantityDelta != 0;
+    }
+
+    function validInventoryBalanceCreate(balanceId) {
       let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastMovementId);
       let movement = getAfter(movementPath);
-      return existsAfter(movementPath)
+      return canWriteWarehouse(request.resource.data.warehouseId)
+        && existsAfter(movementPath)
         && request.resource.data.id == balanceId
+        && request.resource.data.quantity > 0
         && movement.data.createdBy == request.auth.uid
-        && (canWriteWarehouse(request.resource.data.warehouseId)
-          || (movement.data.referenceType == 'sales_dispatch'
-            && canWrite('dispatch')
-            && hasWarehouseScope(request.resource.data.warehouseId)))
         && movement.data.balanceId == balanceId
         && movement.data.productId == request.resource.data.productId
         && movement.data.warehouseId == request.resource.data.warehouseId
         && movement.data.lotCode == request.resource.data.lotCode
-        && movement.data.balanceAfter == request.resource.data.quantity;
+        && movement.data.balanceBefore == 0
+        && movement.data.balanceAfter == request.resource.data.quantity
+        && movement.data.quantityDelta == request.resource.data.quantity
+        && movement.data.type in ['receipt', 'adjustment', 'transfer_in'];
+    }
+
+    function validInventoryBalanceUpdate(balanceId) {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastMovementId);
+      let movement = getAfter(movementPath);
+      return canWriteWarehouse(resource.data.warehouseId)
+        && existsAfter(movementPath)
+        && request.resource.data.id == balanceId
+        && request.resource.data.warehouseId == resource.data.warehouseId
+        && request.resource.data.productId == resource.data.productId
+        && request.resource.data.lotCode == resource.data.lotCode
+        && request.resource.data.quantity >= 0
+        && request.resource.data.revision == resource.data.revision + 1
+        && request.resource.data.lastMovementId != resource.data.lastMovementId
+        && movement.data.createdBy == request.auth.uid
+        && movement.data.balanceId == balanceId
+        && movement.data.productId == resource.data.productId
+        && movement.data.warehouseId == resource.data.warehouseId
+        && movement.data.lotCode == resource.data.lotCode
+        && movement.data.balanceBefore == resource.data.quantity
+        && movement.data.balanceAfter == request.resource.data.quantity
+        && movement.data.balanceAfter == movement.data.balanceBefore + movement.data.quantityDelta
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'quantity', 'updatedAt', 'updatedBy', 'revision', 'lastMovementId'
+        ]);
     }
 
     function validInventoryMovementCreate(movementId) {
       let balancePath = /databases/$(database)/documents/erp/default/inventoryBalances/$(request.resource.data.balanceId);
       let balance = getAfter(balancePath);
-      return (canWriteWarehouse(request.resource.data.warehouseId)
-          || (request.resource.data.referenceType == 'sales_dispatch'
-            && canWrite('dispatch')
-            && hasWarehouseScope(request.resource.data.warehouseId)))
+      return canWriteWarehouse(request.resource.data.warehouseId)
+        && request.resource.data.referenceType != 'sales_dispatch'
         && existsAfter(balancePath)
         && request.resource.data.id == movementId
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.quantityDelta is number
+        && request.resource.data.balanceBefore is number
+        && request.resource.data.balanceAfter is number
+        && request.resource.data.balanceAfter >= 0
+        && validMovementDelta()
+        && (exists(balancePath)
+          ? get(balancePath).data.quantity == request.resource.data.balanceBefore
+          : request.resource.data.balanceBefore == 0)
         && balance.data.lastMovementId == movementId
         && balance.data.productId == request.resource.data.productId
         && balance.data.warehouseId == request.resource.data.warehouseId
         && balance.data.lotCode == request.resource.data.lotCode
         && balance.data.quantity == request.resource.data.balanceAfter
-        && request.resource.data.balanceAfter == request.resource.data.balanceBefore + request.resource.data.quantityDelta
-        && (request.resource.data.referenceType != 'sales_dispatch'
-          || (existsAfter(/databases/$(database)/documents/erp/default/salesDispatches/$(request.resource.data.referenceId))
-            && getAfter(/databases/$(database)/documents/erp/default/salesDispatches/$(request.resource.data.referenceId)).data.warehouseId == request.resource.data.warehouseId));
+        && request.resource.data.balanceAfter == request.resource.data.balanceBefore + request.resource.data.quantityDelta;
     }
 
     function validSalesOrderDispatchUpdate(orderId) {
+      // La comprobación de cada línea requiere backend confiable.
+      // Hasta implementar callable con Admin SDK, se bloquea el despacho directo de roles operativos.
       let dispatchPath = /databases/$(database)/documents/erp/default/salesDispatches/$(request.resource.data.lastDispatchId);
       let dispatch = getAfter(dispatchPath);
-      return canWrite('dispatch')
+      return isAdmin()
         && existsAfter(dispatchPath)
         && dispatch.data.id == request.resource.data.lastDispatchId
         && dispatch.data.orderId == orderId
         && dispatch.data.createdBy == request.auth.uid
-        && hasWarehouseScope(dispatch.data.warehouseId)
         && request.resource.data.id == resource.data.id
         && request.resource.data.orderCode == resource.data.orderCode
         && request.resource.data.createdBy == resource.data.createdBy
@@ -177,9 +217,8 @@ service cloud.firestore {
     function validSalesDispatchCreate(dispatchId) {
       let orderPath = /databases/$(database)/documents/erp/default/salesOrders/$(request.resource.data.orderId);
       let order = getAfter(orderPath);
-      return canWrite('dispatch')
+      return isAdmin()
         && request.resource.data.id == dispatchId
-        && hasWarehouseScope(request.resource.data.warehouseId)
         && existsAfter(orderPath)
         && order.data.lastDispatchId == dispatchId
         && order.data.status in ['partially_dispatched', 'dispatched'];
@@ -198,7 +237,7 @@ service cloud.firestore {
     }
 
     function validDispatchNotificationUpdate() {
-      return canWrite('dispatch')
+      return isAdmin()
         && request.resource.data.orderId == resource.data.orderId
         && request.resource.data.orderCode == resource.data.orderCode
         && request.resource.data.createdBy == resource.data.createdBy
@@ -284,7 +323,7 @@ service cloud.firestore {
     }
 
     match /invites/{email} {
-      allow get: if signedIn();
+      allow get: if signedIn() && request.auth.token.email == email;
       allow list, create, update, delete: if isAdmin();
     }
 
@@ -320,7 +359,7 @@ service cloud.firestore {
           : collection == 'salesDispatches'
             ? validSalesDispatchCreate(docId)
             : collection == 'inventoryBalances'
-          ? validInventoryBalanceWrite(docId)
+          ? validInventoryBalanceCreate(docId)
           : collection == 'inventoryMovements'
             ? validInventoryMovementCreate(docId)
             : collection == 'inventoryTransfers'
@@ -339,10 +378,7 @@ service cloud.firestore {
           : collection == 'salesDispatches'
             ? false
             : collection == 'inventoryBalances'
-          ? validInventoryBalanceWrite(docId)
-            && request.resource.data.warehouseId == resource.data.warehouseId
-            && request.resource.data.productId == resource.data.productId
-            && request.resource.data.lotCode == resource.data.lotCode
+          ? validInventoryBalanceUpdate(docId)
           : collection == 'productionOrders'
             ? canWrite('production')
               && hasWarehouseScope(resource.data.warehouseId)
