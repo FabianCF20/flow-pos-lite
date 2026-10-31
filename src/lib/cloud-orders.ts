@@ -76,7 +76,7 @@ async function hashId(value: string): Promise<string> {
 
 export async function listSalesOrders(): Promise<SalesOrder[]> {
   userOnline();
-  assertAccess("sales", "read");
+  assertAccess("orders", "read");
   const snapshot = await getDocsFromServer(query(collection(fbDb(), "erp", CLOUD_COMPANY_ID, "salesOrders")));
   return snapshot.docs
     .filter((item) => item.data().deleted !== true)
@@ -103,7 +103,7 @@ export async function createSalesOrder(input: {
   lines: Array<{ productId: string; quantity: number }>;
 }): Promise<string> {
   const user = userOnline();
-  assertAccess("sales", "write");
+  assertAccess("orders", "write");
   const customerName = input.customerName.trim();
   const deliveryAddress = input.deliveryAddress.trim();
   if (!customerName) throw new Error("Indica el cliente o destinatario del pedido.");
