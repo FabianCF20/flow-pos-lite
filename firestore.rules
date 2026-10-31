@@ -120,6 +120,8 @@ service cloud.firestore {
         : collectionName == 'customers' ? 'customers'
         : collectionName == 'suppliers' ? 'suppliers'
         : collectionName == 'sales' ? 'sales'
+        : collectionName == 'salesOrders' ? 'sales'
+        : collectionName == 'salesDispatches' ? 'dispatch'
         : collectionName == 'saleReturns' ? 'returns'
         : collectionName == 'debitNotes' ? 'returns'
         : collectionName == 'warehouses' ? 'inventory'
@@ -192,7 +194,11 @@ service cloud.firestore {
     // La empresa se mantiene aislada por ruta. El módulo se resuelve en el servidor
     // según la colección; nunca se acepta un rol enviado por el cliente.
     match /erp/{company}/{collection}/{docId} {
-      allow get, list: if company == 'default' && (collection in ['inventoryBalances', 'inventoryMovements']
+      allow get, list: if company == 'default' && (collection == 'salesOrders'
+          ? canRead('sales') || canRead('dispatch')
+          : collection == 'salesDispatches'
+            ? canRead('sales') || canRead('dispatch')
+            : collection in ['inventoryBalances', 'inventoryMovements']
           ? canReadWarehouse(resource.data.warehouseId)
           : collection == 'inventoryTransfers'
             ? canReadWarehouse(resource.data.sourceWarehouseId)
@@ -208,7 +214,11 @@ service cloud.firestore {
                   || (collection in ['productionFormulas', 'productionFormulaVersions']
                     && canRead('production')));
 
-      allow create: if company == 'default' && (collection == 'inventoryBalances'
+      allow create: if company == 'default' && (collection == 'salesOrders'
+          ? canWrite('sales')
+          : collection == 'salesDispatches'
+            ? canWrite('dispatch') && canWriteWarehouse(request.resource.data.warehouseId)
+            : collection == 'inventoryBalances'
           ? canWriteWarehouse(request.resource.data.warehouseId)
           : collection == 'inventoryMovements'
             ? canWriteWarehouse(request.resource.data.warehouseId)
@@ -221,7 +231,19 @@ service cloud.firestore {
                   ? canWrite('production_formulas')
                   : canWrite(moduleForCollection(collection)));
 
-      allow update: if company == 'default' && (collection == 'inventoryBalances'
+      allow update: if company == 'default' && (collection == 'salesOrders'
+          ? canWrite('dispatch')
+            && request.resource.data.id == resource.data.id
+            && request.resource.data.orderCode == resource.data.orderCode
+            && request.resource.data.createdBy == resource.data.createdBy
+            && request.resource.data.createdAt == resource.data.createdAt
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'lines', 'dispatchedQtyTotal', 'status', 'updatedAt', 'updatedBy', 'revision'
+            ])
+            && request.resource.data.revision == resource.data.revision + 1
+          : collection == 'salesDispatches'
+            ? false
+            : collection == 'inventoryBalances'
           ? canWriteWarehouse(resource.data.warehouseId)
             && request.resource.data.warehouseId == resource.data.warehouseId
             && request.resource.data.productId == resource.data.productId
@@ -286,6 +308,8 @@ service cloud.firestore {
                     : canWrite(moduleForCollection(collection)));
 
       allow delete: if company == 'default' && !(collection in [
+          'salesOrders',
+          'salesDispatches',
           'inventoryBalances',
           'inventoryMovements',
           'products',
