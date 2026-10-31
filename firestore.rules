@@ -135,6 +135,9 @@ service cloud.firestore {
         && existsAfter(balancePath)
         && request.resource.data.id == movementId
         && balance.data.lastMovementId == movementId
+        && balance.data.productId == request.resource.data.productId
+        && balance.data.warehouseId == request.resource.data.warehouseId
+        && balance.data.lotCode == request.resource.data.lotCode
         && balance.data.quantity == request.resource.data.balanceAfter
         && request.resource.data.balanceAfter == request.resource.data.balanceBefore + request.resource.data.quantityDelta;
     }
@@ -155,7 +158,11 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'lines', 'dispatchedQtyTotal', 'status', 'lastDispatchId', 'updatedAt', 'updatedBy', 'revision'
         ])
-        && request.resource.data.revision == resource.data.revision + 1;
+        && request.resource.data.revision == resource.data.revision + 1
+        && request.resource.data.lines.size() == resource.data.lines.size()
+        && request.resource.data.dispatchedQtyTotal > resource.data.dispatchedQtyTotal
+        && request.resource.data.dispatchedQtyTotal <= resource.data.orderedQtyTotal
+        && request.resource.data.status in ['partially_dispatched', 'dispatched'];
     }
 
     function validSalesDispatchCreate(dispatchId) {
