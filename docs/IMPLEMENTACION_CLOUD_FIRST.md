@@ -214,3 +214,38 @@ Limitaciones pendientes:
 El rol predefinido de Contabilidad ahora incluye lectura del catálogo y del inventario general, sin permiso de escritura de inventario. Las reglas permiten a ese rol consultar existencias, movimientos y ambos extremos de los traslados en todas las bodegas. La escritura de movimientos y traslados sigue requiriendo permiso de inventario y alcance explícito sobre las bodegas.
 
 Este ajuste del rol predefinido aplica al crear roles nuevos; no sobrescribe roles existentes ni asignaciones personalizadas en Firestore.
+
+
+### Pedidos comerciales y despachos confirmados en Firestore
+
+Se añadieron las rutas `/orders` y `/dispatch` y el servicio `src/lib/cloud-orders.ts`.
+
+**Pedidos (`salesOrders`)**
+- El equipo de Ventas registra cliente/destinatario, identificación opcional, dirección, observaciones y productos terminados.
+- Cada línea conserva una fotografía de código, nombre, unidad, cantidad, precio y total al momento de crear el pedido.
+- El pedido inicia en estado `open`; no reserva ni descuenta existencias.
+- Se impiden productos repetidos en el mismo pedido y se valida que el producto siga activo y clasificado como producto terminado.
+- Los permisos de lectura y creación se separan con el módulo `orders`.
+
+**Despachos (`salesDispatches`)**
+- El equipo autorizado consulta pedidos pendientes y parciales.
+- El responsable selecciona la bodega, cantidad por producto y lote.
+- Se permiten despachos parciales.
+- La confirmación se ejecuta en una transacción Firestore: actualiza cantidades pendientes del pedido, registra el documento de despacho, crea movimientos de salida y actualiza saldos por lote.
+- Cada operación utiliza clave de idempotencia; una repetición idéntica no vuelve a descontar existencias.
+- La salida se rechaza si no hay saldo suficiente, el lote no existe, está vencido o el control de inventario del producto cambió después de crear el pedido.
+- La transacción se limita a 40 líneas por pedido/despacho para evitar operaciones excesivas.
+
+**Permisos**
+- Ventas: lectura y creación de pedidos, sin permisos para confirmar despachos.
+- Inventario y despachos: lectura de pedidos, confirmación de despachos y escritura de inventario, siempre con bodegas asignadas.
+- Jefe de producción y Contabilidad: lectura según los permisos predefinidos.
+- El inicio de sesión del administrador agrega los permisos nuevos que falten en roles predefinidos existentes, sin sobrescribir permisos personalizados ya configurados.
+
+**Límites de esta entrega**
+- El POS anterior y la pantalla histórica de ventas siguen dependiendo de Dexie. No se han conectado a estos pedidos ni se han eliminado sus operaciones locales.
+- Este flujo no registra pagos, no abre caja, no emite factura electrónica DIAN y no genera aún un documento PDF de remisión/despacho.
+- El lote se selecciona manualmente; no se implementó FEFO automático.
+- Los pedidos no reservan inventario. La disponibilidad se valida al confirmar cada despacho.
+- No hay todavía pruebas de reglas con Firebase Emulator ni despliegue de `firestore.rules`. Las reglas deben validarse antes de producción; la confirmación de inventario se ejecuta desde el cliente y requiere una revisión adicional de seguridad y pruebas de concurrencia.
+- La ruta de despachos necesita que el usuario tenga permisos de despacho e inventario y una bodega asignada.
