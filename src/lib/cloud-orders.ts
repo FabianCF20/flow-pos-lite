@@ -38,6 +38,13 @@ export interface SalesOrder extends CloudRecord {
   orderedQtyTotal: number;
 }
 
+export interface DispatchNotification extends CloudRecord {
+  orderId: string;
+  orderCode: string;
+  customerName: string;
+  status: "pending" | "in_progress" | "completed";
+}
+
 export interface SalesDispatch extends CloudRecord {
   orderId: string;
   orderCode: string;
@@ -82,6 +89,17 @@ export async function listSalesOrders(): Promise<SalesOrder[]> {
     .filter((item) => item.data().deleted !== true)
     .map((item) => ({ ...item.data(), id: item.id }) as SalesOrder)
     .sort((a, b) => b.createdAt - a.createdAt);
+}
+
+export async function listDispatchNotifications(): Promise<DispatchNotification[]> {
+  userOnline();
+  assertAccess("dispatch", "read");
+  const base = collection(fbDb(), "erp", CLOUD_COMPANY_ID, "dispatchNotifications");
+  const snapshot = await getDocsFromServer(query(base, where("status", "in", ["pending", "in_progress"])));
+  return snapshot.docs
+    .filter((item) => item.data().deleted !== true)
+    .map((item) => ({ ...item.data(), id: item.id }) as DispatchNotification)
+    .sort((a, b) => a.createdAt - b.createdAt);
 }
 
 export async function listDispatchQueue(): Promise<SalesOrder[]> {
@@ -169,6 +187,20 @@ export async function createSalesOrder(input: {
       deleted: false,
     };
     transaction.set(ref("salesOrders", orderId), order);
+    transaction.set(ref("dispatchNotifications", orderId), {
+      id: orderId,
+      companyId: CLOUD_COMPANY_ID,
+      orderId,
+      orderCode,
+      customerName,
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+      createdBy: user.uid,
+      updatedBy: user.uid,
+      revision: 1,
+      deleted: false,
+    });
   });
   return orderId;
 }
@@ -201,6 +233,7 @@ export async function confirmSalesOrderDispatch(input: {
   const dispatchId = await hashId(`dispatch:${input.idempotencyKey}`);
   const dispatchRef = ref("salesDispatches", dispatchId);
   const orderRef = ref("salesOrders", input.orderId);
+  const notificationRef = ref("dispatchNotifications", input.orderId);
   const warehouseRef = ref("organizationUnits", input.warehouseId);
   const productRefs = input.lines.map((line) => ref("products", line.productId));
   const lotCodes = input.lines.map((line) => line.lotCode.trim().toUpperCase());
@@ -213,10 +246,11 @@ export async function confirmSalesOrderDispatch(input: {
   const now = Date.now();
 
   await runTransaction(fbDb(), async (transaction) => {
-    const [orderSnapshot, warehouseSnapshot, dispatchSnapshot, productSnapshots, balanceSnapshots, movementSnapshots] = await Promise.all([
+    const [orderSnapshot, warehouseSnapshot, dispatchSnapshot, notificationSnapshot, productSnapshots, balanceSnapshots, movementSnapshots] = await Promise.all([
       transaction.get(orderRef),
       transaction.get(warehouseRef),
       transaction.get(dispatchRef),
+      transaction.get(notificationRef),
       Promise.all(productRefs.map((productRef) => transaction.get(productRef))),
       Promise.all(balanceRefs.map((balanceRef) => transaction.get(balanceRef))),
       Promise.all(movementRefs.map((movementRef) => transaction.get(movementRef))),
@@ -328,6 +362,14 @@ export async function confirmSalesOrderDispatch(input: {
     });
     balanceWrites.forEach((write) => transaction.set(write.reference, write.data));
     movementWrites.forEach((write) => transaction.set(write.reference, write.data));
+    if (notificationSnapshot.exists()) {
+      transaction.update(notificationRef, {
+        status: fullyDispatched ? "completed" : "in_progress",
+        updatedAt: now,
+        updatedBy: user.uid,
+        revision: Number(notificationSnapshot.data().revision ?? 1) + 1,
+      });
+    }
     transaction.set(dispatchRef, {
       id: dispatchId, companyId: CLOUD_COMPANY_ID,
       orderId: input.orderId, orderCode: order.orderCode,
