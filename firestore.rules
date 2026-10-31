@@ -121,6 +121,10 @@ service cloud.firestore {
         && existsAfter(movementPath)
         && request.resource.data.id == balanceId
         && movement.data.createdBy == request.auth.uid
+        && (canWriteWarehouse(request.resource.data.warehouseId)
+          || (movement.data.referenceType == 'sales_dispatch'
+            && canWrite('dispatch')
+            && hasWarehouseScope(request.resource.data.warehouseId)))
         && movement.data.balanceId == balanceId
         && movement.data.productId == request.resource.data.productId
         && movement.data.warehouseId == request.resource.data.warehouseId
@@ -131,7 +135,10 @@ service cloud.firestore {
     function validInventoryMovementCreate(movementId) {
       let balancePath = /databases/$(database)/documents/erp/default/inventoryBalances/$(request.resource.data.balanceId);
       let balance = getAfter(balancePath);
-      return canWriteWarehouse(request.resource.data.warehouseId)
+      return (canWriteWarehouse(request.resource.data.warehouseId)
+          || (request.resource.data.referenceType == 'sales_dispatch'
+            && canWrite('dispatch')
+            && hasWarehouseScope(request.resource.data.warehouseId)))
         && existsAfter(balancePath)
         && request.resource.data.id == movementId
         && balance.data.lastMovementId == movementId
@@ -139,7 +146,10 @@ service cloud.firestore {
         && balance.data.warehouseId == request.resource.data.warehouseId
         && balance.data.lotCode == request.resource.data.lotCode
         && balance.data.quantity == request.resource.data.balanceAfter
-        && request.resource.data.balanceAfter == request.resource.data.balanceBefore + request.resource.data.quantityDelta;
+        && request.resource.data.balanceAfter == request.resource.data.balanceBefore + request.resource.data.quantityDelta
+        && (request.resource.data.referenceType != 'sales_dispatch'
+          || (existsAfter(/databases/$(database)/documents/erp/default/salesDispatches/$(request.resource.data.referenceId))
+            && getAfter(/databases/$(database)/documents/erp/default/salesDispatches/$(request.resource.data.referenceId)).data.warehouseId == request.resource.data.warehouseId));
     }
 
     function validSalesOrderDispatchUpdate(orderId) {
@@ -150,7 +160,8 @@ service cloud.firestore {
         && dispatch.data.id == request.resource.data.lastDispatchId
         && dispatch.data.orderId == orderId
         && dispatch.data.createdBy == request.auth.uid
-        && canWriteWarehouse(dispatch.data.warehouseId)
+        && canWrite('dispatch')
+        && hasWarehouseScope(dispatch.data.warehouseId)
         && request.resource.data.id == resource.data.id
         && request.resource.data.orderCode == resource.data.orderCode
         && request.resource.data.createdBy == resource.data.createdBy
@@ -270,7 +281,7 @@ service cloud.firestore {
           && assignment().roleId == roleId);
       allow list: if isAdmin();
       allow create: if isAdmin()
-        || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'production_manager', 'production_operator', 'accountant', 'viewer']);
+        || (isBootstrapAdmin() && roleId in ['admin', 'cashier', 'warehouse', 'production_manager', 'production_operator', 'dispatcher', 'accountant', 'viewer']);
       allow update, delete: if isAdmin();
     }
 
