@@ -71,9 +71,9 @@ async function balanceDocumentId(productId: string, warehouseId: string, lotCode
   return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-export async function listAccessibleWarehouses(): Promise<InventoryWarehouse[]> {
+export async function listAccessibleWarehouses(module: "inventory" | "production" = "inventory"): Promise<InventoryWarehouse[]> {
   requireOnlineUser();
-  assertAccess("inventory", "read");
+  assertAccess(module, "read");
   const assignment = getAccessSession()?.assignment;
   if (!assignment) throw new Error("No se encontró la asignación de acceso.");
 
