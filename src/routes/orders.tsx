@@ -18,7 +18,7 @@ type DraftLine = { productId: string; quantity: string };
 function OrdersPage() {
   const { can, loading } = useAuth();
   const canRead = can("orders", "read");
-  const canWrite = can("sales", "write");
+  const canWrite = can("orders", "write");
   const [products, setProducts] = useState<CloudProduct[]>([]);
   const [orders, setOrders] = useState<SalesOrder[]>([]);
   const [customerName, setCustomerName] = useState("");
