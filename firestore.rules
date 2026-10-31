@@ -114,6 +114,56 @@ service cloud.firestore {
         ]);
     }
 
+    function validInventoryBalanceWrite() {
+      let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastMovementId);
+      let movement = getAfter(movementPath);
+      return canWriteWarehouse(request.resource.data.warehouseId)
+        && existsAfter(movementPath)
+        && movement.data.balanceId == request.resource.data.id
+        && movement.data.productId == request.resource.data.productId
+        && movement.data.warehouseId == request.resource.data.warehouseId
+        && movement.data.lotCode == request.resource.data.lotCode
+        && movement.data.balanceAfter == request.resource.data.quantity;
+    }
+
+    function validInventoryMovementCreate() {
+      let balancePath = /databases/$(database)/documents/erp/default/inventoryBalances/$(request.resource.data.balanceId);
+      let balance = getAfter(balancePath);
+      return canWriteWarehouse(request.resource.data.warehouseId)
+        && existsAfter(balancePath)
+        && balance.data.lastMovementId == request.resource.data.id
+        && balance.data.quantity == request.resource.data.balanceAfter
+        && request.resource.data.balanceAfter == request.resource.data.balanceBefore + request.resource.data.quantityDelta;
+    }
+
+    function validSalesOrderDispatchUpdate(orderId) {
+      let dispatchPath = /databases/$(database)/documents/erp/default/salesDispatches/$(request.resource.data.lastDispatchId);
+      let dispatch = getAfter(dispatchPath);
+      return canWrite('dispatch')
+        && existsAfter(dispatchPath)
+        && dispatch.data.orderId == orderId
+        && dispatch.data.createdBy == request.auth.uid
+        && canWriteWarehouse(dispatch.data.warehouseId)
+        && request.resource.data.id == resource.data.id
+        && request.resource.data.orderCode == resource.data.orderCode
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'lines', 'dispatchedQtyTotal', 'status', 'lastDispatchId', 'updatedAt', 'updatedBy', 'revision'
+        ])
+        && request.resource.data.revision == resource.data.revision + 1;
+    }
+
+    function validSalesDispatchCreate(dispatchId) {
+      let orderPath = /databases/$(database)/documents/erp/default/salesOrders/$(request.resource.data.orderId);
+      let order = getAfter(orderPath);
+      return canWrite('dispatch')
+        && canWriteWarehouse(request.resource.data.warehouseId)
+        && existsAfter(orderPath)
+        && order.data.lastDispatchId == dispatchId
+        && order.data.status in ['partially_dispatched', 'dispatched'];
+    }
+
     function moduleForCollection(collectionName) {
       return collectionName == 'products' ? 'products'
         : collectionName == 'categories' ? 'categories'
@@ -217,11 +267,11 @@ service cloud.firestore {
       allow create: if company == 'default' && (collection == 'salesOrders'
           ? canWrite('orders') || canWrite('sales')
           : collection == 'salesDispatches'
-            ? canWrite('dispatch') && canWriteWarehouse(request.resource.data.warehouseId)
+            ? validSalesDispatchCreate(docId)
             : collection == 'inventoryBalances'
-          ? canWriteWarehouse(request.resource.data.warehouseId)
+          ? validInventoryBalanceWrite()
           : collection == 'inventoryMovements'
-            ? canWriteWarehouse(request.resource.data.warehouseId)
+            ? validInventoryMovementCreate()
             : collection == 'inventoryTransfers'
               ? canWriteWarehouse(request.resource.data.sourceWarehouseId)
                 && hasWarehouseScope(request.resource.data.targetWarehouseId)
@@ -232,19 +282,11 @@ service cloud.firestore {
                   : canWrite(moduleForCollection(collection)));
 
       allow update: if company == 'default' && (collection == 'salesOrders'
-          ? canWrite('dispatch')
-            && request.resource.data.id == resource.data.id
-            && request.resource.data.orderCode == resource.data.orderCode
-            && request.resource.data.createdBy == resource.data.createdBy
-            && request.resource.data.createdAt == resource.data.createdAt
-            && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-              'lines', 'dispatchedQtyTotal', 'status', 'updatedAt', 'updatedBy', 'revision'
-            ])
-            && request.resource.data.revision == resource.data.revision + 1
+          ? validSalesOrderDispatchUpdate(docId)
           : collection == 'salesDispatches'
             ? false
             : collection == 'inventoryBalances'
-          ? canWriteWarehouse(resource.data.warehouseId)
+          ? validInventoryBalanceWrite()
             && request.resource.data.warehouseId == resource.data.warehouseId
             && request.resource.data.productId == resource.data.productId
             && request.resource.data.lotCode == resource.data.lotCode
