@@ -81,6 +81,11 @@ function DispatchOrderCard({ order, warehouses, onSaved }: {
   const [lots, setLots] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!warehouseId && warehouses.length > 0) setWarehouseId(warehouses[0].id);
+  }, [warehouseId, warehouses]);
+
   const pendingLines = order.lines.filter((line) => line.orderedQty > line.dispatchedQty);
 
   async function confirm(event: React.FormEvent) {
