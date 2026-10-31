@@ -27,6 +27,7 @@ export interface SalesOrderLine {
 
 export interface SalesOrder extends CloudRecord {
   orderCode: string;
+  idempotencyKey: string;
   customerName: string;
   customerDocument: string;
   deliveryAddress: string;
@@ -121,6 +122,7 @@ export async function createSalesOrder(input: {
   deliveryAddress: string;
   notes?: string;
   lines: Array<{ productId: string; quantity: number }>;
+  idempotencyKey: string;
 }): Promise<string> {
   const user = userOnline();
   assertAccess("orders", "write");
@@ -138,11 +140,34 @@ export async function createSalesOrder(input: {
     }
   }
 
-  const orderId = crypto.randomUUID();
+  if (!input.idempotencyKey.trim() || input.idempotencyKey.length > 128) {
+    throw new Error("La clave de operación del pedido no es válida.");
+  }
+  const orderId = await hashId(`sales-order:${input.idempotencyKey}`);
+  const orderRef = ref("salesOrders", orderId);
+  const notificationRef = ref("dispatchNotifications", orderId);
   const now = Date.now();
   const productRefs = input.lines.map((line) => ref("products", line.productId));
   await runTransaction(fbDb(), async (transaction) => {
-    const productSnapshots = await Promise.all(productRefs.map((productRef) => transaction.get(productRef)));
+    const [existingOrderSnapshot, productSnapshots] = await Promise.all([
+      transaction.get(orderRef),
+      Promise.all(productRefs.map((productRef) => transaction.get(productRef))),
+    ]);
+    if (existingOrderSnapshot.exists()) {
+      const existing = existingOrderSnapshot.data();
+      const same = existing.idempotencyKey === input.idempotencyKey
+        && existing.customerName === customerName
+        && existing.customerDocument === (input.customerDocument?.trim() ?? "")
+        && existing.deliveryAddress === deliveryAddress
+        && existing.notes === (input.notes?.trim() ?? "")
+        && Array.isArray(existing.lines)
+        && existing.lines.length === input.lines.length
+        && input.lines.every((line, index) =>
+          existing.lines[index]?.productId === line.productId
+          && existing.lines[index]?.orderedQty === line.quantity);
+      if (!same) throw new Error("La clave de operación ya fue utilizada para otro pedido.");
+      return;
+    }
     const lines: SalesOrderLine[] = input.lines.map((line, index) => {
       const snapshot = productSnapshots[index];
       if (!snapshot?.exists() || snapshot.data().deleted === true || snapshot.data().active !== true) {
@@ -172,6 +197,7 @@ export async function createSalesOrder(input: {
       id: orderId,
       companyId: CLOUD_COMPANY_ID,
       orderCode,
+      idempotencyKey: input.idempotencyKey,
       customerName,
       customerDocument: input.customerDocument?.trim() ?? "",
       deliveryAddress,
@@ -188,8 +214,8 @@ export async function createSalesOrder(input: {
       revision: 1,
       deleted: false,
     };
-    transaction.set(ref("salesOrders", orderId), order);
-    transaction.set(ref("dispatchNotifications", orderId), {
+    transaction.set(orderRef, order);
+    transaction.set(notificationRef, {
       id: orderId,
       companyId: CLOUD_COMPANY_ID,
       orderId,
