@@ -117,8 +117,7 @@ service cloud.firestore {
     function validInventoryBalanceWrite(balanceId) {
       let movementPath = /databases/$(database)/documents/erp/default/inventoryMovements/$(request.resource.data.lastMovementId);
       let movement = getAfter(movementPath);
-      return canWriteWarehouse(request.resource.data.warehouseId)
-        && existsAfter(movementPath)
+      return existsAfter(movementPath)
         && request.resource.data.id == balanceId
         && movement.data.createdBy == request.auth.uid
         && (canWriteWarehouse(request.resource.data.warehouseId)
@@ -160,7 +159,6 @@ service cloud.firestore {
         && dispatch.data.id == request.resource.data.lastDispatchId
         && dispatch.data.orderId == orderId
         && dispatch.data.createdBy == request.auth.uid
-        && canWrite('dispatch')
         && hasWarehouseScope(dispatch.data.warehouseId)
         && request.resource.data.id == resource.data.id
         && request.resource.data.orderCode == resource.data.orderCode
@@ -181,7 +179,7 @@ service cloud.firestore {
       let order = getAfter(orderPath);
       return canWrite('dispatch')
         && request.resource.data.id == dispatchId
-        && canWriteWarehouse(request.resource.data.warehouseId)
+        && hasWarehouseScope(request.resource.data.warehouseId)
         && existsAfter(orderPath)
         && order.data.lastDispatchId == dispatchId
         && order.data.status in ['partially_dispatched', 'dispatched'];
