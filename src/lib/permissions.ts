@@ -36,7 +36,7 @@ export interface AccessSession { assignment: AccessAssignment; role: AccessRole;
 const grants = (read: ModuleId[], write: ModuleId[]): Permissions => Object.fromEntries([...read.map(m => [m, "read"]), ...write.map(m => [m, "write"])]);
 export const PRESET_ROLES: AccessRole[] = [
   { id: "admin", name: "Administrador", permissions: Object.fromEntries(MODULES.map(m => [m.id, "write"])) },
-  { id: "cashier", name: "Cajero / ventas", permissions: grants(["products", "categories", "customers", "sales"], ["pos", "cash", "sales", "orders"]) },
+  { id: "cashier", name: "Cajero / ventas", permissions: grants(["products", "categories", "customers", "sales"], ["pos", "cash", "orders"]) },
   { id: "warehouse", name: "Inventario y despachos", permissions: grants(["products", "categories", "suppliers", "sales", "orders"], ["inventory", "dispatch", "production"]) },
   { id: "production_manager", name: "Jefe de producción", permissions: grants(["products", "categories", "inventory", "production", "dispatch", "orders"], ["production", "production_formulas", "production_approval"]) },
   { id: "production_operator", name: "Supervisor / operario de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production"]) },
