@@ -321,6 +321,7 @@ export async function confirmSalesOrderDispatch(input: {
       lines: nextLines,
       dispatchedQtyTotal,
       status: fullyDispatched ? "dispatched" : "partially_dispatched",
+      lastDispatchId: dispatchId,
       updatedAt: now,
       updatedBy: user.uid,
       revision: Number(order.revision ?? 1) + 1,
