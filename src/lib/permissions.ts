@@ -38,7 +38,7 @@ export const PRESET_ROLES: AccessRole[] = [
   { id: "warehouse", name: "Inventario y producción", permissions: grants(["products", "categories", "suppliers"], ["inventory", "production"]) },
   { id: "production_manager", name: "Jefe de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production", "production_formulas", "production_approval"]) },
   { id: "production_operator", name: "Supervisor / operario de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production"]) },
-  { id: "accountant", name: "Contabilidad", permissions: grants(["sales", "customers", "suppliers", "purchases", "reports"], ["accounting", "receivables"]) },
+  { id: "accountant", name: "Contabilidad", permissions: grants(["sales", "customers", "suppliers", "purchases", "reports", "products", "categories", "inventory"], ["accounting", "receivables"]) },
   { id: "viewer", name: "Consulta", permissions: grants(MODULES.filter(m => m.id !== "settings").map(m => m.id), []) },
 ];
 export function canAccess(session: AccessSession | null, module: ModuleId, action: "read" | "write" = "read") {
