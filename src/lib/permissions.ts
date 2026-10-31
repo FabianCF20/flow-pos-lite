@@ -2,6 +2,8 @@ export const MODULES = [
   { id: "dashboard", label: "Panel general", path: "/" },
   { id: "pos", label: "Punto de venta", path: "/pos" },
   { id: "sales", label: "Ventas", path: "/sales" },
+  { id: "dispatch", label: "Despachos", path: "/dispatch" },
+  { id: "orders", label: "Pedidos", path: "/orders" },
   { id: "returns", label: "Devoluciones y notas", path: "/returns" },
   { id: "customers", label: "Clientes", path: "/customers" },
   { id: "products", label: "Productos", path: "/products" },
@@ -34,11 +36,11 @@ export interface AccessSession { assignment: AccessAssignment; role: AccessRole;
 const grants = (read: ModuleId[], write: ModuleId[]): Permissions => Object.fromEntries([...read.map(m => [m, "read"]), ...write.map(m => [m, "write"])]);
 export const PRESET_ROLES: AccessRole[] = [
   { id: "admin", name: "Administrador", permissions: Object.fromEntries(MODULES.map(m => [m.id, "write"])) },
-  { id: "cashier", name: "Cajero", permissions: grants(["products", "categories", "customers", "sales"], ["pos", "cash"]) },
-  { id: "warehouse", name: "Inventario y producción", permissions: grants(["products", "categories", "suppliers"], ["inventory", "production"]) },
-  { id: "production_manager", name: "Jefe de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production", "production_formulas", "production_approval"]) },
+  { id: "cashier", name: "Cajero / ventas", permissions: grants(["products", "categories", "customers", "sales"], ["pos", "cash", "sales"]) },
+  { id: "warehouse", name: "Inventario y despachos", permissions: grants(["products", "categories", "suppliers", "sales"], ["inventory", "dispatch", "production"]) },
+  { id: "production_manager", name: "Jefe de producción", permissions: grants(["products", "categories", "inventory", "production", "dispatch"], ["production", "production_formulas", "production_approval"]) },
   { id: "production_operator", name: "Supervisor / operario de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production"]) },
-  { id: "accountant", name: "Contabilidad", permissions: grants(["sales", "customers", "suppliers", "purchases", "reports", "products", "categories", "inventory"], ["accounting", "receivables"]) },
+  { id: "accountant", name: "Contabilidad", permissions: grants(["sales", "dispatch", "customers", "suppliers", "purchases", "reports", "products", "categories", "inventory"], ["accounting", "receivables"]) },
   { id: "viewer", name: "Consulta", permissions: grants(MODULES.filter(m => m.id !== "settings").map(m => m.id), []) },
 ];
 export function canAccess(session: AccessSession | null, module: ModuleId, action: "read" | "write" = "read") {
