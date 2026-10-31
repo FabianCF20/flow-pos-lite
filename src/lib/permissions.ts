@@ -38,6 +38,7 @@ export const PRESET_ROLES: AccessRole[] = [
   { id: "admin", name: "Administrador", permissions: Object.fromEntries(MODULES.map(m => [m.id, "write"])) },
   { id: "cashier", name: "Cajero / ventas", permissions: grants(["products", "categories", "customers", "sales"], ["pos", "cash", "orders"]) },
   { id: "warehouse", name: "Inventario y despachos", permissions: grants(["products", "categories", "suppliers", "sales", "orders"], ["inventory", "dispatch", "production"]) },
+  { id: "dispatcher", name: "Supervisor de despachos", permissions: grants(["products", "inventory", "orders"], ["dispatch"]) },
   { id: "production_manager", name: "Jefe de producción", permissions: grants(["products", "categories", "inventory", "production", "dispatch", "orders"], ["production", "production_formulas", "production_approval"]) },
   { id: "production_operator", name: "Supervisor / operario de producción", permissions: grants(["products", "categories", "inventory", "production"], ["production"]) },
   { id: "accountant", name: "Contabilidad", permissions: grants(["sales", "dispatch", "orders", "customers", "suppliers", "purchases", "reports", "products", "categories", "inventory"], ["accounting", "receivables"]) },
