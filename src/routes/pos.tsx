@@ -134,7 +134,7 @@ function POSPage() {
   }
 
   return (
-    <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_380px] lg:gap-5 lg:px-6 lg:pt-4">
+    <div className="pb-20 lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-5 lg:px-6 lg:pt-4 lg:pb-0 xl:grid-cols-[minmax(0,1fr)_380px]">
       {/* Catalog */}
       <div className="min-w-0">
         <PageHeader title="Vender" subtitle={openSession ? "Caja abierta" : "Caja cerrada — abre antes de cobrar"} />
@@ -265,8 +265,14 @@ function CartView({
 }) {
   return (
     <>
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-        <div className="font-semibold">Carrito</div>
+      <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
+        <div className="flex items-center gap-2">
+          <div className="grid h-8 w-8 place-items-center rounded-md bg-primary/10 text-primary"><ShoppingCart className="h-4 w-4" /></div>
+          <div>
+            <div className="text-sm font-semibold">Carrito</div>
+            <div className="text-[11px] text-muted-foreground">{cart.reduce((sum, item) => sum + item.qty, 0)} unidades</div>
+          </div>
+        </div>
         {cart.length > 0 && (
           <button onClick={onClear} className="text-xs text-muted-foreground hover:text-destructive">Vaciar</button>
         )}
