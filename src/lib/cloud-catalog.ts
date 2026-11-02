@@ -167,7 +167,7 @@ export async function listCloudProducts(): Promise<CloudProduct[]> {
   return snapshot.docs
     .filter((item) => item.data().deleted !== true)
     .map((item) => ({ ...item.data(), id: item.id }) as CloudProduct)
-    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+    .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""), "es"));
 }
 
 function validateProduct(input: ProductInput) {
