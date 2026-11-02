@@ -30,9 +30,22 @@ function PurchasesPage() {
   const purchases = useLiveQuery(async () => (await db.purchases.toArray()).sort((a, b) => b.createdAt - a.createdAt), []);
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<Purchase | null>(null);
+  const [filter, setFilter] = useState<"all" | "draft" | "received" | "pending">("all");
 
   const pending = (purchases ?? []).filter((p) => p.status === "received" && p.paid < p.total);
   const debt = pending.reduce((a, p) => a + (p.total - p.paid), 0);
+  const visiblePurchases = (purchases ?? []).filter((purchase) => {
+    if (filter === "draft") return purchase.status === "draft";
+    if (filter === "received") return purchase.status === "received";
+    if (filter === "pending") return purchase.status === "received" && purchase.paid < purchase.total;
+    return true;
+  });
+  const filters = [
+    { id: "all", label: "Todas", count: purchases?.length ?? 0 },
+    { id: "draft", label: "Borradores", count: (purchases ?? []).filter((p) => p.status === "draft").length },
+    { id: "received", label: "Recibidas", count: (purchases ?? []).filter((p) => p.status === "received").length },
+    { id: "pending", label: "Por pagar", count: pending.length },
+  ] as const;
 
   return (
     <div>
@@ -45,8 +58,18 @@ function PurchasesPage() {
           </button>
         }
       />
+      <div className="mb-4 flex gap-2 overflow-x-auto px-4 md:px-6" role="tablist" aria-label="Filtrar compras">
+        {filters.map((item) => (
+          <button key={item.id} role="tab" aria-selected={filter === item.id} onClick={() => setFilter(item.id)}
+            className={filter === item.id
+              ? "inline-flex h-9 shrink-0 items-center gap-2 rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground"
+              : "inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-medium text-muted-foreground hover:text-foreground"}>
+            {item.label}<span className={filter === item.id ? "rounded bg-white/15 px-1.5 py-0.5" : "rounded bg-muted px-1.5 py-0.5"}>{item.count}</span>
+          </button>
+        ))}
+      </div>
       <div className="px-4 md:px-6 desktop-items catalog-items">
-        {purchases?.map((p) => (
+        {visiblePurchases.map((p) => (
           <button key={p.id} onClick={() => setSelected(p)} className="w-full text-left rounded-xl bg-card border border-border p-3 flex items-center gap-3">
             <div className={`h-10 w-10 rounded-lg grid place-items-center ${p.status === "received" ? "bg-success/15 text-success" : "bg-warning/15 text-warning"}`}>
               <ShoppingBag className="h-5 w-5" />
@@ -60,7 +83,7 @@ function PurchasesPage() {
             <div className="font-semibold text-sm">{formatMoney(p.total, settings)}</div>
           </button>
         ))}
-        {purchases?.length === 0 && <div className="text-center text-sm text-muted-foreground py-10">Sin compras registradas</div>}
+        {visiblePurchases.length === 0 && <div className="col-span-full rounded-lg border border-dashed border-border py-12 text-center text-sm text-muted-foreground">{purchases?.length ? "No hay compras en este filtro." : "Sin compras registradas."}</div>}
       </div>
 
       {creating && <NewPurchase onClose={() => setCreating(false)} />}
