@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth";
 import { landingPath, moduleForPath } from "@/lib/permissions";
 import { useTheme } from "@/lib/theme";
@@ -8,23 +8,8 @@ import { Button } from "@/components/ui/button";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3, ClipboardList,
   Users, Settings, LogOut, MoreHorizontal, Truck, ShoppingBag,
-  Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory, Building2,
+  Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory, Building2, Menu, X,
 } from "lucide-react";
-
-const primaryNavAdmin = [
-  { to: "/", label: "Inicio", icon: LayoutDashboard },
-  { to: "/pos", label: "Vender", icon: ShoppingCart },
-  { to: "/catalog", label: "Catálogo", icon: Package },
-  { to: "/cash", label: "Caja", icon: Wallet },
-  { to: "/more", label: "Más", icon: MoreHorizontal },
-] as const;
-
-const primaryNavCashier = [
-  { to: "/pos", label: "Vender", icon: ShoppingCart },
-  { to: "/cash", label: "Caja", icon: Wallet },
-  { to: "/sales", label: "Tickets", icon: BarChart3 },
-  { to: "/more", label: "Más", icon: MoreHorizontal },
-] as const;
 
 type NavGroup = { title: string; items: readonly { to: string; label: string; icon: any }[] };
 
@@ -117,6 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggle } = useTheme();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user && location.pathname !== "/login") {
@@ -167,8 +153,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     const module = moduleForPath(to);
     return module ? can(module, "read") : true;
   };
-  const primaryNav = (user.role === "cashier" ? primaryNavCashier : primaryNavAdmin)
-    .filter((item) => canOpen(item.to));
   const navGroups = (user.role === "cashier" ? navGroupsCashier : navGroupsAdmin)
     .map((group) => ({ ...group, items: group.items.filter((item) => canOpen(item.to)) }))
     .filter((group) => group.items.length > 0);
@@ -271,29 +255,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="erp-main flex-1 min-w-0 w-full pb-20 md:pb-8">{children}</main>
+        <main className="erp-main flex-1 min-w-0 w-full pb-6 md:pb-8">{children}</main>
 
-        {/* Bottom nav (mobile) */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border safe-bottom">
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${Math.max(primaryNav.length, 1)}, minmax(0, 1fr))` }}>
-            {primaryNav.map((n) => {
-              const Icon = n.icon;
-              const active = isActive(location.pathname, n.to);
-              return (
-                <Link
-                  key={n.to}
-                  to={n.to}
-                  className={`flex flex-col items-center justify-center py-2.5 text-[10px] gap-0.5 ${
-                    active ? "text-primary font-medium" : "text-muted-foreground"
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {n.label}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+
       </div>
     </div>
   );
