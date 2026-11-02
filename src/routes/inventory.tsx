@@ -171,25 +171,45 @@ function InventoryPage() {
               </button>
             </div>
           )}
-          {balances.map((balance) => {
-            const product = productById.get(balance.productId);
-            return (
+          {products.flatMap((product) => {
+            const productBalances = balances.filter((balance) => balance.productId === product.id);
+            if (productBalances.length === 0) {
+              return [(
+                <article key={product.id} className="rounded-xl bg-card border border-border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{product.name}</div>
+                      <div className="text-xs text-muted-foreground">{product.code} · {product.baseUnit}</div>
+                      <div className="text-xs text-muted-foreground mt-1">Sin entradas registradas en esta bodega.</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-semibold">0 {product.baseUnit}</div>
+                      <div className="text-xs text-muted-foreground">Sin existencias</div>
+                    </div>
+                  </div>
+                </article>
+              )];
+            }
+
+            return productBalances.map((balance) => (
               <article key={balance.id} className="rounded-xl bg-card border border-border p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{product?.name ?? "Producto no encontrado"}</div>
-                    <div className="text-xs text-muted-foreground">{product?.code ?? balance.productId} · Lote {balance.lotCode}</div>
+                    <div className="text-sm font-medium truncate">{product.name}</div>
+                    <div className="text-xs text-muted-foreground">{product.code} · Lote {balance.lotCode}</div>
                     <div className="text-xs text-muted-foreground mt-1">Vence: {balance.expiryDate ? formatDate(balance.expiryDate) : "No aplica / no registrado"}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className={`text-sm font-semibold ${balance.quantity <= 0 ? "text-destructive" : ""}`}>{balance.quantity} {balance.baseUnit}</div>
-                    <div className="text-xs text-muted-foreground">{formatMoney(balance.quantity * (product?.standardCost ?? 0))}</div>
+                    <div className={`text-sm font-semibold ${balance.quantity < 0 ? "text-destructive" : ""}`}>{balance.quantity} {balance.baseUnit}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {balance.quantity === 0 ? "Existencia cero" : balance.quantity < 0 ? "Saldo negativo" : formatMoney(balance.quantity * product.standardCost)}
+                    </div>
                   </div>
                 </div>
               </article>
-            );
+            ));
           })}
-          {balances.length === 0 && <div className="text-center text-sm text-muted-foreground py-10">Esta bodega todavía no tiene existencias registradas.</div>}
+          {products.length === 0 && <div className="text-center text-sm text-muted-foreground py-10">No hay productos activos con control de inventario en el Catálogo.</div>}
         </div>
       )}
 
