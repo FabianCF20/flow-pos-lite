@@ -35,7 +35,7 @@ function Dashboard() {
     const items = completed.reduce((a, s) => a + s.items.reduce((x, i) => x + i.qty, 0), 0);
     return { total, count, items };
   }, []);
-  const productCount = useLiveQuery(() => db.products.where("active").equals(1 as any).count().catch(async () => (await db.products.toArray()).filter(p => p.active).length), []);
+  const productCount = useLiveQuery(() => db.products.filter((product) => product.active).count(), []);
   const lowStock = useLiveQuery(async () => {
     const all = await db.products.toArray();
     return all.filter((p) => p.active && p.trackStock && p.stock <= 5);
@@ -73,7 +73,7 @@ function Dashboard() {
         <div className="grid gap-3 lg:grid-cols-3">
           <Link
             to="/pos"
-            className="lg:col-span-2 block rounded-xl p-5 md:p-6 bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-elevated active:scale-[0.995] transition-transform"
+            className="lg:col-span-2 block rounded-xl p-5 md:p-6 bg-primary text-primary-foreground shadow-card active:scale-[0.995] transition-transform"
           >
             <div className="text-[11px] uppercase tracking-[0.16em] opacity-75">Ventas de hoy</div>
             <div className="text-3xl md:text-4xl font-display font-semibold mt-1.5 tabular">
@@ -116,11 +116,11 @@ function Dashboard() {
           <StatCard icon={Landmark} label="Contabilidad" value="Libro diario" hint="Asientos automáticos" to="/accounting" />
         </div>
 
-        <SectionTitle>Importación e inventario</SectionTitle>
+        <SectionTitle>Operaciones y catálogo</SectionTitle>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard icon={Boxes} label="Inventario" value="Existencias" hint="Bodegas y kardex" to="/inventory" />
-          <StatCard icon={Package} label="Productos activos" value={String(productCount ?? 0)} hint="Catálogo" to="/products" />
-          <StatCard icon={ReceiptText} label="Tickets de hoy" value={String(today?.count ?? 0)} hint="Ventas emitidas" to="/sales" />
+          <StatCard icon={Package} label="Productos activos" value={String(productCount ?? 0)} hint="Productos y categorías" to="/catalog" />
+          <StatCard icon={TrendingUp} label="Producción" value="Órdenes" hint="Fórmulas y consumos" to="/production" />
           <StatCard icon={TrendingUp} label="Reportes" value="Analítica" hint="Ventas y márgenes" to="/reports" />
         </div>
 
@@ -146,9 +146,9 @@ function Dashboard() {
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="mt-6 mb-2.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-      {children}
-    </h2>
+    <div className="mb-3 mt-8 border-b border-border pb-2">
+      <h2 className="text-sm font-semibold tracking-tight text-foreground">{children}</h2>
+    </div>
   );
 }
 
