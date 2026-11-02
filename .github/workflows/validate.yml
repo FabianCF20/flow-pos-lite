@@ -32,6 +32,8 @@ jobs:
           TOOL_DIR="$RUNNER_TEMP/firestore-test-tools"
           mkdir -p "$TOOL_DIR"
           npm install --prefix "$TOOL_DIR" --no-save --no-package-lock @firebase/rules-unit-testing@5.0.2 firebase-tools
+          rm -rf "$TOOL_DIR/node_modules/firebase"
+          ln -s "$GITHUB_WORKSPACE/node_modules/firebase" "$TOOL_DIR/node_modules/firebase"
           mkdir -p "$GITHUB_WORKSPACE/node_modules/@firebase"
           ln -s "$TOOL_DIR/node_modules/@firebase/rules-unit-testing" "$GITHUB_WORKSPACE/node_modules/@firebase/rules-unit-testing"
       - name: Firestore security rules tests
