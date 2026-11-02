@@ -57,7 +57,7 @@ function SettingsPage() {
   return (
     <div>
       <PageHeader title="Ajustes" subtitle="Negocio, usuarios, backup, impresora" />
-      <div className="px-4 md:px-6 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+      <div className="settings-layout px-4 md:px-6 grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
         <Section title="Negocio">
           <Inp label="Nombre" value={s.businessName} onChange={(v) => setS({ ...s, businessName: v })} />
           <Inp label="Dirección" value={s.address ?? ""} onChange={(v) => setS({ ...s, address: v })} />
@@ -286,7 +286,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
     <div className="space-y-2">
       {error && <p className="text-xs text-destructive">{error}</p>}
       {list.map((u) => (
-        <div key={u.key} className="rounded-lg bg-background border border-border p-3 flex items-center gap-3">
+        <div key={u.key} className="user-row rounded-lg bg-background border border-border p-3 flex flex-wrap md:flex-nowrap items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-primary/15 grid place-items-center text-primary font-bold">{u.name[0]?.toUpperCase()}</div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">
@@ -301,7 +301,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
           <select
             value={u.roleId}
             onChange={(e) => changeRole(u, e.target.value)}
-            className="h-9 px-2 rounded-lg bg-card border border-border text-xs"
+            className="user-role h-9 px-2 rounded-lg bg-card border border-border text-xs"
           >
             {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
@@ -359,7 +359,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
             )}
             <p className="text-xs text-muted-foreground">Sin bodegas asignadas, el usuario no podrá consultar ni modificar inventario ni operar órdenes en una bodega.</p>
             <div className="flex gap-2">
-              <button onClick={() => setScopeTarget(null)} className="flex-1 h-10 rounded-lg border border-border text-sm">Cancelar</button>
+              <button onClick={() => setScopeTarget(null)} className="px-4 h-10 rounded-lg border border-border text-sm">Cancelar</button>
               <button onClick={saveWarehouseScope} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Guardar alcance</button>
             </div>
           </div>
@@ -380,7 +380,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
           </p>
           <div className="flex gap-2">
             <button onClick={() => setShow(false)} className="flex-1 h-10 rounded-lg border border-border text-sm">Cancelar</button>
-            <button onClick={invite} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Invitar</button>
+            <button onClick={invite} className="px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Crear usuario</button>
           </div>
         </div>
       )}
@@ -390,7 +390,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
 
 
 function Section({ title, children }: any) {
-  return <div className="min-w-0 border-t border-border pt-4 space-y-3"><div className="font-semibold">{title}</div>{children}</div>;
+  return <section className={`settings-section min-w-0 rounded-xl border border-border bg-card p-4 md:p-5 space-y-4 shadow-card ${title === "Usuarios" ? "settings-users" : ""}`}><div className="flex items-center justify-between border-b border-border pb-3"><h2 className="text-sm font-semibold tracking-tight">{title}</h2></div>{children}</section>;
 }
 function Inp({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return <label className="block"><span className="text-xs text-muted-foreground">{label}</span><input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border outline-none focus:border-primary text-sm" /></label>;
