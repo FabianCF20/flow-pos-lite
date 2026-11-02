@@ -1,59 +1,91 @@
 import { pageHead } from "@/lib/page-head";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { PageHeader } from "@/components/AppShell";
 import { useAuth } from "@/lib/auth";
 import { moduleForPath } from "@/lib/permissions";
-import { BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, UserCog, Package, Truck, ShoppingBag, Boxes, HandCoins, Landmark, Factory, Building2 } from "lucide-react";
-import { useNavigate } from "@tanstack/react-router";
+import {
+  BarChart3, Users, Settings, Receipt, LogOut, ChevronRight, Package, Truck,
+  ShoppingBag, Boxes, HandCoins, Landmark, Factory, Building2, Wallet, Undo2,
+  ClipboardList,
+} from "lucide-react";
 
-export const Route = createFileRoute("/more")({ head: () => pageHead("Módulos", "Módulos de operación, producción y finanzas."), component: MorePage });
+export const Route = createFileRoute("/more")({
+  head: () => pageHead("Centro de módulos", "Accede a cada área funcional del sistema."),
+  component: MorePage,
+});
 
 function MorePage() {
   const { user, logout, can } = useAuth();
   const navigate = useNavigate();
+
   const allItems = [
-    { to: "/sales", icon: Receipt, label: "Ventas" },
-    { to: "/orders", icon: Receipt, label: "Pedidos" },
-    { to: "/dispatch", icon: Truck, label: "Despachos" },
-    { to: "/receivables", icon: HandCoins, label: "Cartera" },
-    { to: "/purchases", icon: ShoppingBag, label: "Compras" },
-    { to: "/suppliers", icon: Truck, label: "Proveedores" },
-    { to: "/inventory", icon: Boxes, label: "Inventario" },
-    { to: "/production", icon: Factory, label: "Producción" },
-    { to: "/accounting", icon: Landmark, label: "Contabilidad" },
-    { to: "/catalog", icon: Package, label: "Catálogo maestro" },
-    { to: "/customers", icon: Users, label: "Clientes" },
-    { to: "/reports", icon: BarChart3, label: "Reportes" },
-    { to: "/organization", icon: Building2, label: "Estructura organizacional" },
-    { to: "/settings", icon: Settings, label: "Ajustes" },
+    { to: "/sales", icon: Receipt, label: "Ventas y tickets", group: "Comercial" },
+    { to: "/orders", icon: ClipboardList, label: "Pedidos", group: "Comercial" },
+    { to: "/dispatch", icon: Truck, label: "Despachos", group: "Comercial" },
+    { to: "/returns", icon: Undo2, label: "Devoluciones y notas", group: "Comercial" },
+    { to: "/receivables", icon: HandCoins, label: "Cartera", group: "Comercial" },
+    { to: "/customers", icon: Users, label: "Clientes", group: "Comercial" },
+    { to: "/purchases", icon: ShoppingBag, label: "Compras e importaciones", group: "Abastecimiento" },
+    { to: "/suppliers", icon: Truck, label: "Proveedores", group: "Abastecimiento" },
+    { to: "/inventory", icon: Boxes, label: "Inventario y bodegas", group: "Operaciones" },
+    { to: "/production", icon: Factory, label: "Producción", group: "Operaciones" },
+    { to: "/catalog", icon: Package, label: "Productos y categorías", group: "Operaciones" },
+    { to: "/cash", icon: Wallet, label: "Caja", group: "Finanzas y control" },
+    { to: "/accounting", icon: Landmark, label: "Contabilidad", group: "Finanzas y control" },
+    { to: "/reports", icon: BarChart3, label: "Reportes", group: "Finanzas y control" },
+    { to: "/organization", icon: Building2, label: "Estructura organizacional", group: "Administración" },
+    { to: "/settings", icon: Settings, label: "Ajustes y usuarios", group: "Administración" },
   ] as const;
+
   const items = allItems.filter((item) => {
-    const module = moduleForPath(item.to);
-    if (module) return can(module, "read");
-    if (item.to === "/organization") return can("settings", "write");
     if (item.to === "/catalog") return can("products", "read") && can("categories", "read");
-    return true;
+    if (item.to === "/organization") return can("settings", "write");
+    const module = moduleForPath(item.to);
+    return module ? can(module, "read") : false;
   });
+
+  const groupNames = ["Comercial", "Abastecimiento", "Operaciones", "Finanzas y control", "Administración"] as const;
+
   return (
     <div>
-      <PageHeader title="Más" subtitle={user?.name} />
-      <div className="px-4 md:px-6 desktop-items catalog-items">
-        {items.map((it) => {
-          const Icon = it.icon;
+      <PageHeader title="Centro de módulos" subtitle={user?.name ? "Áreas disponibles según tu perfil de acceso" : "Áreas funcionales"} />
+      <div className="space-y-7 px-4 md:px-6">
+        {groupNames.map((group) => {
+          const groupItems = items.filter((item) => item.group === group);
+          if (!groupItems.length) return null;
           return (
-            <Link key={it.to} to={it.to} className="rounded-xl bg-card border border-border p-4 flex items-center gap-3">
-              <Icon className="h-5 w-5 text-primary" />
-              <span className="flex-1 font-medium">{it.label}</span>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </Link>
+            <section key={group} aria-labelledby={"module-group-" + group}>
+              <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
+                <h2 id={"module-group-" + group} className="text-sm font-semibold tracking-tight">{group}</h2>
+                <span className="text-xs text-muted-foreground">{groupItems.length} módulos</span>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {groupItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link key={item.to} to={item.to}
+                      className="group flex min-h-20 items-center gap-3 rounded-lg border border-border bg-card p-4 shadow-sm transition-colors hover:border-primary/40 hover:bg-accent/30">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-muted text-primary">
+                        <Icon className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-semibold">{item.label}</span>
+                        <span className="mt-1 block text-xs text-muted-foreground">Abrir módulo</span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                    </Link>
+                  );
+                })}
+              </div>
+            </section>
           );
         })}
-        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="list-toolbar w-full mt-4 h-12 rounded-xl border border-border font-medium inline-flex items-center justify-center gap-2">
-          <UserCog className="h-4 w-4" /> Cambiar de usuario
-        </button>
-        <button onClick={() => { logout(); navigate({ to: "/login" }); }} className="list-toolbar w-full h-12 rounded-xl border border-border text-destructive font-medium inline-flex items-center justify-center gap-2">
-          <LogOut className="h-4 w-4" /> Cerrar sesión
-        </button>
+        <div className="border-t border-border pt-4">
+          <button onClick={() => { logout(); navigate({ to: "/login" }); }}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-destructive transition-colors hover:bg-destructive/5">
+            <LogOut className="h-4 w-4" /> Cerrar sesión
+          </button>
+        </div>
       </div>
     </div>
   );
