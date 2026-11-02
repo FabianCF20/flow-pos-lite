@@ -57,7 +57,7 @@ function SettingsPage() {
   return (
     <div>
       <PageHeader title="Ajustes" subtitle="Negocio, usuarios, backup, impresora" />
-      <div className="px-4 md:px-6 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+      <div className="settings-layout px-4 md:px-6 grid grid-cols-1 xl:grid-cols-2 gap-5 items-start">
         <Section title="Negocio">
           <Inp label="Nombre" value={s.businessName} onChange={(v) => setS({ ...s, businessName: v })} />
           <Inp label="Dirección" value={s.address ?? ""} onChange={(v) => setS({ ...s, address: v })} />
@@ -283,10 +283,11 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
   if (loading) return <p className="text-xs text-muted-foreground">Cargando usuarios…</p>;
 
   return (
-    <div className="space-y-2">
+    <div className="users-management space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div><p className="text-sm font-medium">Accesos del sistema</p><p className="text-xs text-muted-foreground mt-1">Administra cuentas, perfiles y bodegas asignadas.</p></div><span className="text-xs text-muted-foreground">{list.length} usuario(s)</span></div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       {list.map((u) => (
-        <div key={u.key} className="rounded-lg bg-background border border-border p-3 flex items-center gap-3">
+        <div key={u.key} className="user-row rounded-lg bg-background border border-border p-3 flex flex-wrap md:flex-nowrap items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-primary/15 grid place-items-center text-primary font-bold">{u.name[0]?.toUpperCase()}</div>
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium truncate">
@@ -301,7 +302,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
           <select
             value={u.roleId}
             onChange={(e) => changeRole(u, e.target.value)}
-            className="h-9 px-2 rounded-lg bg-card border border-border text-xs"
+            className="user-role h-9 px-2 rounded-lg bg-card border border-border text-xs"
           >
             {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
           </select>
@@ -366,19 +367,20 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
         </div>
       )}
       {!show ? (
-        <button onClick={() => setShow(true)} className="w-full h-11 rounded-xl bg-card border border-border font-medium inline-flex items-center justify-center gap-2"><Plus className="h-4 w-4" /> Invitar usuario</button>
+        <button onClick={() => setShow(true)} className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-medium inline-flex items-center justify-center gap-2"><Plus className="h-4 w-4" /> Crear usuario</button>
       ) : (
-        <div className="rounded-lg border border-border p-3 space-y-2">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mínimo 6 caracteres)" type="password" autoComplete="new-password" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
+        <div className="user-create-form rounded-xl border border-border bg-muted/30 p-4 md:p-5 space-y-4">
+          <div><h3 className="text-sm font-semibold">Crear cuenta de usuario</h3><p className="text-xs text-muted-foreground mt-1">Completa los datos de acceso y asigna el perfil correspondiente.</p></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Correo electrónico</span><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@empresa.com" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" /></label>
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Nombre completo</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellidos" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" /></label>
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Contraseña inicial</span><input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" type="password" autoComplete="new-password" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" /></label>
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Perfil de acceso</span><select value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
             {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-          <p className="text-[11px] text-muted-foreground">
-            Se creará la cuenta con este correo y la contraseña inicial. El usuario podrá cambiarla después.
-          </p>
-          <div className="flex gap-2">
+          </select></label>
+          </div>
+          <p className="text-xs text-muted-foreground">La cuenta se creará con esta contraseña inicial. El usuario podrá cambiarla después.</p>
+          <div className="flex justify-end gap-2">
             <button onClick={() => setShow(false)} className="flex-1 h-10 rounded-lg border border-border text-sm">Cancelar</button>
             <button onClick={invite} className="flex-1 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Invitar</button>
           </div>
@@ -390,7 +392,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
 
 
 function Section({ title, children }: any) {
-  return <div className="min-w-0 border-t border-border pt-4 space-y-3"><div className="font-semibold">{title}</div>{children}</div>;
+  return <section className={`settings-section min-w-0 rounded-xl border border-border bg-card p-4 md:p-5 space-y-4 shadow-card ${title === "Usuarios" ? "settings-users" : ""}`}><div className="flex items-center justify-between border-b border-border pb-3"><h2 className="text-sm font-semibold tracking-tight">{title}</h2></div>{children}</section>;
 }
 function Inp({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return <label className="block"><span className="text-xs text-muted-foreground">{label}</span><input value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full h-11 px-3 rounded-lg bg-background border border-border outline-none focus:border-primary text-sm" /></label>;
