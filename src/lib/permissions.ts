@@ -49,7 +49,11 @@ export function canAccess(session: AccessSession | null, module: ModuleId, actio
   const level = session.assignment.overrides?.[module] ?? session.role.permissions[module] ?? "none";
   return action === "write" ? level === "write" : level === "read" || level === "write";
 }
-export function moduleForPath(path: string) { return MODULES.find(m => m.path === path)?.id; }
+export function moduleForPath(path: string) {
+  return MODULES
+    .filter((module) => path === module.path || (module.path !== "/" && path.startsWith(module.path + "/")))
+    .sort((a, b) => b.path.length - a.path.length)[0]?.id;
+}
 export function landingPath(session: AccessSession | null) {
   if (session?.assignment.roleId === "admin" && canAccess(session, "dashboard")) return "/";
   if (session?.assignment.roleId === "cashier" && canAccess(session, "pos")) return "/pos";
