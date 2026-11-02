@@ -283,7 +283,8 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
   if (loading) return <p className="text-xs text-muted-foreground">Cargando usuarios…</p>;
 
   return (
-    <div className="space-y-2">
+    <div className="users-management space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div><p className="text-sm font-medium">Accesos del sistema</p><p className="text-xs text-muted-foreground mt-1">Administra cuentas, perfiles y bodegas asignadas.</p></div><span className="text-xs text-muted-foreground">{list.length} usuario(s)</span></div>
       {error && <p className="text-xs text-destructive">{error}</p>}
       {list.map((u) => (
         <div key={u.key} className="user-row rounded-lg bg-background border border-border p-3 flex flex-wrap md:flex-nowrap items-center gap-3">
@@ -368,17 +369,18 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
       {!show ? (
         <button onClick={() => setShow(true)} className="w-full h-11 rounded-lg bg-primary text-primary-foreground font-medium inline-flex items-center justify-center gap-2"><Plus className="h-4 w-4" /> Crear usuario</button>
       ) : (
-        <div className="rounded-lg border border-border p-3 space-y-2">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Contraseña inicial (mínimo 6 caracteres)" type="password" autoComplete="new-password" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" />
-          <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
+        <div className="user-create-form rounded-xl border border-border bg-muted/30 p-4 md:p-5 space-y-4">
+          <div><h3 className="text-sm font-semibold">Crear cuenta de usuario</h3><p className="text-xs text-muted-foreground mt-1">Completa los datos de acceso y asigna el perfil correspondiente.</p></div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Correo electrónico</span><input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@empresa.com" type="email" inputMode="email" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" /></label>
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Nombre completo</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellidos" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" /></label>
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Contraseña inicial</span><input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" type="password" autoComplete="new-password" className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm" /></label>
+          <label className="block space-y-1"><span className="text-xs font-medium text-muted-foreground">Perfil de acceso</span><select value={role} onChange={(e) => setRole(e.target.value)} className="w-full h-10 px-3 rounded-lg bg-background border border-border text-sm">
             {roles.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-          <p className="text-[11px] text-muted-foreground">
-            Se creará la cuenta con este correo y la contraseña inicial. El usuario podrá cambiarla después.
-          </p>
-          <div className="flex gap-2">
+          </select></label>
+          </div>
+          <p className="text-xs text-muted-foreground">La cuenta se creará con esta contraseña inicial. El usuario podrá cambiarla después.</p>
+          <div className="flex justify-end gap-2">
             <button onClick={() => setShow(false)} className="px-4 h-10 rounded-lg border border-border text-sm">Cancelar</button>
             <button onClick={invite} className="px-5 h-10 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Crear usuario</button>
           </div>
