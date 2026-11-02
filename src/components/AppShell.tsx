@@ -7,24 +7,9 @@ import { SyncStatus } from "@/components/SyncStatus";
 import { Button } from "@/components/ui/button";
 import {
   ShoppingCart, LayoutDashboard, Package, Wallet, BarChart3, ClipboardList,
-  Users, Settings, LogOut, MoreHorizontal, Truck, ShoppingBag,
+  Users, Settings, LogOut, Truck, ShoppingBag, Menu,
   Boxes, HandCoins, Landmark, Sun, Moon, Ship, Undo2, Factory, Building2,
 } from "lucide-react";
-
-const primaryNavAdmin = [
-  { to: "/", label: "Inicio", icon: LayoutDashboard },
-  { to: "/pos", label: "Vender", icon: ShoppingCart },
-  { to: "/catalog", label: "Catálogo", icon: Package },
-  { to: "/cash", label: "Caja", icon: Wallet },
-  { to: "/more", label: "Más", icon: MoreHorizontal },
-] as const;
-
-const primaryNavCashier = [
-  { to: "/pos", label: "Vender", icon: ShoppingCart },
-  { to: "/cash", label: "Caja", icon: Wallet },
-  { to: "/sales", label: "Tickets", icon: BarChart3 },
-  { to: "/more", label: "Más", icon: MoreHorizontal },
-] as const;
 
 type NavGroup = { title: string; items: readonly { to: string; label: string; icon: any }[] };
 
@@ -167,8 +152,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     const module = moduleForPath(to);
     return module ? can(module, "read") : true;
   };
-  const primaryNav = (user.role === "cashier" ? primaryNavCashier : primaryNavAdmin)
-    .filter((item) => canOpen(item.to));
   const navGroups = (user.role === "cashier" ? navGroupsCashier : navGroupsAdmin)
     .map((group) => ({ ...group, items: group.items.filter((item) => canOpen(item.to)) }))
     .filter((group) => group.items.length > 0);
@@ -238,9 +221,44 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border safe-top">
           <div className="h-16 px-4 md:px-7 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="md:hidden h-7 w-7 rounded-lg bg-primary grid place-items-center text-primary-foreground">
-                <Ship className="h-4 w-4" />
-              </span>
+              <details className="md:hidden relative">
+                <summary className="grid h-9 w-9 cursor-pointer list-none place-items-center rounded-lg border border-border bg-card">
+                  <Menu className="h-4 w-4" />
+                </summary>
+                <div className="fixed inset-x-0 top-16 bottom-0 z-50 overflow-y-auto bg-sidebar p-4 text-sidebar-foreground shadow-xl">
+                  <div className="mb-4 border-b border-sidebar-border pb-4">
+                    <div className="text-sm font-semibold">Flow POS</div>
+                    <div className="mt-1 text-xs text-sidebar-foreground/60">{user.name} · {access?.role.name ?? user.role}</div>
+                  </div>
+                  <nav className="space-y-5">
+                    {navGroups.map((group) => (
+                      <section key={group.title}>
+                        <h2 className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">{group.title}</h2>
+                        <div className="space-y-1">
+                          {group.items.map((item) => {
+                            const Icon = item.icon;
+                            const active = isActive(location.pathname, item.to);
+                            return (
+                              <Link key={item.to} to={item.to}
+                                onClick={(event) => { const menu = event.currentTarget.closest("details"); if (menu) menu.open = false; }}
+                                className={active
+                                  ? "flex items-center gap-3 rounded-lg bg-sidebar-accent px-3 py-3 text-sm font-semibold text-sidebar-accent-foreground"
+                                  : "flex items-center gap-3 rounded-lg px-3 py-3 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent/70"}>
+                                <Icon className="h-4 w-4" />
+                                <span>{item.label}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </nav>
+                  <Button variant="ghost" className="mt-5 w-full justify-start gap-3 text-sidebar-foreground"
+                    onClick={() => { logout(); navigate({ to: "/login" }); }}>
+                    <LogOut className="h-4 w-4" /> Cerrar sesión
+                  </Button>
+                </div>
+              </details>
               <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-muted-foreground hidden md:inline">
                 ERP
               </span>
@@ -271,29 +289,9 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="erp-main flex-1 min-w-0 w-full pb-20 md:pb-8">{children}</main>
+        <main className="erp-main flex-1 min-w-0 w-full pb-8">{children}</main>
 
-        {/* Bottom nav (mobile) */}
-        <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-card/95 backdrop-blur border-t border-border safe-bottom">
-          <div className="grid" style={{ gridTemplateColumns: `repeat(${Math.max(primaryNav.length, 1)}, minmax(0, 1fr))` }}>
-            {primaryNav.map((n) => {
-              const Icon = n.icon;
-              const active = isActive(location.pathname, n.to);
-              return (
-                <Link
-                  key={n.to}
-                  to={n.to}
-                  className={`flex flex-col items-center justify-center py-2.5 text-[10px] gap-0.5 ${
-                    active ? "text-primary font-medium" : "text-muted-foreground"
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  {n.label}
-                </Link>
-              );
-            })}
-          </div>
-        </nav>
+
       </div>
     </div>
   );
