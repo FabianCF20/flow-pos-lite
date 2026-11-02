@@ -10,7 +10,7 @@ import {
 import { toast } from "sonner";
 import {
   Package, Tag, Plus, RefreshCw, X, Power, Pencil, Save, Search,
-  Boxes, CircleCheck, CircleX, Filter, Barcode, Layers3,
+  Boxes, CircleCheck, CircleX, Layers3,
 } from "lucide-react";
 
 export const Route = createFileRoute("/catalog")({
