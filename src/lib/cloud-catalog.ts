@@ -95,7 +95,7 @@ export async function listCloudCategories(): Promise<CloudCategory[]> {
   return snapshot.docs
     .filter((item) => item.data().deleted !== true)
     .map((item) => ({ ...item.data(), id: item.id }) as CloudCategory)
-    .sort((a, b) => a.name.localeCompare(b.name, "es"));
+    .sort((a, b) => String(a.name ?? "").localeCompare(String(b.name ?? ""), "es"));
 }
 
 export async function createCloudCategory(input: CategoryInput): Promise<string> {
