@@ -35,7 +35,8 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/node_modules/@firebase"
           ln -s "$TOOL_DIR/node_modules/@firebase/rules-unit-testing" "$GITHUB_WORKSPACE/node_modules/@firebase/rules-unit-testing"
       - name: Firestore security rules tests
-        run: "$RUNNER_TEMP/firestore-test-tools/node_modules/.bin/firebase" emulators:exec --only firestore --project demo-flow-pos-lite "node --test tests/firestore.rules.test.mjs"
+        run: |
+          "$RUNNER_TEMP/firestore-test-tools/node_modules/.bin/firebase" emulators:exec --only firestore --project demo-flow-pos-lite "node --test tests/firestore.rules.test.mjs"
       - name: TypeScript check
         run: npx tsc --noEmit
       - name: Production build
