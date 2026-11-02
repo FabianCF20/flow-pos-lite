@@ -147,10 +147,15 @@ function POSPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar nombre / código de barras"
-              className="w-full h-11 pl-10 pr-3 rounded-xl bg-card border border-border outline-none focus:border-primary text-sm"
+              aria-label="Buscar productos por nombre, SKU o código de barras"
+              className="h-12 w-full rounded-lg border border-border bg-card pl-10 pr-3 text-sm outline-none transition-shadow focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
           </div>
 
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium text-muted-foreground">{filtered.length} productos disponibles</p>
+            {search && <button onClick={() => setSearch("")} className="text-xs font-medium text-primary hover:underline">Limpiar búsqueda</button>}
+          </div>
           <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 md:mx-0 md:px-0">
             <CatChip active={catId === null} onClick={() => setCatId(null)}>Todos</CatChip>
             {categories?.map((c) => (
@@ -163,10 +168,10 @@ function POSPage() {
               <button
                 key={p.id}
                 onClick={() => addProduct(p)}
-                className="text-left rounded-xl bg-card border border-border p-3 active:scale-[0.97] transition-transform disabled:opacity-50"
+                className="group min-w-0 rounded-lg border border-border bg-card p-2.5 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={p.trackStock && p.stock <= 0}
               >
-                <div className="aspect-square w-full rounded-lg bg-muted overflow-hidden grid place-items-center mb-1.5">
+                <div className="mb-2 grid aspect-square w-full place-items-center overflow-hidden rounded-md bg-muted">
                   {p.image ? (
                     <img
                       src={p.image}
@@ -179,8 +184,8 @@ function POSPage() {
                     <Package className="h-6 w-6 text-muted-foreground" />
                   )}
                 </div>
-                <div className="text-sm font-medium leading-tight line-clamp-2">{p.name}</div>
-                <div className="mt-1 text-sm font-semibold text-primary">{formatMoney(p.price, settings)}</div>
+                <div className="line-clamp-2 min-h-9 text-xs font-semibold leading-4 text-foreground">{p.name}</div>
+                <div className="mt-1.5 text-sm font-bold tabular text-primary">{formatMoney(p.price, settings)}</div>
                 {p.trackStock && (
                   <div className={`text-[10px] mt-0.5 ${p.stock <= 5 ? "text-warning" : "text-muted-foreground"}`}>
                     Stock: {p.stock}
@@ -207,7 +212,7 @@ function POSPage() {
       {cart.length > 0 && (
         <button
           onClick={() => setShowPay(true)}
-          className="lg:hidden fixed left-3 right-3 bottom-[68px] md:bottom-4 md:left-auto md:w-80 z-30 h-14 px-4 rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30 flex items-center justify-between active:scale-[0.99]"
+          className="lg:hidden fixed bottom-3 left-3 right-3 z-30 flex h-14 items-center justify-between rounded-lg bg-primary px-4 text-primary-foreground shadow-lg shadow-black/15 active:scale-[0.99] md:bottom-4 md:left-auto md:w-80"
         >
           <span className="flex items-center gap-2">
             <span className="h-7 min-w-7 px-1.5 rounded-full bg-white/20 grid place-items-center text-xs font-bold">
