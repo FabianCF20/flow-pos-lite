@@ -248,8 +248,8 @@
 .erp-main > div { padding-bottom: 1.5rem; }
 .erp-main h1 { letter-spacing: -0.025em; font-weight: 650; }
 .erp-main button, .erp-main a, [role="dialog"] button { transition: background-color .16s ease, border-color .16s ease, color .16s ease; }
-.erp-main input:not([type="checkbox"]):not([type="radio]), .erp-main select, .erp-main textarea,
-[role="dialog"] input:not([type="checkbox"]):not([type="radio]), [role="dialog"] select, [role="dialog"] textarea {
+.erp-main input:not([type="checkbox"]):not([type="radio"]), .erp-main select, .erp-main textarea,
+[role="dialog"] input:not([type="checkbox"]):not([type="radio"]), [role="dialog"] select, [role="dialog"] textarea {
   border-radius: .5rem;
 }
 .erp-main input:focus, .erp-main select:focus, .erp-main textarea:focus {
