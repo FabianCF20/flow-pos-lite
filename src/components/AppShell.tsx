@@ -176,10 +176,10 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       {/* Sidebar (md+) */}
-      <aside className="hidden md:flex sticky top-0 h-dvh w-56 xl:w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-        <div className="px-5 py-5 border-b border-sidebar-border">
+      <aside className="hidden md:flex sticky top-0 h-dvh w-60 xl:w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+        <div className="px-5 py-4 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-primary grid place-items-center text-primary-foreground">
+            <div className="h-10 w-10 rounded-lg bg-primary grid place-items-center text-primary-foreground">
               <Ship className="h-5 w-5" />
             </div>
             <div className="leading-tight min-w-0">
@@ -205,7 +205,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <Link
                       key={n.to}
                       to={n.to}
-                      className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
+                      className={`relative flex items-center gap-3 px-3 py-2 rounded-md text-[13px] transition-colors ${
                         active
                           ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                           : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
@@ -235,17 +235,17 @@ export function AppShell({ children }: { children: ReactNode }) {
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Topbar */}
-        <header className="sticky top-0 z-30 bg-surface/90 backdrop-blur border-b border-border safe-top">
-          <div className="h-14 px-4 md:px-6 flex items-center justify-between gap-3">
+        <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border safe-top">
+          <div className="h-16 px-4 md:px-7 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="md:hidden h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-primary-glow grid place-items-center text-primary-foreground">
+              <span className="md:hidden h-7 w-7 rounded-lg bg-primary grid place-items-center text-primary-foreground">
                 <Ship className="h-4 w-4" />
               </span>
               <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-muted-foreground hidden md:inline">
                 ERP
               </span>
               <span className="text-muted-foreground/50 hidden md:inline">/</span>
-              <span className="text-sm font-display font-semibold truncate">{sectionTitle}</span>
+              <span className="text-sm font-semibold truncate">{sectionTitle}</span>
             </div>
             <div className="flex items-center gap-2">
               <SyncStatus />
