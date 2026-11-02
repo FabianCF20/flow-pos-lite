@@ -5,7 +5,7 @@ import { formatMoney, startOfDay, endOfDay } from "@/lib/format";
 import { PageHeader } from "@/components/AppShell";
 import { trialBalance } from "@/lib/erp";
 import {
-  ShoppingCart, Package, Wallet, TrendingUp, ReceiptText, AlertTriangle,
+  ShoppingCart, Package, Wallet, TrendingUp, AlertTriangle,
   HandCoins, ShoppingBag, Boxes, Landmark,
 } from "lucide-react";
 
