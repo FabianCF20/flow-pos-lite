@@ -259,3 +259,17 @@
 @media (max-width: 767px) {
   .erp-main { padding-bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
 }
+
+.settings-layout .settings-users { grid-column: 1 / -1; }
+.users-management .user-row { align-items: center; }
+.users-management .user-row .user-role { min-width: 150px; }
+.users-management .user-row > button { min-height: 36px; padding-inline: .65rem; border-radius: .45rem; }
+.users-management .user-create-form { border-style: solid; }
+.users-management .user-create-form input,
+.users-management .user-create-form select { width: 100%; min-width: 0; }
+@media (max-width: 767px) {
+  .users-management .user-row { display: grid; grid-template-columns: 36px minmax(0, 1fr); }
+  .users-management .user-row .user-role,
+  .users-management .user-row > button { grid-column: 1 / -1; width: 100%; }
+  .settings-layout { gap: 1rem; }
+}
