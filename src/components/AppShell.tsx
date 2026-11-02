@@ -255,6 +255,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
+        {mobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-50">
+            <button aria-label="Cerrar menú" className="absolute inset-0 bg-black/45" onClick={() => setMobileMenuOpen(false)} />
+            <aside className="absolute inset-y-0 left-0 w-[min(86vw,340px)] bg-sidebar text-sidebar-foreground shadow-2xl flex flex-col safe-top">
+              <div className="px-5 py-5 border-b border-sidebar-border flex items-center justify-between">
+                <div className="flex items-center gap-3"><div className="h-10 w-10 rounded-xl bg-primary grid place-items-center text-primary-foreground"><Ship className="h-5 w-5" /></div><div className="min-w-0"><div className="font-semibold text-sm">ERP Importaciones</div><div className="text-xs text-sidebar-foreground/60 truncate">{user.name} · {access?.role.name ?? user.role}</div></div></div>
+                <Button variant="ghost" size="icon" aria-label="Cerrar menú" onClick={() => setMobileMenuOpen(false)}><X className="h-5 w-5" /></Button>
+              </div>
+              <nav className="flex-1 overflow-y-auto p-3 space-y-5">
+                {navGroups.map((g) => <section key={g.title}><div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-sidebar-foreground/45">{g.title}</div><div className="space-y-1">{g.items.map((n) => { const Icon = n.icon; const active = isActive(location.pathname, n.to); return <Link key={n.to} to={n.to} onClick={() => setMobileMenuOpen(false)} className={`flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors ${active ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold" : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60"}`}><Icon className="h-4 w-4" /><span>{n.label}</span></Link>; })}</div></section>)}
+              </nav>
+              <Button variant="ghost" onClick={() => { setMobileMenuOpen(false); logout(); navigate({ to: "/login" }); }} className="m-3 justify-start gap-2"><LogOut className="h-4 w-4" /> Salir</Button>
+            </aside>
+          </div>
+        )}
         <main className="erp-main flex-1 min-w-0 w-full pb-6 md:pb-8">{children}</main>
 
 
