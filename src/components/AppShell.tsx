@@ -15,36 +15,46 @@ type NavGroup = { title: string; items: readonly { to: string; label: string; ic
 
 const navGroupsAdmin: readonly NavGroup[] = [
   {
-    title: "Operación",
+    title: "Comercial",
     items: [
       { to: "/", label: "Inicio", icon: LayoutDashboard },
-      { to: "/pos", label: "Vender", icon: ShoppingCart },
-      { to: "/sales", label: "Ventas", icon: BarChart3 },
+      { to: "/pos", label: "Punto de venta", icon: ShoppingCart },
+      { to: "/sales", label: "Ventas y tickets", icon: BarChart3 },
       { to: "/orders", label: "Pedidos", icon: ClipboardList },
       { to: "/dispatch", label: "Despachos", icon: Truck },
       { to: "/returns", label: "Devoluciones y notas", icon: Undo2 },
-      { to: "/receivables", label: "Cartera", icon: HandCoins },
       { to: "/customers", label: "Clientes", icon: Users },
     ],
   },
   {
-    title: "Importación y stock",
+    title: "Abastecimiento",
     items: [
-      { to: "/purchases", label: "Compras / Importaciones", icon: ShoppingBag },
+      { to: "/purchases", label: "Compras e importaciones", icon: ShoppingBag },
       { to: "/suppliers", label: "Proveedores", icon: Truck },
-      { to: "/inventory", label: "Inventario", icon: Boxes },
-      { to: "/production", label: "Producción", icon: Factory },
-      { to: "/catalog", label: "Catálogo maestro", icon: Package },
     ],
   },
   {
-    title: "Finanzas",
+    title: "Operaciones",
     items: [
-      { to: "/accounting", label: "Contabilidad", icon: Landmark },
+      { to: "/inventory", label: "Inventario y bodegas", icon: Boxes },
+      { to: "/production", label: "Producción", icon: Factory },
+      { to: "/catalog", label: "Productos y categorías", icon: Package },
+    ],
+  },
+  {
+    title: "Finanzas y control",
+    items: [
       { to: "/cash", label: "Caja", icon: Wallet },
+      { to: "/receivables", label: "Cartera", icon: HandCoins },
+      { to: "/accounting", label: "Contabilidad", icon: Landmark },
       { to: "/reports", label: "Reportes", icon: BarChart3 },
+    ],
+  },
+  {
+    title: "Administración",
+    items: [
       { to: "/organization", label: "Estructura organizacional", icon: Building2 },
-      { to: "/settings", label: "Ajustes", icon: Settings },
+      { to: "/settings", label: "Ajustes y usuarios", icon: Settings },
     ],
   },
 ];
