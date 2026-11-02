@@ -179,7 +179,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <aside className="hidden md:flex sticky top-0 h-dvh w-56 xl:w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
         <div className="px-5 py-5 border-b border-sidebar-border">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-glow grid place-items-center text-primary-foreground">
+            <div className="h-10 w-10 rounded-xl bg-primary grid place-items-center text-primary-foreground">
               <Ship className="h-5 w-5" />
             </div>
             <div className="leading-tight min-w-0">
@@ -207,14 +207,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                       to={n.to}
                       className={`relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                         active
-                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                          ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold"
                           : "text-sidebar-foreground/75 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
                       }`}
                     >
                       {active && (
-                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-gold" />
+                        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-r-full bg-sidebar-primary" />
                       )}
-                      <Icon className={`h-4 w-4 ${active ? "text-gold" : ""}`} />
+                      <Icon className={`h-4 w-4 ${active ? "text-sidebar-primary" : ""}`} />
                       <span className="truncate">{n.label}</span>
                     </Link>
                   );
@@ -241,7 +241,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <span className="md:hidden h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-primary-glow grid place-items-center text-primary-foreground">
                 <Ship className="h-4 w-4" />
               </span>
-              <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground hidden md:inline">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.10em] text-muted-foreground hidden md:inline">
                 ERP
               </span>
               <span className="text-muted-foreground/50 hidden md:inline">/</span>
