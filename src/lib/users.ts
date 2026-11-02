@@ -35,23 +35,56 @@ export async function initializeRoles() {
 }
 export async function listDirectory(): Promise<DirectoryUser[]> {
   await requireAdministrator();
-  const [profiles, assignments] = await Promise.all([getDocs(collection(fbDb(), "users")), getDocs(collection(fbDb(), "userAccess"))]);
-  const byEmail = new Map(assignments.docs.map(d => [d.id, d.data()]));
-  return profiles.docs.map(d => {
-    const profile = d.data(); const email = String(profile.email ?? "").toLowerCase(); const a = byEmail.get(email);
-    return {
-      key: d.id,
-      uid: d.id,
+  const [profiles, assignments] = await Promise.all([
+    getDocs(collection(fbDb(), "users")),
+    getDocs(collection(fbDb(), "userAccess")),
+  ]);
+  const assignmentsByEmail = new Map(assignments.docs.map((item) => [item.id.toLowerCase(), item.data()]));
+  const seenUids = new Set<string>();
+  const result: DirectoryUser[] = [];
+
+  for (const profileDoc of profiles.docs) {
+    const profile = profileDoc.data();
+    const email = String(profile.email ?? "").trim().toLowerCase();
+    const assignment = assignmentsByEmail.get(email);
+    const uid = profileDoc.id;
+    seenUids.add(uid);
+    result.push({
+      key: uid,
+      uid,
       email,
-      name: String(profile.name ?? email),
-      roleId: String(a?.roleId ?? ""),
-      active: a?.active === true,
-      pending: !a,
-      overrides: (a?.overrides ?? {}) as Permissions,
-      warehouseIds: Array.isArray(a?.warehouseIds) ? a.warehouseIds as string[] : [],
-      allWarehouses: a?.allWarehouses === true,
-    };
-  }).sort((a,b) => a.name.localeCompare(b.name));
+      name: String(profile.name ?? email ?? "Usuario"),
+      roleId: String(assignment?.roleId ?? ""),
+      active: assignment?.active === true,
+      pending: !assignment,
+      overrides: (assignment?.overrides ?? {}) as Permissions,
+      warehouseIds: Array.isArray(assignment?.warehouseIds) ? assignment.warehouseIds as string[] : [],
+      allWarehouses: assignment?.allWarehouses === true,
+    });
+  }
+
+  // También muestra asignaciones válidas aunque falte el documento de perfil.
+  for (const assignmentDoc of assignments.docs) {
+    const assignment = assignmentDoc.data();
+    const uid = String(assignment.uid ?? "");
+    if (!uid || seenUids.has(uid)) continue;
+    const email = String(assignment.email ?? assignmentDoc.id).trim().toLowerCase();
+    result.push({
+      key: uid,
+      uid,
+      email,
+      name: String(assignment.name ?? email),
+      roleId: String(assignment.roleId ?? ""),
+      active: assignment.active === true,
+      pending: false,
+      overrides: (assignment.overrides ?? {}) as Permissions,
+      warehouseIds: Array.isArray(assignment.warehouseIds) ? assignment.warehouseIds as string[] : [],
+      allWarehouses: assignment.allWarehouses === true,
+    });
+    seenUids.add(uid);
+  }
+
+  return result.sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
 export async function createDirectoryUser(input: { name: string; email: string; password: string; roleId: string; overrides: Permissions }) {
   await requireAdministrator();
