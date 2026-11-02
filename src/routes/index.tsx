@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/AppShell";
 import { trialBalance } from "@/lib/erp";
 import {
   ShoppingCart, Package, Wallet, TrendingUp, AlertTriangle,
-  HandCoins, ShoppingBag, Boxes, Landmark,
+  HandCoins, ShoppingBag, Boxes, Landmark, Factory,
 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -120,7 +120,7 @@ function Dashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard icon={Boxes} label="Inventario" value="Existencias" hint="Bodegas y kardex" to="/inventory" />
           <StatCard icon={Package} label="Productos activos" value={String(productCount ?? 0)} hint="Productos y categorías" to="/catalog" />
-          <StatCard icon={TrendingUp} label="Producción" value="Órdenes" hint="Fórmulas y consumos" to="/production" />
+          <StatCard icon={Factory} label="Producción" value="Abrir módulo" hint="Fórmulas y órdenes" to="/production" />
           <StatCard icon={TrendingUp} label="Reportes" value="Analítica" hint="Ventas y márgenes" to="/reports" />
         </div>
 
