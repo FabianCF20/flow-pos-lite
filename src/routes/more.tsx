@@ -54,9 +54,9 @@ function MorePage() {
           const groupItems = items.filter((item) => item.group === group);
           if (!groupItems.length) return null;
           return (
-            <section key={group} aria-labelledby={"module-group-" + group}>
+            <section key={group} aria-labelledby={"module-group-" + group.toLowerCase().replaceAll(" ", "-")}>
               <div className="mb-3 flex items-center justify-between border-b border-border pb-2">
-                <h2 id={"module-group-" + group} className="text-sm font-semibold tracking-tight">{group}</h2>
+                <h2 id={"module-group-" + group.toLowerCase().replaceAll(" ", "-")} className="text-sm font-semibold tracking-tight">{group}</h2>
                 <span className="text-xs text-muted-foreground">{groupItems.length} módulos</span>
               </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
