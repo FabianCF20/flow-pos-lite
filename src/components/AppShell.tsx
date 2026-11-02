@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (loading || !user || location.pathname === "/login") return;
     const module = moduleForPath(location.pathname);
     const allowed = location.pathname === "/catalog"
-      ? can("products", "read") && can("categories", "read")
+      ? can("products", "read") || can("categories", "read")
       : location.pathname === "/products" || location.pathname === "/categories"
         ? user.role === "admin"
         : module
@@ -147,7 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const canOpen = (to: string) => {
-    if (to === "/catalog") return can("products", "read") && can("categories", "read");
+    if (to === "/catalog") return can("products", "read") || can("categories", "read");
     if (to === "/products" || to === "/categories") return user.role === "admin";
     if (to === "/organization") return can("settings", "write");
     const module = moduleForPath(to);
