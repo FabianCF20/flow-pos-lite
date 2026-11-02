@@ -222,9 +222,10 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 bg-card/95 backdrop-blur border-b border-border safe-top">
           <div className="h-16 px-4 md:px-7 flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="md:hidden h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-primary-glow grid place-items-center text-primary-foreground">
-                <Ship className="h-4 w-4" />
-              </span>
+              <Button variant="outline" size="icon" className="md:hidden h-9 w-9 shrink-0" aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"} onClick={() => setMobileMenuOpen((open) => !open)}>
+                {mobileMenuOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
+              </Button>
+              <span className="md:hidden h-8 w-8 rounded-lg bg-primary grid place-items-center text-primary-foreground"><Ship className="h-4 w-4" /></span>
               <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground hidden md:inline">
                 ERP
               </span>
