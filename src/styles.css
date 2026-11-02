@@ -256,9 +256,6 @@
   outline: 2px solid color-mix(in oklab, var(--color-ring) 24%, transparent);
   outline-offset: 1px;
 }
-@media (max-width: 767px) {
-  .erp-main { padding-bottom: calc(5.25rem + env(safe-area-inset-bottom)); }
-}
 
 .settings-layout .settings-users { grid-column: 1 / -1; }
 .users-management .user-row { align-items: center; }
