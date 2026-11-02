@@ -286,7 +286,8 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
   return (
     <div className="users-management space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"><div><p className="text-sm font-medium">Accesos del sistema</p><p className="text-xs text-muted-foreground mt-1">Administra cuentas, perfiles y bodegas asignadas.</p></div><span className="text-xs text-muted-foreground">{list.length} usuario(s)</span></div>
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">{error}<button onClick={() => { setLoading(true); void reload(); }} className="ml-2 underline">Reintentar</button></div>}
+      {list.length === 0 && !error && <div className="rounded-xl border border-dashed border-border p-6 text-center"><p className="text-sm font-medium">Todavía no hay otros usuarios registrados</p><p className="text-xs text-muted-foreground mt-1">Puedes crear la primera cuenta desde el botón inferior.</p></div>}
       {list.map((u) => (
         <div key={u.key} className="user-row rounded-lg bg-background border border-border p-3 flex flex-wrap md:flex-nowrap items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-primary/15 grid place-items-center text-primary font-bold">{u.name[0]?.toUpperCase()}</div>
