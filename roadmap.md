@@ -16,3 +16,15 @@
 - [x] Corregir la caché de vista previa: inicio y recarga sin errores; limpieza preserva inventario y cachés ajenas.
 - [ ] Usuarios: creación de cuentas, roles separados y permisos por módulo (consulta/modificación).
 - [ ] Aplicar permisos a navegación, sincronización y reglas de datos; probar restricciones.
+
+## Rediseño de interfaz y navegación (2026-11)
+
+- [x] Eliminar la barra inferior móvil.
+- [x] Incorporar menú móvil desplegable con permisos por módulo.
+- [x] Organizar la navegación por áreas: Comercial, Abastecimiento, Operaciones, Finanzas y control, Administración.
+- [x] Agrupar el centro de módulos por áreas funcionales.
+- [x] Unificar jerarquía visual de encabezados de las pantallas.
+- [ ] Rediseñar individualmente los flujos y formularios de cada módulo.
+- [ ] Validar navegación y permisos con usuarios reales de cada perfil.
+- [ ] Completar y probar sincronización central de operaciones, caja, producción, contabilidad y adjuntos.
+- [ ] Ejecutar pruebas funcionales integrales en computador y móvil.
