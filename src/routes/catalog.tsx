@@ -33,9 +33,12 @@ const PRODUCT_TYPES: { value: DairyProductType; label: string }[] = [
 
 function CloudCatalogPage() {
   const { can, loading } = useAuth();
-  const canRead = can("products", "read") && can("categories", "read");
+  const canReadProducts = can("products", "read");
+  const canReadCategories = can("categories", "read");
+  const canRead = canReadProducts || canReadCategories;
   const canWriteProducts = can("products", "write");
   const canWriteCategories = can("categories", "write");
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [tab, setTab] = useState<CatalogTab>("products");
   const [products, setProducts] = useState<CloudProduct[]>([]);
   const [categories, setCategories] = useState<CloudCategory[]>([]);
@@ -47,21 +50,29 @@ function CloudCatalogPage() {
     setBusy(true);
     try {
       const [nextCategories, nextProducts] = await Promise.all([
-        listCloudCategories(),
-        listCloudProducts(),
+        canReadCategories ? listCloudCategories() : Promise.resolve([]),
+        canReadProducts ? listCloudProducts() : Promise.resolve([]),
       ]);
       setCategories(nextCategories);
       setProducts(nextProducts);
+      setLoadError(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "No se pudo consultar el catálogo en Firestore.");
+      const message = error instanceof Error ? error.message : "No se pudo consultar el catálogo en Firestore.";
+      setLoadError(message);
+      toast.error(message);
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [canReadProducts, canReadCategories]);
 
   useEffect(() => {
     if (!loading && canRead) void reload();
   }, [loading, canRead, reload]);
+
+  useEffect(() => {
+    if (!canReadProducts && canReadCategories) setTab("categories");
+    else if (canReadProducts && !canReadCategories) setTab("products");
+  }, [canReadProducts, canReadCategories]);
 
   if (loading) return <div className="p-6 text-sm text-muted-foreground">Verificando permisos…</div>;
   if (!canRead) return <div className="p-6 text-sm text-destructive">No tienes permiso para consultar el catálogo.</div>;
@@ -165,19 +176,21 @@ function CloudCatalogPage() {
         <p className="rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-muted-foreground">
           Este es el catálogo cloud oficial. La conexión con el punto de venta, producción e inventario anteriores todavía está en implementación; los registros creados aquí no alimentan esas pantallas antiguas hasta completar su migración.
         </p>
+        {loadError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">{loadError}<button onClick={() => void reload()} className="ml-2 underline">Reintentar</button></div>}
         <div className="flex gap-2 border-b border-border">
-          <button onClick={() => setTab("products")} className={`px-3 py-2.5 text-sm border-b-2 ${tab === "products" ? "border-primary text-foreground font-semibold" : "border-transparent text-muted-foreground"}`}>
+          {canReadProducts && <button onClick={() => setTab("products")} className={`px-3 py-2.5 text-sm border-b-2 ${tab === "products" ? "border-primary text-foreground font-semibold" : "border-transparent text-muted-foreground"}`}>
             <Package className="inline h-4 w-4 mr-1.5" /> Productos ({products.length})
-          </button>
-          <button onClick={() => setTab("categories")} className={`px-3 py-2.5 text-sm border-b-2 ${tab === "categories" ? "border-primary text-foreground font-semibold" : "border-transparent text-muted-foreground"}`}>
+          </button>}
+          {canReadCategories && <button onClick={() => setTab("categories")} className={`px-3 py-2.5 text-sm border-b-2 ${tab === "categories" ? "border-primary text-foreground font-semibold" : "border-transparent text-muted-foreground"}`}>
             <Tag className="inline h-4 w-4 mr-1.5" /> Categorías ({categories.length})
-          </button>
+          </button>}
         </div>
 
-        {tab === "products" && (
+        {canReadProducts && tab === "products" && (
           <section className="space-y-3">
             {canWriteProducts && (
-              <div className="flex justify-end">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {!categories.some((category) => category.active) && <p className="text-xs text-muted-foreground">Para crear productos, primero registra una categoría activa.</p>}
                 <button onClick={() => setProductForm("new")} disabled={!categories.some((category) => category.active)} className="h-10 px-3 rounded-xl bg-primary text-primary-foreground text-sm inline-flex items-center gap-2 disabled:opacity-50">
                   <Plus className="h-4 w-4" /> Nuevo producto
                 </button>
@@ -210,7 +223,7 @@ function CloudCatalogPage() {
           </section>
         )}
 
-        {tab === "categories" && (
+        {canReadCategories && tab === "categories" && (
           <section className="space-y-3">
             {canWriteCategories && (
               <div className="flex justify-end">
