@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useState, useEffect } from "react";
 import { db, getSettings, type AppSettings } from "@/lib/db";
-import { createDirectoryUser, listDirectory, listRoles, updateDirectoryUser, type DirectoryUser } from "@/lib/users";
+import { createDirectoryUser, initializeRoles, listDirectory, listRoles, updateDirectoryUser, type DirectoryUser } from "@/lib/users";
 import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/AppShell";
 import { listOrganizationUnits, type OrganizationUnit } from "@/lib/cloud-organization";
@@ -218,6 +218,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
 
   async function reload() {
     try {
+      await initializeRoles();
       const [users, availableRoles, organizationUnits] = await Promise.all([
         listDirectory(),
         listRoles(),
@@ -231,7 +232,7 @@ function UsersList({ currentEmail, isAdmin }: { currentEmail?: string; isAdmin: 
       }
       setError(null);
     }
-    catch { setError("No se pudo cargar la lista (revisa la conexión o los permisos)"); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "No se pudo cargar la lista. Revisa la conexión y los permisos."); }
     finally { setLoading(false); }
   }
   useEffect(() => { reload(); }, []);
