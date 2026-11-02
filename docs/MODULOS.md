@@ -9,6 +9,18 @@
 - El control de rutas observado en AppShell.tsx es una restricción de interfaz. No debe interpretarse por sí solo como autorización segura de datos en Firestore o en el dispositivo.
 - La ruta de categorías incluye además una comprobación de rol en el cliente. En las demás pantallas hay que revisar las reglas y servicios correspondientes antes de afirmar que existe autorización por operación.
 
+## Organización de navegación
+
+La navegación se organiza en cinco áreas funcionales para reducir la mezcla de tareas:
+
+- **Comercial:** inicio, punto de venta, ventas y tickets, pedidos, despachos, devoluciones y clientes.
+- **Abastecimiento:** compras e importaciones, proveedores.
+- **Operaciones:** inventario y bodegas, producción, productos y categorías.
+- **Finanzas y control:** caja, cartera, contabilidad y reportes.
+- **Administración:** estructura organizacional, ajustes y usuarios.
+
+En computadores se presenta como menú lateral. En móviles se abre desde el encabezado; no existe barra de navegación inferior. La visibilidad de las opciones sigue filtrándose por los permisos del usuario.
+
 ## Resumen de módulos
 
 | Módulo | Ruta | Función principal |
